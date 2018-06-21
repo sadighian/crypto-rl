@@ -1,4 +1,4 @@
-# Multiprocessing Crypto Agent
+# Multiprocessing Crypto Recorder
 As of June 20th, 2018.
 ## 1. Purpose
 Application designed to subscribe and record the
