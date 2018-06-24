@@ -112,7 +112,7 @@ setup(
     license='TBD',
     author='Jonathan',
     author_email='jonathan.m.sadighian@gmail.com',
-    description='Connector to record crypto exchange level 3 market data', install_requires=['pymongo', 'requests',
+    description='Connector to insert_record crypto exchange level 3 market data', install_requires=['pymongo', 'requests',
                                                                                              'ujson', 'asyncio',
                                                                                              'sortedcontainers',
                                                                                              'numpy', 'websockets']

@@ -1,12 +1,12 @@
 # Multiprocessing Crypto Recorder
 As of June 23th, 2018.
 ## 1. Purpose
-Application designed to subscribe and record the
+Application designed to subscribe and insert_record the
 full limit order book data from **GDAX** and **Bitfinex** into a MongoDB 
 for reinforcement learning simulations.
 
 ## 2. Scope
-Application is intended to be used to record limit order book data for 
+Application is intended to be used to insert_record limit order book data for 
 reinforcement learning modeling. Currently, there is no functionality 
 developed to place order and actually trade.
 

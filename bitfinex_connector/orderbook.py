@@ -1,73 +1,16 @@
-from datetime import datetime as dt
-from threading import Timer
 from time import time
-
 import numpy as np
-
-from bitfinex_connector.diction import Diction
 from common_components.abook import ABook
 
 
 class Book(ABook):
 
     def __init__(self, sym):
-        super(Book, self).__init__(sym)
-        self.bids = Diction(sym, 'bids')
-        self.asks = Diction(sym, 'asks')
+        super(Book, self).__init__(sym, 'bitfinex')
         self.channel_id = {
             'book': int(0),
             'trades': int(0)
         }
-
-    def __str__(self):
-        return '%s  |  %s' % (self.bids, self.asks)
-
-    def clear_book(self):
-        """
-        Method to reset the limit order book
-        :return: void
-        """
-        self.bids.clear()
-        self.asks.clear()
-
-    def render_book(self):
-        """
-        Convert the limit order book into a dictionary
-        :return: dictionary
-        """
-        return dict({
-            'bids': self.bids.get_bids_to_list(),
-            'asks': self.asks.get_asks_to_list(),
-            'upticks': self._get_trades_tracker['upticks'],
-            'downticks': self._get_trades_tracker['downticks'],
-            'time': dt.now()
-        })
-
-    def render_price(self, side, reference):
-        """
-        Estimate market order slippage
-        :param side: bids or asks
-        :param reference: NBBO
-        :return: decimal distance from NBBO
-        """
-        if side == 'bids':
-            return round(self.bids.do_next_price('bids', reference), 2)
-        else:
-            return round(self.asks.do_next_price('asks', reference), 2)
-
-    def best_bid(self):
-        """
-        Get the best bid
-        :return: decimal best bid
-        """
-        return self.bids.get_bid()
-
-    def best_ask(self):
-        """
-        Get the best ask
-        :return: decimal best ask
-        """
-        return self.asks.get_ask()
 
     def load_book(self, book):
         """
@@ -94,7 +37,6 @@ class Book(ABook):
 
         elapsed = time() - start_time
         print('%s: book loaded..............in %f seconds\n' % (self.sym, elapsed))
-        Timer(self.timer_frequency, self.timer_worker).start()
 
     def new_tick(self, msg):
         """
@@ -250,15 +192,3 @@ class Book(ABook):
                 print('\nBitfinex - %s: 10401 Not subscribed' % self.sym)
                 return True
 
-    def timer_worker(self):
-        """
-        Thread worker to be invoked every N seconds
-        :return: void
-        """
-        Timer(self.timer_frequency, self.timer_worker).start()
-        current_time = dt.now()
-        if self.bids.warming_up is False:
-            self.record(current_time)
-        # diff = (current_time - self.last_time).microseconds
-        # print('\n%s timer_worker %i for processID %s' % (self.sym, diff-200000, os.getpid()))
-        # self.last_time = current_time

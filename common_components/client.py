@@ -14,7 +14,7 @@ class Client(Thread):
 
     def __init__(self, ccy, exchange):
         super(Client, self).__init__()
-        self.book = GdaxBook(ccy) if exchange == 'gdax' else BitfinexBook(ccy)
+        self.book = GdaxBook(ccy, 'gdax') if exchange == 'gdax' else BitfinexBook(ccy)
         self.ws = None
         self.ws_endpoint = ''
         self.sym = ccy
@@ -63,7 +63,7 @@ class Client(Thread):
 
             while True:
                 self.queue.put(json.loads(await self.ws.recv()))
-                print(self.book)
+                # print(self.book)
 
         except websockets.ConnectionClosed as exception:
             print('%s: subscription exception %s' % (self.exchange, exception))

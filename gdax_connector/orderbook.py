@@ -1,72 +1,16 @@
 from datetime import datetime as dt
-from threading import Timer
 from time import time
-
 import requests
-
 from common_components.abook import ABook
-from gdax_connector.diction import Diction
 
 
 class Book(ABook):
 
-    def __init__(self, sym):
-        super(Book, self).__init__(sym)
-        self.bids = Diction(sym, 'bids')
-        self.asks = Diction(sym, 'asks')
+    def __init__(self, sym, exchange):
+        super(Book, self).__init__(sym, exchange)
         self.sequence = 0
 
-    def __str__(self):
-        return '%s  |  %s' % (self.bids, self.asks)
-
-    def clear_book(self):
-        """
-        Method to reset the limit order book
-        :return: void
-        """
-        self.bids.clear()
-        self.asks.clear()
-
-    def render_book(self):
-        """
-        Convert the limit order book into a dictionary
-        :return: dictionary
-        """
-        return dict({
-            'bids': self.bids.get_bids_to_list(),
-            'asks': self.asks.get_asks_to_list(),
-            'upticks': self._get_trades_tracker['upticks'],
-            'downticks': self._get_trades_tracker['downticks'],
-            'time': dt.now()
-        })
-
-    def render_price(self, side, reference):
-        """
-        Estimate market order slippage
-        :param side: bids or asks
-        :param reference: NBBO
-        :return: float distance from NBBO
-        """
-        if side == 'bids':
-            return round(self.bids.do_next_price('bids', reference), 2)
-        else:
-            return round(self.asks.do_next_price('asks', reference), 2)
-
-    def best_bid(self):
-        """
-        Get the best bid
-        :return: float best bid
-        """
-        return self.bids.get_bid()
-
-    def best_ask(self):
-        """
-        Get the best ask
-        :return: float best ask
-        """
-        return self.asks.get_ask()
-
-    def get_book(self):
+    def _get_book(self):
         """
         Get order book snapshot
         :return: order book
@@ -76,7 +20,7 @@ class Book(ABook):
         path = ('https://api.gdax.com/products/%s/book' % self.sym)
         book = requests.get(path, params={'level': 3}).json()
         elapsed = time() - start_time
-        print('get_book: completed %s request in %f seconds.' % (self.sym, elapsed))
+        print('_get_book: completed %s request in %f seconds.' % (self.sym, elapsed))
         return book
 
     def load_book(self):
@@ -84,7 +28,7 @@ class Book(ABook):
         Load initial limit order book snapshot
         :return: void
         """
-        book = self.get_book()
+        book = self._get_book()
         start_time = time()
         for bid in book['bids']:
             self.bids.insert_order({
@@ -116,7 +60,6 @@ class Book(ABook):
 
         elapsed = time() - start_time
         print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
-        Timer(self.timer_frequency, self.timer_worker).start()
 
     def check_sequence(self, new_sequence):
         """
@@ -206,17 +149,3 @@ class Book(ABook):
         else:
             print('\n\n\nunhandled message type\n\n\n')
             return False
-
-    def timer_worker(self):
-        """
-        Thread worker to be invoked every N seconds
-        :return: void
-        """
-        Timer(self.timer_frequency, self.timer_worker).start()
-        current_time = dt.now()
-        if self.bids.warming_up is False:
-            self.record(current_time)
-        # diff = (current_time - self.last_time).microseconds
-        # print('\nGDAX: %s timer_worker %i for processID %s' % (self.sym, diff - 200000, os.getpid()))
-        # self.last_time = current_time
-

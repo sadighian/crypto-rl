@@ -1,16 +1,15 @@
 from abc import ABC, abstractmethod
+from gdax_connector.diction import Diction as GdaxDiction
+from bitfinex_connector.diction import Diction as BitfinexDiction
 from datetime import datetime as dt
-from pymongo import MongoClient
 
 
 class ABook(ABC):
 
-    def __init__(self, sym):
-        self.sym = sym
-        self.timer_frequency = 2.0  # 0.2 = 5x second
-        self.last_time = dt.now()
-        self.recording = False
-        self.db = MongoClient('mongodb://localhost:27017')[self.sym] if self.recording else None
+    def __init__(self, ccy, exchange):
+        self.sym = ccy
+        self.bids = GdaxDiction(ccy, 'bids') if exchange == 'gdax' else BitfinexDiction(ccy, 'bids')
+        self.asks = GdaxDiction(ccy, 'asks') if exchange == 'gdax' else BitfinexDiction(ccy, 'asks')
         self.trades = dict({
             'upticks': {
                 'size': float(0),
@@ -21,6 +20,9 @@ class ABook(ABC):
                 'count': int(0)
             }
         })
+
+    def __str__(self):
+        return '%s  |  %s' % (self.bids, self.asks)
 
     def _reset_trades_tracker(self):
         self.trades = dict({
@@ -38,40 +40,57 @@ class ABook(ABC):
     def _get_trades_tracker(self):
         return self.trades
 
-    def record(self, current_time):
+
+    def clear_book(self):
         """
-        Insert snapshot of limit order book into Mongo DB
-        :param current_time: dt.now()
+        Method to reset the limit order book
         :return: void
         """
-        if self.db is not None:
-            current_date = current_time.strftime("%Y-%m-%d")
-            self.db[current_date].insert_one(self.render_book())
-            self._reset_trades_tracker()
-        else:
-            pass
-            # print(self)
+        self.bids.clear()
+        self.asks.clear()
 
-    @abstractmethod
-    def clear_book(self):
-        pass
-
-    @abstractmethod
     def render_book(self):
-        pass
+        """
+        Convert the limit order book into a dictionary
+        :return: dictionary
+        """
+        book = dict({
+            'bids': self.bids.get_bids_to_list(),
+            'asks': self.asks.get_asks_to_list(),
+            'upticks': self._get_trades_tracker['upticks'],
+            'downticks': self._get_trades_tracker['downticks'],
+            'time': dt.now()
+        })
+        self._reset_trades_tracker()
+        return book
 
-    @abstractmethod
+    def render_price(self, side, reference):
+        """
+        Estimate market order slippage
+        :param side: bids or asks
+        :param reference: NBBO
+        :return: float distance from NBBO
+        """
+        if side == 'bids':
+            return round(self.bids.do_next_price('bids', reference), 2)
+        else:
+            return round(self.asks.do_next_price('asks', reference), 2)
+
     def best_bid(self):
-        pass
+        """
+        Get the best bid
+        :return: float best bid
+        """
+        return self.bids.get_bid()
 
-    @abstractmethod
     def best_ask(self):
-        pass
+        """
+        Get the best ask
+        :return: float best ask
+        """
+        return self.asks.get_ask()
 
     @abstractmethod
     def new_tick(self, msg):
         pass
 
-    @abstractmethod
-    def timer_worker(self):
-        pass
