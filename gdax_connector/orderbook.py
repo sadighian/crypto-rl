@@ -142,11 +142,17 @@ class Book(ABook):
         :param msg: incoming tick
         :return: False if there is an exception
         """
+        message_type = msg['type']
+        if 'sequence' not in msg:
+            if message_type == 'subscriptions':
+                print('GDAX Subscriptions successful for : %s' % self.sym)
+                self.load_book()
+            return True
+
         new_sequence = int(msg['sequence'])
         if self.check_sequence(new_sequence):
             return False
 
-        message_type = msg['type']
         side = msg['side']
 
         if message_type == 'received':

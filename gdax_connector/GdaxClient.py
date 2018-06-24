@@ -1,57 +1,16 @@
 import asyncio
 import json
 import os
-import time
-from datetime import datetime as dt
-from multiprocessing import JoinableQueue as Queue
-from threading import Thread
-import websockets
-from gdax_connector.orderbook import Book
+from common_components.aclient import AClient
 
 
-class GdaxClient(Thread):
+class GdaxClient(AClient):
 
     def __init__(self, ccy):
-        super(GdaxClient, self).__init__()
-        self.queue = Queue(maxsize=1000)
-        self.ws = None
-        self.sym = ccy
-        self.book = Book(ccy)
-        self.retry_counter = 0
-        self.last_subscribe_time = None
-
-    async def subscribe(self):
-        """
-        Subscribe to full order book
-        :return: void
-        """
-        try:
-            request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
-            self.ws = await websockets.connect('wss://ws-feed.gdax.com')
-            print('GdaxClient: %s request sent:\n%s' % (self.sym, request))
-
-            await self.ws.send(request)
-            self.last_subscribe_time = dt.now()
-
-            while True:
-                self.queue.put(json.loads(await self.ws.recv()))
-
-        except websockets.ConnectionClosed as exception:
-            print('GdaxClient: subscription exception %s' % exception)
-            self.retry_counter += 1
-            elapsed = (dt.now() - self.last_subscribe_time).seconds
-
-            if elapsed < 5:
-                sleep_time = max(5 - elapsed, 1)
-                time.sleep(sleep_time)
-                print('GdaxClient - %s is sleeping %i seconds...' % (self.sym, sleep_time))
-
-            if self.retry_counter < 30:
-                print('GdaxClient: Retrying to connect... attempted #%i' % self.retry_counter)
-                await self.subscribe()  # recursion
-            else:
-                print('GdaxClient: %s Ran out of reconnection attempts. Have already tried %i times.'
-                      % (self.sym, self.retry_counter))
+        super(GdaxClient, self).__init__(ccy, 'gdax')
+        self.ws_endpoint = 'wss://ws-feed.gdax.com'
+        self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
+        print('GdaxClient instantiated on Process ID: %s' % str(os.getpid()))
 
     async def unsubscribe(self):
         print('GdaxClient: attempting to unsubscribe from %s' % self.sym)
@@ -61,28 +20,26 @@ class GdaxClient(Thread):
         output = json.loads(await self.ws.recv())
         print('GdaxClient: Unsubscribe successful %s' % output)
 
-    def run(self):
+    def on_message(self, queue, return_queue):
         """
         Handle incoming level 3 data on a separate process
-        (or thread, depending on implementation)
+        (or process, depending on implementation)
         :return: void
         """
-        print('GdaxClient Run - Process ID: %s' % str(os.getpid()))
-        self.book.load_book()
+        print('GdaxClient on_message - Process ID: %s' % str(os.getpid()))
         while True:
-            msg = self.queue.get()
-
-            if 'sequence' not in msg:
-                continue
+            msg = queue.get()
 
             if self.book.new_tick(msg) is False:
-                self.book.load_book()
+                print('missing a tick')
                 self.retry_counter += 1
-                self.queue.task_done()
+                return_queue.put(self.book)
+                queue.task_done()
+                self.on_message(queue, return_queue)
                 continue
 
-            self.queue.task_done()
-
+            return_queue.put(self.book)
+            queue.task_done()
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -101,7 +58,6 @@ class GdaxClient(Thread):
 #     for sym in symbols:
 #         p[sym] = GdaxClient(sym)
 #         p[sym].start()
-#         print('[%s] started for [%s]' % (p[sym].name, sym))
 #
 #     tasks = asyncio.gather(*[(p[sym].subscribe()) for sym in symbols])
 #     print('Gathered %i tasks' % len(symbols))
@@ -114,7 +70,6 @@ class GdaxClient(Thread):
 #     except KeyboardInterrupt as e:
 #         print("Caught keyboard interrupt. Canceling tasks...")
 #         tasks.cancel()
-#         # loop.run_forever()
 #         tasks.exception()
 #         for sym in symbols:
 #             p[sym].join()
