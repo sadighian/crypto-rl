@@ -1,10 +1,10 @@
-import asyncio
 import json
 import os
-from common_components.aclient import AClient
+
+from common_components.client import Client
 
 
-class BitfinexClient(AClient):
+class BitfinexClient(Client):
 
     def __init__(self, ccy):
         super(BitfinexClient, self).__init__(ccy, 'bitfinex')
@@ -33,25 +33,24 @@ class BitfinexClient(AClient):
             print('BitfinexClient: %s unsubscription request sent:\n%s\n' % (self.sym, request))
             await self.ws.send(request)
 
-    def on_message(self, queue, return_queue):
+    def run(self):
         """
         Handle incoming level 3 data on a separate process
         (or process, depending on implementation)
         :return:
         """
-        print('BitfinexClient on_message - Process ID: %s' % str(os.getpid()))
+        print('BitfinexClient run - Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
         while True:
-            msg = queue.get()
+            msg = self.queue.get()
 
             if self.book.new_tick(msg) is False:
+                print('\n%s missing a tick...going to try and reload the order book\n' % self.sym)
                 self.subscribe()
                 self.retry_counter += 1
-                return_queue.put(self.book)
-                queue.task_done()
+                self.queue.task_done()
                 continue
 
-            return_queue.put(self.book)
-            queue.task_done()
+            self.queue.task_done()
 
 
 # -------------------------------------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 import json
 import time
-from abc import ABC, abstractmethod
 from datetime import datetime as dt
-from multiprocessing import JoinableQueue as Queue, Process
+from multiprocessing import JoinableQueue as Queue
+from threading import Thread
 
 import websockets
 
@@ -10,9 +10,10 @@ from bitfinex_connector.orderbook import Book as BitfinexBook
 from gdax_connector.orderbook import Book as GdaxBook
 
 
-class AClient(ABC):
+class Client(Thread):
 
     def __init__(self, ccy, exchange):
+        super(Client, self).__init__()
         self.book = GdaxBook(ccy) if exchange == 'gdax' else BitfinexBook(ccy)
         self.ws = None
         self.ws_endpoint = ''
@@ -20,20 +21,15 @@ class AClient(ABC):
         self.retry_counter = 0
         self.max_retries = 30
         self.last_subscribe_time = None
-        self.queue, self.return_queue = Queue(), Queue()
-        self.process = Process(target=self.on_message, args=(self.queue, self.return_queue,))
-        self.process.name = '[%s-%s]' % (exchange, ccy)
-        self.process.daemon = True
         self.exchange = exchange
         self.request = None
         self.trades_request = None
+        self.queue = Queue(maxsize=1000)
 
-    @abstractmethod
     async def unsubscribe(self):
         pass
 
-    @abstractmethod
-    def on_message(self, queue, return_queue):
+    def run(self):
         """
         Handle incoming level 3 data on a separate process
         (or process, depending on implementation)
@@ -67,8 +63,7 @@ class AClient(ABC):
 
             while True:
                 self.queue.put(json.loads(await self.ws.recv()))
-                print(self.return_queue.get())
-                self.return_queue.task_done()
+                print(self.book)
 
         except websockets.ConnectionClosed as exception:
             print('%s: subscription exception %s' % (self.exchange, exception))
@@ -90,14 +85,3 @@ class AClient(ABC):
     def render_book(self):
         return self.book.render_book()
 
-    def start(self):
-        self.process.start()
-        print('started %s for %s' % (self.name, self.sym))
-
-    def join(self):
-        self.process.join(timeout=5.0)
-        print('%s: joined %s process' % (self.exchange, self.name))
-
-    @property
-    def name(self):
-        return self.process.name

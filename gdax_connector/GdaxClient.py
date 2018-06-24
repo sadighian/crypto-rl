@@ -1,16 +1,16 @@
-import asyncio
 import json
 import os
-from common_components.aclient import AClient
+
+from common_components.client import Client
 
 
-class GdaxClient(AClient):
+class GdaxClient(Client):
 
     def __init__(self, ccy):
         super(GdaxClient, self).__init__(ccy, 'gdax')
         self.ws_endpoint = 'wss://ws-feed.gdax.com'
         self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
-        print('GdaxClient instantiated on Process ID: %s' % str(os.getpid()))
+        print('GdaxClient instantiated on Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
 
     async def unsubscribe(self):
         print('GdaxClient: attempting to unsubscribe from %s' % self.sym)
@@ -20,26 +20,24 @@ class GdaxClient(AClient):
         output = json.loads(await self.ws.recv())
         print('GdaxClient: Unsubscribe successful %s' % output)
 
-    def on_message(self, queue, return_queue):
+    def run(self):
         """
         Handle incoming level 3 data on a separate process
         (or process, depending on implementation)
         :return: void
         """
-        print('GdaxClient on_message - Process ID: %s' % str(os.getpid()))
+        print('GdaxClient run - Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
         while True:
-            msg = queue.get()
+            msg = self.queue.get()
 
             if self.book.new_tick(msg) is False:
-                print('missing a tick')
+                print('\n%s missing a tick...going to try and reload the order book\n' % self.sym)
+                self.book.load_book()
                 self.retry_counter += 1
-                return_queue.put(self.book)
-                queue.task_done()
-                self.on_message(queue, return_queue)
+                self.queue.task_done()
                 continue
 
-            return_queue.put(self.book)
-            queue.task_done()
+            self.queue.task_done()
 
 # -------------------------------------------------------------------------------------------------------
 

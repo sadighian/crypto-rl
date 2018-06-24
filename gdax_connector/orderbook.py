@@ -1,13 +1,11 @@
 from datetime import datetime as dt
-from time import time
-from common_components.abook import ABook
-try:
-    import ujson as json
-except ImportError:
-    import json
-from gdax_connector.diction import Diction
-import requests
 from threading import Timer
+from time import time
+
+import requests
+
+from common_components.abook import ABook
+from gdax_connector.diction import Diction
 
 
 class Book(ABook):
@@ -199,10 +197,10 @@ class Book(ABook):
 
         elif message_type == 'preload':
             if side == 'buy':
-                self.bids.insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], 'buy')
+                self.bids.insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'buy')
                 return True
             else:
-                self.asks.insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], 'sell')
+                self.asks.insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'sell')
                 return True
 
         else:

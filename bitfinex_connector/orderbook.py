@@ -1,13 +1,11 @@
 from datetime import datetime as dt
-from time import time
-from common_components.abook import ABook
-try:
-    import ujson as json
-except ImportError:
-    import json
-from bitfinex_connector.diction import Diction
-import numpy as np
 from threading import Timer
+from time import time
+
+import numpy as np
+
+from bitfinex_connector.diction import Diction
+from common_components.abook import ABook
 
 
 class Book(ABook):
