@@ -108,12 +108,12 @@ setup(
               'venv.Lib.site-packages.pip-9.0.1-py3.6.egg.pip._vendor.pkg_resources',
               'venv.Lib.site-packages.pip-9.0.1-py3.6.egg.pip.commands',
               'venv.Lib.site-packages.pip-9.0.1-py3.6.egg.pip.operations', 'gdax_connector', 'bitfinex_connector'],
-    url='http://github.com/redbanies3ofthem',
+    url='http://github.com/redbanies3ofthem/crypto',
     license='TBD',
     author='Jonathan',
     author_email='jonathan.m.sadighian@gmail.com',
     description='Connector to record crypto exchange level 3 market data', install_requires=['pymongo', 'requests',
-                                                                                             'ujson',
+                                                                                             'ujson', 'asyncio',
                                                                                              'sortedcontainers',
                                                                                              'numpy', 'websockets']
 )

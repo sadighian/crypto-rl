@@ -5,9 +5,7 @@ import time
 from datetime import datetime as dt
 from multiprocessing import JoinableQueue as Queue
 from threading import Thread
-
 import websockets
-
 from gdax_connector.orderbook import Book
 
 
@@ -15,7 +13,7 @@ class GdaxClient(Thread):
 
     def __init__(self, ccy):
         super(GdaxClient, self).__init__()
-        self.queue = Queue()
+        self.queue = Queue(maxsize=1000)
         self.ws = None
         self.sym = ccy
         self.book = Book(ccy)
@@ -88,37 +86,40 @@ class GdaxClient(Thread):
 
 # -------------------------------------------------------------------------------------------------------
 
-
-if __name__ == "__main__":
-
-    loop = asyncio.get_event_loop()
-    # symbols = ['BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-USD']
-    symbols = ['BCH-USD']
-    p = dict()
-
-    print('Initializing...%s' % symbols)
-    for sym in symbols:
-        p[sym] = GdaxClient(sym)
-        p[sym].start()
-        print('[%s] started for [%s]' % (p[sym].name, sym))
-
-    tasks = asyncio.gather(*[(p[sym].subscribe()) for sym in symbols])
-    print('Gathered %i tasks' % len(symbols))
-
-    try:
-        loop.run_until_complete(tasks)
-        loop.close()
-        print('loop closed.')
-
-    except KeyboardInterrupt as e:
-        print("Caught keyboard interrupt. Canceling tasks...")
-        tasks.cancel()
-        # loop.run_forever()
-        tasks.exception()
-        for sym in symbols:
-            p[sym].join()
-            print('Closing [%s]' % p[sym].name)
-
-    finally:
-        loop.close()
-        print('\nFinally done.')
+# """
+# This __main__ function is used for testing the
+# GdaxClient class in isolation.
+# """
+# if __name__ == "__main__":
+#
+#     loop = asyncio.get_event_loop()
+#     # symbols = ['BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-USD']
+#     symbols = ['BCH-USD']
+#     p = dict()
+#
+#     print('Initializing...%s' % symbols)
+#     for sym in symbols:
+#         p[sym] = GdaxClient(sym)
+#         p[sym].start()
+#         print('[%s] started for [%s]' % (p[sym].name, sym))
+#
+#     tasks = asyncio.gather(*[(p[sym].subscribe()) for sym in symbols])
+#     print('Gathered %i tasks' % len(symbols))
+#
+#     try:
+#         loop.run_until_complete(tasks)
+#         loop.close()
+#         print('loop closed.')
+#
+#     except KeyboardInterrupt as e:
+#         print("Caught keyboard interrupt. Canceling tasks...")
+#         tasks.cancel()
+#         # loop.run_forever()
+#         tasks.exception()
+#         for sym in symbols:
+#             p[sym].join()
+#             print('Closing [%s]' % p[sym].name)
+#
+#     finally:
+#         loop.close()
+#         print('\nFinally done.')

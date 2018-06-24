@@ -1,65 +1,10 @@
-from sortedcontainers import SortedDict
+from common_components.adiction import ADiction
 
 
-class Diction(object):
+class Diction(ADiction):
 
     def __init__(self, sym, side):
-        self.price_dict = SortedDict()
-        self.order_map = dict()
-        self.side = side
-        self.sym = sym
-
-    def __str__(self):
-        if self.side == 'asks':
-            ask_price, ask_value = self.get_ask()
-            message = '%.2f x %.2f' % (ask_price, ask_value['size'])
-        else:
-            bid_price, bid_value = self.get_bid()
-            message = '%.2f x %.2f' % (bid_value['size'], bid_price)
-        return message
-
-    def clear(self):
-        """
-        Reset price tree and order map
-        :return: void
-        """
-        self.price_dict = SortedDict()
-        self.order_map = dict()
-
-    def do_next_price(self, side, reference, notional=float(75000)):
-        total_notional, depth = float(0), float(0)
-
-        if side == 'asks':
-            for k, v in self.price_dict.items():
-                total_notional += (k * v['size'])
-                if total_notional > notional:
-                    depth = k
-                    break
-            return depth - reference
-
-        else:
-            for k, v in reversed(self.price_dict.items()):
-                total_notional += (k * v['size'])
-                if total_notional > notional:
-                    depth = k
-                    break
-            return reference - depth
-
-    def create_price(self, price):
-        """
-        Create new node
-        :param price:
-        :return:
-        """
-        self.price_dict[price] = {'size': float(0), 'count': int(0)}
-
-    def remove_price(self, price):
-        """
-        Remove node
-        :param price:
-        :return:
-        """
-        del self.price_dict[price]
+        super(Diction, self).__init__(sym, side)
 
     def insert_order(self, msg):
         """
@@ -125,57 +70,3 @@ class Diction(object):
 
         else:
             print('remove_order: order_id not found %s\n' % msg)
-
-    def get_ask(self):
-        """
-        Best offer
-        :return: lowest ask (decimal)
-        """
-        if len(self.price_dict) > 0:
-            return self.price_dict.items()[0]
-        else:
-            return 0.0
-
-    def get_bid(self):
-        """
-        Best bid
-        :return: highest bid (decimal)
-        """
-        if len(self.price_dict) > 0:
-            return self.price_dict.items()[-1]
-        else:
-            return 0.0
-
-    def get_asks_to_list(self):
-        """
-        Transform order book to dictionary with 3 lists:
-            1- ask prices
-            2- cummulative ask volume at a given price
-            3- number of orders resting at a given price
-        :return: dictionary
-        """
-        prices, sizes, counts = list(), list(), list()
-
-        for k, v in self.price_dict.items():
-            prices.append(k)
-            sizes.append(v['size'])
-            counts.append(v['count'])
-
-        return dict(price=prices, size=sizes, count=counts)
-
-    def get_bids_to_list(self):
-        """
-        Transform order book to dictionary with 3 lists:
-            1- bid prices
-            2- cummulative bid volume at a given price
-            3- number of orders resting at a given price
-        :return: dictionary
-        """
-        prices, sizes, counts = list(), list(), list()
-
-        for k, v in reversed(self.price_dict.items()):
-            prices.append(k)
-            sizes.append(v['size'])
-            counts.append(v['count'])
-
-        return dict(price=prices, size=sizes, count=counts)

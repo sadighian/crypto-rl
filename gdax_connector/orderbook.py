@@ -1,8 +1,6 @@
 from datetime import datetime as dt
 from time import time
-
 from common_components.abook import ABook
-
 try:
     import ujson as json
 except ImportError:
@@ -23,22 +21,6 @@ class Book(ABook):
     def __str__(self):
         return '%s  |  %s' % (self.bids, self.asks)
 
-    def reset_trades_tracker(self):
-        self.trades = dict({
-            'upticks': {
-                'size': float(0),
-                'count': int(0)
-            },
-            'downticks': {
-                'size': float(0),
-                'count': int(0)
-            }
-        })
-
-    @property
-    def get_trades_tracker(self):
-        return self.trades
-
     def clear_book(self):
         """
         Method to reset the limit order book
@@ -55,8 +37,8 @@ class Book(ABook):
         return dict({
             'bids': self.bids.get_bids_to_list(),
             'asks': self.asks.get_asks_to_list(),
-            'upticks': self.get_trades_tracker['upticks'],
-            'downticks': self.get_trades_tracker['downticks'],
+            'upticks': self._get_trades_tracker['upticks'],
+            'downticks': self._get_trades_tracker['downticks'],
             'time': dt.now()
         })
 
@@ -85,19 +67,6 @@ class Book(ABook):
         :return: float best ask
         """
         return self.asks.get_ask()
-
-    def record(self, current_time):
-        """
-        Insert snapshot of limit order book into Mongo DB
-        :param current_time: dt.now()
-        :return: void
-        """
-        if self.db is not None:
-            current_date = current_time.strftime("%Y-%m-%d")
-            self.db[current_date].insert_one(self.render_book())
-            self.reset_trades_tracker()
-        else:
-            print(self)
 
     def get_book(self):
         """
@@ -143,6 +112,10 @@ class Book(ABook):
 
         self.sequence = book['sequence']
         del book
+
+        self.bids.warming_up = False
+        self.asks.warming_up = False
+
         elapsed = time() - start_time
         print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
         Timer(self.timer_frequency, self.timer_worker).start()
@@ -237,7 +210,9 @@ class Book(ABook):
         """
         Timer(self.timer_frequency, self.timer_worker).start()
         current_time = dt.now()
-        self.record(current_time)
+        if self.bids.warming_up is False:
+            self.record(current_time)
         # diff = (current_time - self.last_time).microseconds
         # print('\nGDAX: %s timer_worker %i for processID %s' % (self.sym, diff - 200000, os.getpid()))
         # self.last_time = current_time
+

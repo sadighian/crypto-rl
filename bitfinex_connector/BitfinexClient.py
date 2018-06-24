@@ -5,9 +5,7 @@ import time
 from datetime import datetime as dt
 from multiprocessing import JoinableQueue as Queue
 from threading import Thread
-
 import websockets
-
 from bitfinex_connector.orderbook import Book
 
 
@@ -15,12 +13,13 @@ class BitfinexClient(Thread):
 
     def __init__(self, ccy):
         super(BitfinexClient, self).__init__()
-        self.queue = Queue()
+        self.queue = Queue(maxsize=1000)
         self.ws = None
         self.sym = ccy
         self.book = Book(ccy)
         self.retry_counter = 0
         self.last_subscribe_time = None
+        self.return_queue = Queue(maxsize=1)
 
     async def subscribe(self):
         """
@@ -97,10 +96,15 @@ class BitfinexClient(Thread):
 
             self.queue.task_done()
 
+    def render_book(self):
+        return self.book.render_book()
 
 # -------------------------------------------------------------------------------------------------------
 
-
+"""
+This __main__ function is used for testing the
+BitfinexClient class in isolation.
+"""
 if __name__ == "__main__":
     symbols = ['tETHUSD']  #, 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
     print('Initializing...%s' % symbols)
