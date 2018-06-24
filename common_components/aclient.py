@@ -1,13 +1,13 @@
-from abc import ABC, abstractmethod
-from multiprocessing import JoinableQueue as Queue
-from threading import Thread
-from bitfinex_connector.orderbook import Book as BitfinexBook
-from gdax_connector.orderbook import Book as GdaxBook
-
-import websockets
-from datetime import datetime as dt
 import json
 import time
+from abc import ABC, abstractmethod
+from datetime import datetime as dt
+from multiprocessing import JoinableQueue as Queue, Process
+
+import websockets
+
+from bitfinex_connector.orderbook import Book as BitfinexBook
+from gdax_connector.orderbook import Book as GdaxBook
 
 
 class AClient(ABC):
@@ -15,14 +15,15 @@ class AClient(ABC):
     def __init__(self, ccy, exchange):
         self.book = GdaxBook(ccy) if exchange == 'gdax' else BitfinexBook(ccy)
         self.ws = None
+        self.ws_endpoint = ''
         self.sym = ccy
         self.retry_counter = 0
         self.max_retries = 30
         self.last_subscribe_time = None
         self.queue, self.return_queue = Queue(), Queue()
-        self.process = Thread(target=self.on_message, args=(self.queue, self.return_queue,))
+        self.process = Process(target=self.on_message, args=(self.queue, self.return_queue,))
         self.process.name = '[%s-%s]' % (exchange, ccy)
-        self.process.daemon = False
+        self.process.daemon = True
         self.exchange = exchange
         self.request = None
         self.trades_request = None
@@ -66,7 +67,7 @@ class AClient(ABC):
 
             while True:
                 self.queue.put(json.loads(await self.ws.recv()))
-                self.book = self.return_queue.get()
+                print(self.return_queue.get())
                 self.return_queue.task_done()
 
         except websockets.ConnectionClosed as exception:
