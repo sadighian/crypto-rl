@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder
-As of June 23th, 2018.
+As of June 24th, 2018.
 ## 1. Purpose
 Application designed to subscribe and insert_record the
 full limit order book data from **GDAX** and **Bitfinex** into a MongoDB 
