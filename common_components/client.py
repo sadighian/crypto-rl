@@ -3,9 +3,7 @@ import time
 from datetime import datetime as dt
 from multiprocessing import JoinableQueue as Queue
 from threading import Thread
-
 import websockets
-
 from bitfinex_connector.orderbook import Book as BitfinexBook
 from gdax_connector.orderbook import Book as GdaxBook
 

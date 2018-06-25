@@ -1,5 +1,6 @@
 import asyncio
 import os
+import numpy as np
 from threading import Timer
 from datetime import datetime as dt
 from bitfinex_connector.bitfinex_client import BitfinexClient
@@ -21,9 +22,13 @@ class Crypto(object):
                          'tETHUSD',
                          'tLTCUSD']]
         self.recording = False
-        self.db = MongoClient('mongodb://localhost:27017')[self.sym] if self.recording else None
-        self.timer_frequency = 1.0  # 0.2 = 5x second
+        if self.recording:
+            self.db = dict([(sym, MongoClient('mongodb://localhost:27017')[sym]) for sym in list(np.hstack(self.symbols))])
+        else:
+            self.db = dict([(sym, None) for sym in list(np.hstack(self.symbols))])
+        self.timer_frequency = 0.20  # 0.2 = 5x second
         self.workers = dict()
+        self.last_time = dt.now()
 
     def insert_record(self, current_time, client):
         """
@@ -33,7 +38,7 @@ class Crypto(object):
         """
         if self.db is not None:
             current_date = current_time.strftime("%Y-%m-%d")
-            self.db[current_date].insert_one(client.book.render_book())
+            self.db[current_date].insert_one(client.render_book())
         else:
             print('%s -----> %s' % (current_time, client.book))
 
@@ -45,6 +50,7 @@ class Crypto(object):
         print('\n')
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
         current_time = dt.now()
+        self.last_time = current_time
         if gdaxClient.book.bids.warming_up is False:
             self.insert_record(current_time, gdaxClient)
         if bitfinexClient.book.bids.warming_up is False:
