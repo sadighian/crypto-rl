@@ -1,11 +1,12 @@
 import json
 import time
+import os
 from datetime import datetime as dt
 from multiprocessing import JoinableQueue as Queue
 from threading import Thread
 import websockets
-from bitfinex_connector.orderbook import OrderBook as BitfinexBook
-from gdax_connector.orderbook import OrderBook as GdaxBook
+from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
+from gdax_connector.gdax_orderbook import GdaxOrderBook
 
 
 class Client(Thread):
@@ -23,7 +24,7 @@ class Client(Thread):
         if self.exchange == 'gdax':
             self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
             self.request_unsubscribe = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
-            self.book = GdaxBook(self.sym)
+            self.book = GdaxOrderBook(self.sym)
             self.trades_request = None
             self.ws_endpoint = 'wss://ws-feed.gdax.com'
 
@@ -42,8 +43,9 @@ class Client(Thread):
                 "channel": "trades",
                 "symbol": self.sym
             })
-            self.book = BitfinexBook(self.sym)
+            self.book = BitfinexOrderBook(self.sym)
             self.ws_endpoint = 'wss://api.bitfinex.com/ws/2'
+        # print('Client __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), self.name))
 
     async def unsubscribe(self):
         if self.exchange == 'gdax':
@@ -67,19 +69,16 @@ class Client(Thread):
         :return: void
         """
         try:
-            print('trying to connect ws...\n%s' % self.ws_endpoint)
             self.ws = await websockets.connect(self.ws_endpoint)
 
             await self.ws.send(self.request)
             print('BOOK %s: %s subscription request sent.' % (self.exchange, self.sym))
-            print(self.request)
 
             if self.exchange == 'bitfinex':
                 await self.ws.send(self.trades_request)
                 print('TRADES %s: %s subscription request sent.' % (self.exchange, self.sym))
 
             self.last_subscribe_time = dt.now()
-            print('set the last subscribed time to %s' % str(self.last_subscribe_time))
 
             while True:
                 self.queue.put(json.loads(await self.ws.recv()))

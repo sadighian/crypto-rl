@@ -1,12 +1,12 @@
 from time import time
 import numpy as np
-from common_components.abook import ABook
+from common_components.orderbook import OrderBook
 
 
-class OrderBook(ABook):
+class BitfinexOrderBook(OrderBook):
 
     def __init__(self, sym):
-        super(OrderBook, self).__init__(sym, 'bitfinex')
+        super(BitfinexOrderBook, self).__init__(sym, 'bitfinex')
         self.channel_id = {
             'book': int(0),
             'trades': int(0)

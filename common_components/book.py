@@ -3,7 +3,7 @@ from datetime import datetime as dt
 from sortedcontainers import SortedDict
 
 
-class ADiction(ABC):
+class Book(ABC):
 
     def __init__(self, sym, side):
         self.price_dict = SortedDict()
@@ -11,6 +11,7 @@ class ADiction(ABC):
         self.side = side
         self.sym = sym
         self.warming_up = True  # this value needs to be set within the orderbook class
+        self.max_book_size = 500
 
     def __str__(self):
         if self.warming_up:
@@ -32,7 +33,7 @@ class ADiction(ABC):
         self.order_map = dict()
         self.warming_up = True
 
-    def do_next_price(self, side, reference, notional=float(75000)):
+    def _do_next_price(self, side, reference, notional=float(75000)):
         if side == 'asks':
             total_notional = float(0)
             depth = float(0)
@@ -85,7 +86,7 @@ class ADiction(ABC):
         """
         pass
 
-    def insert_orders(self, price, size, oid, product_id, side):
+    def _insert_orders(self, price, size, oid, product_id, side):
         """
         Used for preloading limit order book for legacy version
         of this project for GDAX only.
@@ -158,7 +159,7 @@ class ADiction(ABC):
         else:
             return 0.0
 
-    def get_asks_to_list(self):
+    def _get_asks_to_list(self):
         """
         Transform order book to dictionary with 3 lists:
             1- ask prices
@@ -176,10 +177,10 @@ class ADiction(ABC):
             sizes.append(v['size'])
             counts.append(v['count'])
 
-        # return dict(price=prices, size=sizes, count=counts)
-        return prices, sizes, counts
+        return dict(price=prices, size=sizes, count=counts)
+        # return prices, sizes, counts
 
-    def get_bids_to_list(self):
+    def _get_bids_to_list(self):
         """
         Transform order book to dictionary with 3 lists:
             1- bid prices
@@ -197,5 +198,5 @@ class ADiction(ABC):
             sizes.append(v['size'])
             counts.append(v['count'])
 
-        # return dict(price=prices, size=sizes, count=counts)
-        return prices, sizes, counts
+        return dict(price=prices, size=sizes, count=counts)
+        # return prices, sizes, counts

@@ -12,18 +12,21 @@ class Crypto(object):
 
     def __init__(self):
         self.symbols = [['BTC-USD',  # Gdax symbols
-                         'BCH-USD',
-                         'ETH-USD',
+                         # 'BCH-USD',
+                         # 'ETH-USD',
                          'LTC-USD'],
                         ['tBTCUSD',  # Bitfinex symbols
-                         'tBCHUSD',
-                         'tETHUSD',
+                         # 'tBCHUSD',
+                         # 'tETHUSD',
                          'tLTCUSD']]
         self.recording = False
+
         if self.recording:
-            self.db = dict([(sym, MongoClient('mongodb://localhost:27017')[sym]) for sym in list(np.hstack(self.symbols))])
+            self.db = dict([(sym, MongoClient('mongodb://localhost:27017')[sym])
+                            for sym in list(np.hstack(self.symbols))])
         else:
             self.db = dict([(sym, None) for sym in list(np.hstack(self.symbols))])
+
         self.timer_frequency = 0.20  # 0.2 = 5x second
         self.workers = dict()
         self.last_time = dt.now()
@@ -34,18 +37,17 @@ class Crypto(object):
         :param current_time: dt.now()
         :return: void
         """
-        if self.db is not None:
+        if self.db[cryptoClient.sym] is not None:
             current_date = current_time.strftime("%Y-%m-%d")
-            self.db[current_date].insert_one(cryptoClient.render_book())
+            self.db[cryptoClient.sym][current_date].insert_one(cryptoClient.render_book())
         else:
-            print('%s -----> %s' % (current_time, cryptoClient.book))
+            print('%s ---> %s' % (cryptoClient.sym, cryptoClient.book))
 
     def timer_worker(self, gdaxClient, bitfinexClient):
         """
         Thread worker to be invoked every N seconds
         :return: void
         """
-        print('\n')
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
         current_time = dt.now()
         self.last_time = current_time

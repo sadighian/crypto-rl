@@ -1,11 +1,10 @@
-from common_components.adiction import ADiction
+from common_components.book import Book
 
 
-class Diction(ADiction):
+class GdaxBook(Book):
 
     def __init__(self, sym, side):
-        super(Diction, self).__init__(sym, side)
-        self.max_book_size = 1000
+        super(GdaxBook, self).__init__(sym, side)
 
     def insert_order(self, msg):
         """

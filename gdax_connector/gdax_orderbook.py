@@ -1,13 +1,13 @@
 from datetime import datetime as dt
 from time import time
 import requests
-from common_components.abook import ABook
+from common_components.orderbook import OrderBook
 
 
-class OrderBook(ABook):
+class GdaxOrderBook(OrderBook):
 
     def __init__(self, sym):
-        super(OrderBook, self).__init__(sym, 'gdax')
+        super(GdaxOrderBook, self).__init__(sym, 'gdax')
         self.sequence = 0
 
     def _get_book(self):
@@ -15,12 +15,13 @@ class OrderBook(ABook):
         Get order book snapshot
         :return: order book
         """
+        print('%s get_book request made.' % self.sym)
         start_time = time()
         self.clear_book()
         path = ('https://api.gdax.com/products/%s/book' % self.sym)
         book = requests.get(path, params={'level': 3}).json()
         elapsed = time() - start_time
-        print('_get_book: completed %s request in %f seconds.' % (self.sym, elapsed))
+        print('%s get_book request completed in %f seconds.' % (self.sym, elapsed))
         return book
 
     def load_book(self):
@@ -140,10 +141,10 @@ class OrderBook(ABook):
 
         elif message_type == 'preload':
             if side == 'buy':
-                self.bids.insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'buy')
+                self.bids._insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'buy')
                 return True
             else:
-                self.asks.insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'sell')
+                self.asks._insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'sell')
                 return True
 
         else:

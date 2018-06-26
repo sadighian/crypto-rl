@@ -1,18 +1,10 @@
-from common_components.adiction import ADiction
+from common_components.book import Book
 
 
-class Diction(ADiction):
-
-    def match(self, msg):
-        """
-        This method is not implemented for Bitfinex
-        :param msg:
-        :return:
-        """
-        pass
+class BitfinexBook(Book):
 
     def __init__(self, sym, side):
-        super(Diction, self).__init__(sym, side)
+        super(BitfinexBook, self).__init__(sym, side)
 
     def insert_order(self, msg):
         """
@@ -27,6 +19,14 @@ class Diction(ADiction):
 
         self.price_dict[msg['price']]['size'] += abs(msg['size'])
         self.price_dict[msg['price']]['count'] += 1
+
+    def match(self, msg):
+        """
+        This method is not implemented for Bitfinex
+        :param msg:
+        :return:
+        """
+        pass
 
     def change(self, msg):
         """

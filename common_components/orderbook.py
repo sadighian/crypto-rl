@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from gdax_connector.diction import Diction as GdaxDiction
-from bitfinex_connector.diction import Diction as BitfinexDiction
+from gdax_connector.gdax_book import GdaxBook as GdaxDiction
+from bitfinex_connector.bitfinex_book import BitfinexBook as BitfinexDiction
 from datetime import datetime as dt
 
 
-class ABook(ABC):
+class OrderBook(ABC):
 
     def __init__(self, ccy, exchange):
         self.sym = ccy
@@ -27,10 +27,6 @@ class ABook(ABC):
     @abstractmethod
     def new_tick(self, msg):
         pass
-
-    @property
-    def _get_trades_tracker(self):
-        return self.trades
 
     def _reset_trades_tracker(self):
         self.trades = dict({
@@ -58,8 +54,8 @@ class ABook(ABC):
         :return: dictionary
         """
         book = dict({
-            'bids': self.bids.get_bids_to_list(),
-            'asks': self.asks.get_asks_to_list(),
+            'bids': self.bids._get_bids_to_list(),
+            'asks': self.asks._get_asks_to_list(),
             'upticks': self._get_trades_tracker['upticks'],
             'downticks': self._get_trades_tracker['downticks'],
             'time': dt.now()
@@ -75,10 +71,11 @@ class ABook(ABC):
         :return: float distance from NBBO
         """
         if side == 'bids':
-            return round(self.bids.do_next_price('bids', reference), 2)
+            return round(self.bids._do_next_price('bids', reference), 2)
         else:
-            return round(self.asks.do_next_price('asks', reference), 2)
+            return round(self.asks._do_next_price('asks', reference), 2)
 
+    @property
     def best_bid(self):
         """
         Get the best bid
@@ -86,9 +83,14 @@ class ABook(ABC):
         """
         return self.bids.get_bid()
 
+    @property
     def best_ask(self):
         """
         Get the best ask
         :return: float best ask
         """
         return self.asks.get_ask()
+
+    @property
+    def _get_trades_tracker(self):
+        return self.trades

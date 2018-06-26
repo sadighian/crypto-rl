@@ -14,7 +14,7 @@ class GdaxClient(Client):
         (or process, depending on implementation)
         :return: void
         """
-        print('GdaxClient run - Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
+        # print('GdaxClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), self.name))
         while True:
             msg = self.queue.get()
 
@@ -36,8 +36,8 @@ class GdaxClient(Client):
 # if __name__ == "__main__":
 #
 #     loop = asyncio.get_event_loop()
-#     # symbols = ['BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-USD']
-#     symbols = ['BCH-USD']
+#     symbols = ['BCH-USD', 'ETH-USD']#, 'LTC-USD', 'BTC-USD']
+#     # symbols = ['BCH-USD']
 #     p = dict()
 #
 #     print('Initializing...%s' % symbols)

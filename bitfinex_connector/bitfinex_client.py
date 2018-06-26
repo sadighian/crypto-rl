@@ -14,7 +14,7 @@ class BitfinexClient(Client):
         (or process, depending on implementation)
         :return:
         """
-        print('BitfinexClient run - Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
+        # print('BitfinexClient run - Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
         while True:
             msg = self.queue.get()
 
