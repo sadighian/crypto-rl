@@ -16,7 +16,7 @@ developed to place order and actually trade.
 - pymongo
 - time
 - os
-- ujson or json
+- json
 - threading
 - SortedDict
 - websockets
@@ -50,7 +50,7 @@ for the following reasons:
 - **Price Insertions / deletions** within the limit order book
  can be performed with **O(log n)**
 - **Getting / setting** values are performed with **O(1)**
-- SortedDict interface is intuitive, thus making implementation easier
+- **SortedDict** interface is intuitive, thus making implementation easier
 
 ## To-dos:
 1. Add aggregator to collapse GDAX and Bitfinex order books together

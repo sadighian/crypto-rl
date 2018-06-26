@@ -3,6 +3,14 @@ from common_components.adiction import ADiction
 
 class Diction(ADiction):
 
+    def match(self, msg):
+        """
+        This method is not implemented for Bitfinex
+        :param msg:
+        :return:
+        """
+        pass
+
     def __init__(self, sym, side):
         super(Diction, self).__init__(sym, side)
 

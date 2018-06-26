@@ -24,6 +24,14 @@ class ABook(ABC):
     def __str__(self):
         return '%s  |  %s' % (self.bids, self.asks)
 
+    @abstractmethod
+    def new_tick(self, msg):
+        pass
+
+    @property
+    def _get_trades_tracker(self):
+        return self.trades
+
     def _reset_trades_tracker(self):
         self.trades = dict({
             'upticks': {
@@ -35,11 +43,6 @@ class ABook(ABC):
                 'count': int(0)
             }
         })
-
-    @property
-    def _get_trades_tracker(self):
-        return self.trades
-
 
     def clear_book(self):
         """
@@ -89,8 +92,3 @@ class ABook(ABC):
         :return: float best ask
         """
         return self.asks.get_ask()
-
-    @abstractmethod
-    def new_tick(self, msg):
-        pass
-

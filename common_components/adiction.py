@@ -111,14 +111,14 @@ class ADiction(ABC):
         self.price_dict[order['price']]['count'] += 1
         self.order_map[order['order_id']] = order
 
-    # @abstractmethod
-    # def match(self, msg):
-    #     """
-    #     Change volume of book
-    #     :param msg:
-    #     :return:
-    #     """
-    #     pass
+    @abstractmethod
+    def match(self, msg):
+        """
+        Change volume of book
+        :param msg:
+        :return:
+        """
+        pass
 
     @abstractmethod
     def change(self, msg):

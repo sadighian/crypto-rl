@@ -41,10 +41,10 @@ class GdaxClient(Client):
 
 # -------------------------------------------------------------------------------------------------------
 
-"""
-This __main__ function is used for testing the
-GdaxClient class in isolation.
-"""
+# """
+# This __main__ function is used for testing the
+# GdaxClient class in isolation.
+# """
 # if __name__ == "__main__":
 #
 #     loop = asyncio.get_event_loop()
