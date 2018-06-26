@@ -4,10 +4,10 @@ import requests
 from common_components.abook import ABook
 
 
-class Book(ABook):
+class OrderBook(ABook):
 
-    def __init__(self, sym, exchange):
-        super(Book, self).__init__(sym, exchange)
+    def __init__(self, sym):
+        super(OrderBook, self).__init__(sym, 'gdax')
         self.sequence = 0
 
     def _get_book(self):

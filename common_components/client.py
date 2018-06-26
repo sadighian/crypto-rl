@@ -4,36 +4,62 @@ from datetime import datetime as dt
 from multiprocessing import JoinableQueue as Queue
 from threading import Thread
 import websockets
-from bitfinex_connector.orderbook import Book as BitfinexBook
-from gdax_connector.orderbook import Book as GdaxBook
+from bitfinex_connector.orderbook import OrderBook as BitfinexBook
+from gdax_connector.orderbook import OrderBook as GdaxBook
 
 
 class Client(Thread):
 
     def __init__(self, ccy, exchange):
         super(Client, self).__init__()
-        self.book = GdaxBook(ccy, 'gdax') if exchange == 'gdax' else BitfinexBook(ccy)
-        self.ws = None
-        self.ws_endpoint = ''
         self.sym = ccy
+        self.exchange = exchange
+        self.ws = None
         self.retry_counter = 0
         self.max_retries = 30
         self.last_subscribe_time = None
-        self.exchange = exchange
-        self.request = None
-        self.trades_request = None
         self.queue = Queue(maxsize=1000)
 
-    async def unsubscribe(self):
-        pass
+        if self.exchange == 'gdax':
+            self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
+            self.request_unsubscribe = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
+            self.book = GdaxBook(self.sym)
+            self.trades_request = None
+            self.ws_endpoint = 'wss://ws-feed.gdax.com'
 
-    def run(self):
-        """
-        Handle incoming level 3 data on a separate process
-        (or process, depending on implementation)
-        :return:
-        """
-        pass
+        elif self.exchange == 'bitfinex':
+            self.request = json.dumps({
+                "event": "subscribe",
+                "channel": "book",
+                "prec": "R0",
+                "freq": "F0",
+                "symbol": self.sym,
+                "len": "100"
+            })
+            self.request_unsubscribe = None
+            self.trades_request = json.dumps({
+                "event": "subscribe",
+                "channel": "trades",
+                "symbol": self.sym
+            })
+            self.book = BitfinexBook(self.sym)
+            self.ws_endpoint = 'wss://api.bitfinex.com/ws/2'
+
+    async def unsubscribe(self):
+        if self.exchange == 'gdax':
+            await self.ws.send(self.request_unsubscribe)
+            output = json.loads(await self.ws.recv())
+            print('gdax - Client: Unsubscribe successful %s' % output)
+        elif self.exchange == 'bitfinex':
+            for channel in self.book.channel_id:
+                request_unsubscribe = {
+                    "event": "unsubscribe",
+                    "chanId": channel
+                }
+                print('Client: %s unsubscription request sent:\n%s\n' % (self.sym, request_unsubscribe))
+                await self.ws.send(request_unsubscribe)
+                output = json.loads(await self.ws.recv())
+                print('bitfinex - Client: Unsubscribe successful %s' % output)
 
     async def subscribe(self):
         """
@@ -41,18 +67,14 @@ class Client(Thread):
         :return: void
         """
         try:
+            print('trying to connect ws...\n%s' % self.ws_endpoint)
             self.ws = await websockets.connect(self.ws_endpoint)
 
-            if self.request is None:
-                print('%s: Request to connect to book websocket is null.' % self.exchange)
-            else:
-                await self.ws.send(self.request)
-                print('BOOK %s: %s subscription request sent.' % (self.exchange, self.sym))
-                print(self.request)
+            await self.ws.send(self.request)
+            print('BOOK %s: %s subscription request sent.' % (self.exchange, self.sym))
+            print(self.request)
 
-            if self.trades_request is None:
-                print('%s: Request to connect to trades websocket is null.' % self.exchange)
-            else:
+            if self.exchange == 'bitfinex':
                 await self.ws.send(self.trades_request)
                 print('TRADES %s: %s subscription request sent.' % (self.exchange, self.sym))
 
@@ -82,4 +104,12 @@ class Client(Thread):
 
     def render_book(self):
         return self.book.render_book()
+
+    def run(self):
+        """
+        Handle incoming level 3 data on a separate process
+        (or process, depending on implementation)
+        :return:
+        """
+        pass
 

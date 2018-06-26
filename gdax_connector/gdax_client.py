@@ -1,4 +1,3 @@
-import json
 import os
 from common_components.client import Client
 import asyncio
@@ -8,16 +7,6 @@ class GdaxClient(Client):
 
     def __init__(self, ccy):
         super(GdaxClient, self).__init__(ccy, 'gdax')
-        self.ws_endpoint = 'wss://ws-feed.gdax.com'
-        self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
-
-    async def unsubscribe(self):
-        print('GdaxClient: attempting to unsubscribe from %s' % self.sym)
-        request = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
-        print('GdaxClient: %s request sent:\n%s' % (self.sym, request))
-        await self.ws.send(request)
-        output = json.loads(await self.ws.recv())
-        print('GdaxClient: Unsubscribe successful %s' % output)
 
     def run(self):
         """
@@ -36,7 +25,6 @@ class GdaxClient(Client):
                 self.queue.task_done()
                 continue
 
-            # print(self.book)
             self.queue.task_done()
 
 # -------------------------------------------------------------------------------------------------------

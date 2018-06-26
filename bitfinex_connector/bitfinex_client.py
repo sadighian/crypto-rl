@@ -1,4 +1,3 @@
-import json
 import os
 from common_components.client import Client
 import asyncio
@@ -8,29 +7,6 @@ class BitfinexClient(Client):
 
     def __init__(self, ccy):
         super(BitfinexClient, self).__init__(ccy, 'bitfinex')
-        self.ws_endpoint = 'wss://api.bitfinex.com/ws/2'
-        self.request = json.dumps({
-            "event": "subscribe",
-            "channel": "book",
-            "prec": "R0",
-            "freq": "F0",
-            "symbol": self.sym,
-            "len": "100"
-        })
-        self.trades_request = json.dumps({
-            "event": "subscribe",
-            "channel": "trades",
-            "symbol": self.sym
-        })
-
-    async def unsubscribe(self):
-        for channel in self.book.channel_id:
-            request = {
-               "event": "unsubscribe",
-               "chanId": channel
-            }
-            print('BitfinexClient: %s unsubscription request sent:\n%s\n' % (self.sym, request))
-            await self.ws.send(request)
 
     def run(self):
         """
@@ -49,7 +25,6 @@ class BitfinexClient(Client):
                 self.queue.task_done()
                 continue
 
-            # print(self.book)
             self.queue.task_done()
 
 

@@ -1,3 +1,1 @@
-from bitfinex_connector.diction import Diction
-from bitfinex_connector.orderbook import Book
-from bitfinex_connector.bitfinex_client import BitfinexClient
+from bitfinex_connector import *

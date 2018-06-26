@@ -2,12 +2,10 @@ import asyncio
 import os
 import numpy as np
 from threading import Timer
-from datetime import datetime as dt
 from bitfinex_connector.bitfinex_client import BitfinexClient
 from gdax_connector.gdax_client import GdaxClient
 from datetime import datetime as dt
 from pymongo import MongoClient
-from multiprocessing import Process
 
 
 class Crypto(object):
@@ -30,7 +28,7 @@ class Crypto(object):
         self.workers = dict()
         self.last_time = dt.now()
 
-    def insert_record(self, current_time, client):
+    def insert_record(self, current_time, cryptoClient):
         """
         Insert snapshot of limit order book into Mongo DB
         :param current_time: dt.now()
@@ -38,9 +36,9 @@ class Crypto(object):
         """
         if self.db is not None:
             current_date = current_time.strftime("%Y-%m-%d")
-            self.db[current_date].insert_one(client.render_book())
+            self.db[current_date].insert_one(cryptoClient.render_book())
         else:
-            print('%s -----> %s' % (current_time, client.book))
+            print('%s -----> %s' % (current_time, cryptoClient.book))
 
     def timer_worker(self, gdaxClient, bitfinexClient):
         """

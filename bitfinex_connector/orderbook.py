@@ -3,10 +3,10 @@ import numpy as np
 from common_components.abook import ABook
 
 
-class Book(ABook):
+class OrderBook(ABook):
 
     def __init__(self, sym):
-        super(Book, self).__init__(sym, 'bitfinex')
+        super(OrderBook, self).__init__(sym, 'bitfinex')
         self.channel_id = {
             'book': int(0),
             'trades': int(0)
