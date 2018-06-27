@@ -14,7 +14,7 @@ class BitfinexClient(Client):
         (or process, depending on implementation)
         :return:
         """
-        # print('BitfinexClient run - Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
+        print('BitfinexClient run - Process ID: %s\nThread: %s' % (str(os.getpid()), self.name))
         while True:
             msg = self.queue.get()
 
@@ -57,7 +57,6 @@ class BitfinexClient(Client):
 #         print("Caught keyboard interrupt. Canceling tasks...")
 #         tasks.cancel()
 #         # loop.run_forever()
-#         tasks.exception()
 #         for sym in symbols:
 #             p[sym].join()
 #             print('Closing [%s]' % p[sym].name)

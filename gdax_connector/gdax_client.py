@@ -14,7 +14,7 @@ class GdaxClient(Client):
         (or process, depending on implementation)
         :return: void
         """
-        # print('GdaxClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), self.name))
+        print('GdaxClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), self.name))
         while True:
             msg = self.queue.get()
 
@@ -56,7 +56,6 @@ class GdaxClient(Client):
 #     except KeyboardInterrupt as e:
 #         print("Caught keyboard interrupt. Canceling tasks...")
 #         tasks.cancel()
-#         tasks.exception()
 #         for sym in symbols:
 #             p[sym].join()
 #             print('Closing [%s]' % p[sym].name)

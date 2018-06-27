@@ -20,6 +20,7 @@ class Client(Thread):
         self.max_retries = 30
         self.last_subscribe_time = None
         self.queue = Queue(maxsize=1000)
+        self.daemon = True
 
         if self.exchange == 'gdax':
             self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
@@ -66,6 +67,7 @@ class Client(Thread):
     async def subscribe(self):
         """
         Subscribe to full order book
+        :rtype:
         :return: void
         """
         try:

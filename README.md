@@ -26,8 +26,9 @@ developed to place order and actually trade.
 
 ## 4. Design Pattern
 ### 4.1 Architecture
-- Both exchanges run on the same process
-  - Each crypto pair processes ticks on its own thread  
+- Each crypto pair (e.g., Bitcoin-USD) run on its own `Process`
+  - Each exchange data feed is processed in its own `Thread` within the 
+  parent crypto pair `Process`
 - _N_ times a second, a snapshot of the limit order book is taken, and 
 persisted to a MongoDB
 
@@ -47,7 +48,7 @@ persisted to a MongoDB
 ### 4.2 Limit Order OrderBook
 **SortedDict** python class is used for the limit order book
 for the following reasons:
-- Price **Insertions** within the limit order book
+- Sorted Price **Insertions** within the limit order book
  can be performed with **O(log n)**
 - Price **Deletions** within the limit order book can be performed with **O(1)**
 - **Getting / setting** values are performed with **O(1)**
