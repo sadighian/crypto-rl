@@ -1,5 +1,4 @@
 import asyncio
-import os
 import numpy as np
 from threading import Timer
 from bitfinex_connector.bitfinex_client import BitfinexClient
@@ -7,6 +6,8 @@ from gdax_connector.gdax_client import GdaxClient
 from datetime import datetime as dt
 from pymongo import MongoClient
 from multiprocessing import Process
+# import threading
+# import os
 
 
 class Crypto(Process):
@@ -14,11 +15,11 @@ class Crypto(Process):
     def __init__(self, symbols):
         super(Crypto, self).__init__()
         self.symbols = symbols
-        self.recording = True
+        self.recording = False
         self.db = None
-        self.timer_frequency = 0.2  # 0.2 = 5x second
+        self.timer_frequency = 0.195  # 0.2 = 5x second
         self.workers = dict()
-        self.last_time = dt.now()
+        self.current_time = dt.now()
 
     def _add_to_mongo(self, current_time, cryptoClient):
         """
@@ -30,26 +31,26 @@ class Crypto(Process):
             current_date = current_time.strftime("%Y-%m-%d")
             self.db[cryptoClient.sym][current_date].insert_one(cryptoClient.render_book())
         else:
-            print('\n%s ---> %s' % (cryptoClient.sym, cryptoClient.book))
+            print('%s ---> %s' % (cryptoClient.sym, cryptoClient.book))
 
+    # noinspection PyTypeChecker
     def timer_worker(self, gdaxClient, bitfinexClient):
         """
         Thread worker to be invoked every N seconds
         :return: void
         """
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
-        current_time = dt.now()
-        self.last_time = current_time
+        self.current_time = dt.now()
         if gdaxClient.book.bids.warming_up is False:
-            self._add_to_mongo(current_time, gdaxClient)
+            self._add_to_mongo(self.current_time, gdaxClient)
         if bitfinexClient.book.bids.warming_up is False:
-            self._add_to_mongo(current_time, bitfinexClient)
+            self._add_to_mongo(self.current_time, bitfinexClient)
 
+    # noinspection PyTypeChecker
     def run(self):
-        print('Crypto: invoking do_main() on %s\n' % str(os.getpid()))
-
+        # print('\nCrypto run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
         if self.recording:
-            self.db = dict([(sym, MongoClient('mongodb://localhost:27017')[sym])
+            self.db = dict([(sym, MongoClient()[sym])
                             for sym in list(np.hstack(self.symbols))])
         else:
             self.db = dict([(sym, None) for sym in list(np.hstack(self.symbols))])
@@ -57,7 +58,7 @@ class Crypto(Process):
         for gdax, bitfinex in zip(*self.symbols):
             self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
             self.workers[gdax].start(), self.workers[bitfinex].start()
-            print('Crypto: [%s] & [%s] workers instantiated on process_id %s' % (gdax, bitfinex, str(os.getpid())))
+            # print('Crypto: [%s] & [%s] workers instantiated on process_id %s' % (gdax, bitfinex, str(os.getpid())))
             Timer(5.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
 
         tasks = asyncio.gather(*[self.workers[sym].subscribe() for sym in self.workers.keys()])
@@ -67,11 +68,13 @@ class Crypto(Process):
         try:
             loop.run_until_complete(tasks)
             loop.close()
+            [self.workers[sym].join() for sym in self.workers.keys()]
             print('Crypto: loop closed.')
 
         except KeyboardInterrupt as e:
             print("Crypto: Caught keyboard interrupt. Canceling tasks... %s" % e)
             tasks.cancel()
+            [self.workers[sym].join() for sym in self.workers.keys()]
 
         finally:
             loop.close()
@@ -79,17 +82,9 @@ class Crypto(Process):
 
 
 if __name__ == "__main__":
-    print('Starting up...__main__ Process ID: %s\n' % str(os.getpid()))
+    # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
     basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD'],  # GDAX pairs
               ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD']]  # Bitfinex pairs
 
-    agents = dict()
-    for gdax, bitfinex in zip(*basket):
-        trading_pair = [[gdax], [bitfinex]]
-        print('Loading trading pair: %s' % str(trading_pair))
-
-        agents[gdax] = Crypto(trading_pair)
-        agents[gdax].daemon = False
-        agents[gdax].start()
-        print('[%s - %s] process started from PID %i.' % (gdax, bitfinex, os.getpid()))
+    [Crypto([[gdax], [bitfinex]]).start() for gdax, bitfinex in zip(*basket)]

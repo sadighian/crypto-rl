@@ -9,7 +9,7 @@ class BitfinexBook(Book):
     def insert_order(self, msg):
         """
         Create new node
-        :param msg:
+        :param msg: incoming new order
         :return:
         """
         self.order_map[msg['order_id']] = msg

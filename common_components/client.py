@@ -1,26 +1,27 @@
 import json
 import time
-import os
 from datetime import datetime as dt
 from multiprocessing import JoinableQueue as Queue
 from threading import Thread
 import websockets
 from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from gdax_connector.gdax_orderbook import GdaxOrderBook
+# import threading
+# import os
 
 
 class Client(Thread):
 
     def __init__(self, ccy, exchange):
-        super(Client, self).__init__()
+        super(Client, self).__init__(name=ccy, daemon=False)
         self.sym = ccy
         self.exchange = exchange
         self.ws = None
         self.retry_counter = 0
         self.max_retries = 30
         self.last_subscribe_time = None
-        self.queue = Queue(maxsize=1000)
-        self.daemon = True
+        self.queue = Queue(maxsize=0)
+        # print('\nClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
         if self.exchange == 'gdax':
             self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
@@ -52,17 +53,18 @@ class Client(Thread):
         if self.exchange == 'gdax':
             await self.ws.send(self.request_unsubscribe)
             output = json.loads(await self.ws.recv())
-            print('gdax - Client: Unsubscribe successful %s' % output)
+            print('Client - Gdax: Unsubscribe successful %s' % output)
+
         elif self.exchange == 'bitfinex':
             for channel in self.book.channel_id:
                 request_unsubscribe = {
                     "event": "unsubscribe",
                     "chanId": channel
                 }
-                print('Client: %s unsubscription request sent:\n%s\n' % (self.sym, request_unsubscribe))
+                print('Client - Bitfinex: %s unsubscription request sent:\n%s\n' % (self.sym, request_unsubscribe))
                 await self.ws.send(request_unsubscribe)
                 output = json.loads(await self.ws.recv())
-                print('bitfinex - Client: Unsubscribe successful %s' % output)
+                print('Client - Bitfinex: Unsubscribe successful %s' % output)
 
     async def subscribe(self):
         """
@@ -108,8 +110,7 @@ class Client(Thread):
 
     def run(self):
         """
-        Handle incoming level 3 data on a separate process
-        (or process, depending on implementation)
+        Thread to override in GDAX or Bitfinex implementation class
         :return:
         """
         pass

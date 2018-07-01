@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder
-As of June 26th, 2018.
+As of July 1st, 2018.
 ## 1. Purpose
 Application designed to subscribe and record the
 full limit order book data from **GDAX** and **Bitfinex** into a MongoDB 
@@ -31,6 +31,8 @@ developed to place order and actually trade.
   parent crypto pair `Process`
 - _N_ times a second, a snapshot of the limit order book is taken, and 
 persisted to a MongoDB
+
+![Design Pattern](assets/design-pattern.png)
 
 ### 4.2 MongoDB Schema
   - The database schema consists of order book snapshots only:

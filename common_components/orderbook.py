@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from gdax_connector.gdax_book import GdaxBook as GdaxDiction
-from bitfinex_connector.bitfinex_book import BitfinexBook as BitfinexDiction
+from gdax_connector.gdax_book import GdaxBook
+from bitfinex_connector.bitfinex_book import BitfinexBook
 from datetime import datetime as dt
 
 
@@ -8,8 +8,8 @@ class OrderBook(ABC):
 
     def __init__(self, ccy, exchange):
         self.sym = ccy
-        self.bids = GdaxDiction(ccy, 'bids') if exchange == 'gdax' else BitfinexDiction(ccy, 'bids')
-        self.asks = GdaxDiction(ccy, 'asks') if exchange == 'gdax' else BitfinexDiction(ccy, 'asks')
+        self.bids = GdaxBook(ccy, 'bids') if exchange == 'gdax' else BitfinexBook(ccy, 'bids')
+        self.asks = GdaxBook(ccy, 'asks') if exchange == 'gdax' else BitfinexBook(ccy, 'asks')
         self.trades = dict({
             'upticks': {
                 'size': float(0),

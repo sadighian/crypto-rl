@@ -142,7 +142,7 @@ class Book(ABC):
     def get_ask(self):
         """
         Best offer
-        :return: lowest ask (decimal)
+        :return: inside ask
         """
         if len(self.price_dict) > 0:
             return self.price_dict.items()[0]
@@ -152,7 +152,7 @@ class Book(ABC):
     def get_bid(self):
         """
         Best bid
-        :return: highest bid (decimal)
+        :return: inside bid
         """
         if len(self.price_dict) > 0:
             return self.price_dict.items()[-1]

@@ -1,12 +1,14 @@
-import os
 from common_components.client import Client
-import asyncio
+# import asyncio
+# import threading
+# import os
 
 
 class GdaxClient(Client):
 
     def __init__(self, ccy):
         super(GdaxClient, self).__init__(ccy, 'gdax')
+        # print('\nGdaxClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
     def run(self):
         """
@@ -14,7 +16,7 @@ class GdaxClient(Client):
         (or process, depending on implementation)
         :return: void
         """
-        print('GdaxClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), self.name))
+        # print('\nGdaxClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
         while True:
             msg = self.queue.get()
 
