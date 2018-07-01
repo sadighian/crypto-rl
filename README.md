@@ -1,5 +1,6 @@
 # Multiprocessing Crypto Recorder
 As of July 1st, 2018.
+
 ## 1. Purpose
 Application designed to subscribe and record the
 full limit order book data from **GDAX** and **Bitfinex** into a MongoDB 
@@ -47,7 +48,7 @@ persisted to a MongoDB
       period _N_ (e.g., 5 trades)
     - `time` = `datetime.now()` of time the snapshot was taken
 
-### 4.2 Limit Order OrderBook
+### 4.3 Limit Order OrderBook
 **SortedDict** python class is used for the limit order book
 for the following reasons:
 - Sorted Price **Insertions** within the limit order book
