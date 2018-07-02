@@ -8,12 +8,12 @@ The GDAX connector consists of three classes:
 3. `gdax_client.py` which is the gdax implementation of `./common_components/client.py`
 
 ## 2. Subscriptions
-- WebSocket connections are made using asynchronously using the `websockets` module
+- WebSocket connections are made asynchronously using the `websockets` module
 - Full order book data subscriptions are made by using the `subscribe()` method 
-from the `gdax_client.py` module
+from `gdax_client.py`
 - Orderbook snapshots are made using a GET call using the `requests` module
 - All websocket subscriptions pass incoming messages into a `multiprocessing.Queue()` and 
-to be processed on a separate thread
+to be processed by a separate thread
 
 ## 3. Data Consumption Rules
 1. Filter out messages with `type` = `received` to save time

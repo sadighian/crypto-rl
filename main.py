@@ -15,7 +15,7 @@ class Crypto(Process):
     def __init__(self, symbols):
         super(Crypto, self).__init__()
         self.symbols = symbols
-        self.recording = False
+        self.recording = True
         self.db = None
         self.timer_frequency = 0.195  # 0.2 = 5x second
         self.workers = dict()

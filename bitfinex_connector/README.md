@@ -8,11 +8,11 @@ The Bitfinex connector consists of three classes:
 3. `bitfinex_client.py` which is the Bitfinex implementation of `./common_components/client.py`
 
 ## 2. Subscriptions
-- WebSocket connections are made using asynchronously using the `websockets` module
+- WebSocket connections are made asynchronously with the `websockets` module
 - Raw order book & trades data subscriptions are made by using the `subscribe()` method 
-from the `bitfinex_client.py` module
+from `bitfinex_client.py`
 - All websocket subscriptions pass incoming messages into a `multiprocessing.Queue()` and 
-to be processed on a separate thread
+to be processed by a separate thread
 
 ## 3. Data Consumption Rules
 1. Normalize incoming data messages from strings to numbers, such as `floats()`
