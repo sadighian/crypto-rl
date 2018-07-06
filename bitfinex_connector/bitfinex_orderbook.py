@@ -19,6 +19,7 @@ class BitfinexOrderBook(OrderBook):
         :return: void
         """
         start_time = time()
+
         for row in book[1]:
             order = {
                 "order_id": int(row[0]),

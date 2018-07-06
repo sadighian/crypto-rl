@@ -57,8 +57,7 @@ class OrderBook(ABC):
             'bids': self.bids._get_bids_to_list(),
             'asks': self.asks._get_asks_to_list(),
             'upticks': self._get_trades_tracker['upticks'],
-            'downticks': self._get_trades_tracker['downticks'],
-            'time': dt.now()
+            'downticks': self._get_trades_tracker['downticks']
         })
         self._reset_trades_tracker()
         return book

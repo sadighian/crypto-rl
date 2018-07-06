@@ -15,23 +15,27 @@ class Crypto(Process):
     def __init__(self, symbols):
         super(Crypto, self).__init__()
         self.symbols = symbols
-        self.recording = True
+        self.recording = True  # set to false if you do not want to record market data
         self.db = None
         self.timer_frequency = 0.195  # 0.2 = 5x second
         self.workers = dict()
         self.current_time = dt.now()
 
-    def _add_to_mongo(self, current_time, cryptoClient):
+    def _add_to_mongo(self, current_time, gdaxClient, bitfinexClient):
         """
         Insert snapshot of limit order book into Mongo DB
         :param current_time: dt.now()
         :return: void
         """
-        if self.db[cryptoClient.sym] is not None:
+        if self.db[gdaxClient.sym] is not None:
             current_date = current_time.strftime("%Y-%m-%d")
-            self.db[cryptoClient.sym][current_date].insert_one(cryptoClient.render_book())
+            self.db[gdaxClient.sym][current_date].insert_one({
+                'gdax': gdaxClient.render_book(),
+                'bitfinex': bitfinexClient.render_book(),
+                'time': dt.now()
+            })
         else:
-            print('%s ---> %s' % (cryptoClient.sym, cryptoClient.book))
+            print('%s ---> %s  -  %s' % (gdaxClient.sym, gdaxClient.book, bitfinexClient.book))
 
     # noinspection PyTypeChecker
     def timer_worker(self, gdaxClient, bitfinexClient):
@@ -41,10 +45,13 @@ class Crypto(Process):
         """
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
         self.current_time = dt.now()
-        if gdaxClient.book.bids.warming_up is False:
-            self._add_to_mongo(self.current_time, gdaxClient)
-        if bitfinexClient.book.bids.warming_up is False:
-            self._add_to_mongo(self.current_time, bitfinexClient)
+        if gdaxClient.book.bids.warming_up is False & bitfinexClient.book.bids.warming_up is False:
+            self._add_to_mongo(self.current_time, gdaxClient, bitfinexClient)
+        else:
+            if gdaxClient.book.bids.warming_up:
+                print('GDAX - %s is warming up' % gdaxClient.sym)
+            if bitfinexClient.book.bids.warming_up:
+                print('Bitfinex - %s is warming up' % bitfinexClient.sym)
 
     # noinspection PyTypeChecker
     def run(self):
@@ -84,7 +91,7 @@ class Crypto(Process):
 if __name__ == "__main__":
     # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
-    basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD'],  # GDAX pairs
-              ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD']]  # Bitfinex pairs
+    basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'BCH-EUR', 'ETH-EUR', 'LTC-EUR'],  # GDAX pairs
+              ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tBCHEUR', 'tETHEUR', 'tLTCEUR']]  # Bitfinex pairs
 
     [Crypto([[gdax], [bitfinex]]).start() for gdax, bitfinex in zip(*basket)]

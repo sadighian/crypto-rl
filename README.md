@@ -13,17 +13,17 @@ developed to place order and actually trade.
 
 ## 3. Dependencies
 - abc
-- datetime
-- pymongo
-- time
-- os
-- json
-- threading
-- SortedDict
-- websockets
-- requests
-- multiprocessing
 - asyncio
+- datetime
+- json
+- multiprocessing
+- os
+- pymongo
+- requests
+- SortedDict
+- threading
+- time
+- websockets
 
 ## 4. Design Pattern
 ### 4.1 Architecture
@@ -37,18 +37,22 @@ persisted to a MongoDB
 
 ### 4.2 MongoDB Schema
   - The database schema consists of order book snapshots only:
-    - `bids` and `asks`
-      - `prices` = array of floats
-      - `size` = array of floats (cumulative volume at price)
-      - `count` = array of integers (total number of orders at a given price)
-    - `upticks` and `downticks`
-      - `size` = notional value of trades within the last period _N_ 
-      (e.g., price x execution size)
-      - `count` = total number of transactions that occured within the last 
-      period _N_ (e.g., 5 trades)
-    - `time` = `datetime.now()` of time the snapshot was taken
+    - `gdax` or `bitfinex` (i.e., exchange)
+        - `bids` and `asks`
+          - `prices` = (array of floats) order price
+          - `size` = array of floats (cumulative volume at price)
+          - `count` = (array of integers) total number of 
+          orders at a given price
+        - `upticks` and `downticks`
+          - `size` = (float) notional value of trades within the 
+          last period _N_ 
+          (e.g., price x execution size)
+          - `count` = (int) total number of transactions that occurred 
+          within the last 
+          period _N_ (e.g., 5 trades)
+        - `time` = `datetime.now()` of time the snapshot was taken
 
-### 4.3 Limit Order OrderBook
+### 4.3 Limit Order Book
 **SortedDict** python class is used for the limit order book
 for the following reasons:
 - Sorted Price **Insertions** within the limit order book
