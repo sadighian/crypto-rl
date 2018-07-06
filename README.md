@@ -37,13 +37,13 @@ persisted to a MongoDB
 
 ### 4.2 MongoDB Schema
   - The database schema consists of order book snapshots only:
-    - `gdax` or `bitfinex` (i.e., exchange)
-        - `bids` and `asks`
+    - `gdax` or `bitfinex` (string) exchange name
+        - `bids` and `asks` (string) order book side
           - `prices` = (array of floats) order price
           - `size` = array of floats (cumulative volume at price)
           - `count` = (array of integers) total number of 
           orders at a given price
-        - `upticks` and `downticks`
+        - `upticks` and `downticks` (string) buy or sell transactions
           - `size` = (float) notional value of trades within the 
           last period _N_ 
           (e.g., price x execution size)
