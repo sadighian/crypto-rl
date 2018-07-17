@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder
-As of July 6th, 2018.
+As of July 16th, 2018.
 
 ## 1. Purpose
 Application designed to subscribe and record the
@@ -40,7 +40,7 @@ persisted to a MongoDB
     - `gdax` or `bitfinex` (string) exchange name
         - `bids` and `asks` (string) order book side
           - `prices` = (array of floats) order price
-          - `size` = array of floats (cumulative volume at price)
+          - `size` = (array of floats) cumulative volume at price
           - `count` = (array of integers) total number of 
           orders at a given price
         - `upticks` and `downticks` (string) buy or sell transactions

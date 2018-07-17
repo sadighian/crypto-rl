@@ -1,5 +1,5 @@
 # Common Components
-As of July 1st, 2018.
+As of July 16th, 2018.
 
 ## 1. Overview
 The `common_components` module contains the base classes for the overall project. 

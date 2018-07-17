@@ -1,5 +1,5 @@
 # GDAX Connector
-As of July 1st, 2018.
+As of July 16th, 2018.
 
 ## 1. Overview
 The GDAX connector consists of three classes:

@@ -10,6 +10,11 @@ from gdax_connector.gdax_orderbook import GdaxOrderBook
 # import os
 
 
+# Configurations
+GDAX_ENDPOINT = 'wss://ws-feed.pro.coinbase.com'
+BITFINEX_ENDPOINT = 'wss://api.bitfinex.com/ws/2'
+
+
 class Client(Thread):
 
     def __init__(self, ccy, exchange):
@@ -28,7 +33,7 @@ class Client(Thread):
             self.request_unsubscribe = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
             self.book = GdaxOrderBook(self.sym)
             self.trades_request = None
-            self.ws_endpoint = 'wss://ws-feed.gdax.com'
+            self.ws_endpoint = GDAX_ENDPOINT
 
         elif self.exchange == 'bitfinex':
             self.request = json.dumps({
@@ -46,7 +51,7 @@ class Client(Thread):
                 "symbol": self.sym
             })
             self.book = BitfinexOrderBook(self.sym)
-            self.ws_endpoint = 'wss://api.bitfinex.com/ws/2'
+            self.ws_endpoint = BITFINEX_ENDPOINT
         # print('Client __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), self.name))
 
     async def unsubscribe(self):

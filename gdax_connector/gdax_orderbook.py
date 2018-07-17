@@ -18,7 +18,7 @@ class GdaxOrderBook(OrderBook):
         print('%s get_book request made.' % self.sym)
         start_time = time()
         self.clear_book()
-        path = ('https://api.gdax.com/products/%s/book' % self.sym)
+        path = ('https://api.pro.coinbase.com/products/%s/book' % self.sym)
         book = requests.get(path, params={'level': 3}).json()
         elapsed = time() - start_time
         print('%s get_book request completed in %f seconds.' % (self.sym, elapsed))

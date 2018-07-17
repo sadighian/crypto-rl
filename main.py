@@ -6,8 +6,14 @@ from gdax_connector.gdax_client import GdaxClient
 from datetime import datetime as dt
 from pymongo import MongoClient
 from multiprocessing import Process
+import time
 # import threading
 # import os
+
+
+# Configurations
+MONGO_ENDPOINT = 'mongodb://localhost:27017/'
+RECORD_DATA = False
 
 
 class Crypto(Process):
@@ -15,7 +21,7 @@ class Crypto(Process):
     def __init__(self, symbols):
         super(Crypto, self).__init__()
         self.symbols = symbols
-        self.recording = True  # set to false if you do not want to record market data
+        self.recording = RECORD_DATA  # set to false if you do not want to record market data
         self.db = None
         self.timer_frequency = 0.195  # 0.2 = 5x second
         self.workers = dict()
@@ -57,7 +63,7 @@ class Crypto(Process):
     def run(self):
         # print('\nCrypto run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
         if self.recording:
-            self.db = dict([(sym, MongoClient()[sym])
+            self.db = dict([(sym, MongoClient(MONGO_ENDPOINT)[sym])
                             for sym in list(np.hstack(self.symbols))])
         else:
             self.db = dict([(sym, None) for sym in list(np.hstack(self.symbols))])
@@ -91,7 +97,13 @@ class Crypto(Process):
 if __name__ == "__main__":
     # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
-    basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'BCH-EUR', 'ETH-EUR', 'LTC-EUR'],  # GDAX pairs
-              ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tBCHEUR', 'tETHEUR', 'tLTCEUR']]  # Bitfinex pairs
+    # basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'BCH-EUR', 'ETH-EUR', 'LTC-EUR', 'BTC-GBP'],  # GDAX pairs
+    #           ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tBCHEUR', 'tETHEUR', 'tLTCEUR', 'tBTCGBP']]  # Bitfinex pairs
 
-    [Crypto([[gdax], [bitfinex]]).start() for gdax, bitfinex in zip(*basket)]
+    basket = [['BTC-GBP', 'BTC-EUR', 'ETH-EUR'],
+              ['tBTCGBP', 'tBTCEUR', 'tETHEUR']]
+
+    for gdax, bitfinex in zip(*basket):
+        Crypto([[gdax], [bitfinex]]).start()
+        time.sleep(2)
+        print('\nProcess started up for %s' % gdax)
