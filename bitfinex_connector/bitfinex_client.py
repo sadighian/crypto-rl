@@ -39,8 +39,8 @@ class BitfinexClient(Client):
 # BitfinexClient class in isolation.
 # """
 # if __name__ == "__main__":
-#     print('BitfinexClient __main__ - Process ID: %s' % str(os.getpid()))
-#     symbols = ['tETHUSD']  #, 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
+#     # print('BitfinexClient __main__ - Process ID: %s' % str(os.getpid()))
+#     symbols = ['tETHEUR']  #, 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
 #     print('Initializing...%s' % symbols)
 #     loop = asyncio.get_event_loop()
 #     p = dict()
@@ -48,13 +48,16 @@ class BitfinexClient(Client):
 #     for sym in symbols:
 #         p[sym] = BitfinexClient(sym)
 #         p[sym].start()
+#         print('Started thread for %s' % sym)
 #
 #     tasks = asyncio.gather(*[(p[sym].subscribe()) for sym in symbols])
 #     print('Gathered %i tasks' % len(symbols))
 #
 #     try:
 #         loop.run_until_complete(tasks)
-#         loop.close()
+#         for sym in symbols:
+#             p[sym].join()
+#             print('Closing [%s]' % p[sym].name)
 #         print('loop closed.')
 #
 #     except KeyboardInterrupt as e:

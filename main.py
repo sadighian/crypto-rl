@@ -13,7 +13,7 @@ import time
 
 # Configurations
 MONGO_ENDPOINT = 'mongodb://localhost:27017/'
-RECORD_DATA = False
+RECORD_DATA = True
 
 
 class Crypto(Process):
@@ -97,13 +97,13 @@ class Crypto(Process):
 if __name__ == "__main__":
     # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
-    # basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'BCH-EUR', 'ETH-EUR', 'LTC-EUR', 'BTC-GBP'],  # GDAX pairs
-    #           ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tBCHEUR', 'tETHEUR', 'tLTCEUR', 'tBTCGBP']]  # Bitfinex pairs
+    basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'ETH-EUR', 'BTC-GBP'],  # GDAX pairs
+              ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tETHEUR', 'tBTCGBP']]  # Bitfinex pairs
 
-    basket = [['BTC-GBP', 'BTC-EUR', 'ETH-EUR'],
-              ['tBTCGBP', 'tBTCEUR', 'tETHEUR']]
+    # basket = [['BTC-USD', 'ETH-USD', 'LTC-USD', 'BCH-USD'],
+    #           ['tBTCUSD', 'tETHUSD', 'tLTCUSD', 'tBCHUSD']]
 
     for gdax, bitfinex in zip(*basket):
         Crypto([[gdax], [bitfinex]]).start()
-        time.sleep(2)
+        time.sleep(3)
         print('\nProcess started up for %s' % gdax)

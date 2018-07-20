@@ -13,6 +13,7 @@ from gdax_connector.gdax_orderbook import GdaxOrderBook
 # Configurations
 GDAX_ENDPOINT = 'wss://ws-feed.pro.coinbase.com'
 BITFINEX_ENDPOINT = 'wss://api.bitfinex.com/ws/2'
+MAX_RECONNECTION_ATTEMPTS = 300
 
 
 class Client(Thread):
@@ -23,7 +24,7 @@ class Client(Thread):
         self.exchange = exchange
         self.ws = None
         self.retry_counter = 0
-        self.max_retries = 30
+        self.max_retries = MAX_RECONNECTION_ATTEMPTS
         self.last_subscribe_time = None
         self.queue = Queue(maxsize=0)
         # print('\nClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))

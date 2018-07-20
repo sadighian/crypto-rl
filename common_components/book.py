@@ -3,6 +3,10 @@ from datetime import datetime as dt
 from sortedcontainers import SortedDict
 
 
+# configurations
+MAX_BOOK_ROWS = 250
+
+
 class Book(ABC):
 
     def __init__(self, sym, side):
@@ -11,7 +15,7 @@ class Book(ABC):
         self.side = side
         self.sym = sym
         self.warming_up = True  # this value needs to be set within the orderbook class
-        self.max_book_size = 500
+        self.max_book_size = MAX_BOOK_ROWS
 
     def __str__(self):
         if self.warming_up:
