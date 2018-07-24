@@ -29,7 +29,7 @@ class BitfinexClient(Client):
                 self.book.asks.warming_up = True
                 raise ConnectionClosed
 
-            self.queue.task_done()
+            # self.queue.task_done()
 
 
 # -------------------------------------------------------------------------------------------------------

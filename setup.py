@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='mp-crypto-agent',
+    name='crypto',
     version='1.0',
     packages=['gdax_connector',
               'bitfinex_connector',
@@ -12,7 +12,7 @@ setup(
     author_email='jonathan.m.sadighian@gmail.com',
     description='Connector to record crypto exchange level 3 market data',
     install_requires=['pymongo', 'requests',
-                     'ujson', 'asyncio',
+                     'json', 'asyncio',
                      'sortedcontainers',
                      'numpy', 'websockets']
 )

@@ -27,7 +27,7 @@ class GdaxClient(Client):
                 self.queue.task_done()
                 continue
 
-            self.queue.task_done()
+            # self.queue.task_done()
 
 # -------------------------------------------------------------------------------------------------------
 

@@ -1,19 +1,14 @@
 import json
 import time
 from datetime import datetime as dt
-from multiprocessing import JoinableQueue as Queue
+from multiprocessing import Queue #JoinableQueue as Queue
 from threading import Thread
 import websockets
 from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from gdax_connector.gdax_orderbook import GdaxOrderBook
+from common_components import configs
 # import threading
 # import os
-
-
-# Configurations
-GDAX_ENDPOINT = 'wss://ws-feed.pro.coinbase.com'
-BITFINEX_ENDPOINT = 'wss://api.bitfinex.com/ws/2'
-MAX_RECONNECTION_ATTEMPTS = 300
 
 
 class Client(Thread):
@@ -24,7 +19,7 @@ class Client(Thread):
         self.exchange = exchange
         self.ws = None
         self.retry_counter = 0
-        self.max_retries = MAX_RECONNECTION_ATTEMPTS
+        self.max_retries = configs.MAX_RECONNECTION_ATTEMPTS
         self.last_subscribe_time = None
         self.queue = Queue(maxsize=0)
         # print('\nClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
@@ -34,7 +29,7 @@ class Client(Thread):
             self.request_unsubscribe = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
             self.book = GdaxOrderBook(self.sym)
             self.trades_request = None
-            self.ws_endpoint = GDAX_ENDPOINT
+            self.ws_endpoint = configs.GDAX_ENDPOINT
 
         elif self.exchange == 'bitfinex':
             self.request = json.dumps({
@@ -52,8 +47,7 @@ class Client(Thread):
                 "symbol": self.sym
             })
             self.book = BitfinexOrderBook(self.sym)
-            self.ws_endpoint = BITFINEX_ENDPOINT
-        # print('Client __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), self.name))
+            self.ws_endpoint = configs.BITFINEX_ENDPOINT
 
     async def unsubscribe(self):
         if self.exchange == 'gdax':
@@ -110,9 +104,6 @@ class Client(Thread):
             else:
                 print('%s: %s Ran out of reconnection attempts. Have already tried %i times.'
                       % (self.exchange, self.sym, self.retry_counter))
-
-    def render_book(self):
-        return self.book.render_book()
 
     def run(self):
         """

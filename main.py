@@ -3,6 +3,7 @@ import numpy as np
 from threading import Timer
 from bitfinex_connector.bitfinex_client import BitfinexClient
 from gdax_connector.gdax_client import GdaxClient
+from common_components import configs
 from datetime import datetime as dt
 from pymongo import MongoClient
 from multiprocessing import Process
@@ -11,19 +12,14 @@ import time
 # import os
 
 
-# Configurations
-MONGO_ENDPOINT = 'mongodb://localhost:27017/'
-RECORD_DATA = True
-
-
 class Crypto(Process):
 
     def __init__(self, symbols):
         super(Crypto, self).__init__()
         self.symbols = symbols
-        self.recording = RECORD_DATA  # set to false if you do not want to record market data
+        self.recording = configs.RECORD_DATA  # set to false if you do not want to record market data
         self.db = None
-        self.timer_frequency = 0.195  # 0.2 = 5x second
+        self.timer_frequency = configs.SNAPSHOT_RATE
         self.workers = dict()
         self.current_time = dt.now()
 
@@ -36,9 +32,9 @@ class Crypto(Process):
         if self.db[gdaxClient.sym] is not None:
             current_date = current_time.strftime("%Y-%m-%d")
             self.db[gdaxClient.sym][current_date].insert_one({
-                'gdax': gdaxClient.render_book(),
-                'bitfinex': bitfinexClient.render_book(),
-                'time': dt.now()
+                'gdax': gdaxClient.book.render_book(),
+                'bitfinex': bitfinexClient.book.render_book(),
+                'time': current_time
             })
         else:
             print('%s ---> %s  -  %s' % (gdaxClient.sym, gdaxClient.book, bitfinexClient.book))
@@ -51,6 +47,7 @@ class Crypto(Process):
         """
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
         self.current_time = dt.now()
+
         if gdaxClient.book.bids.warming_up is False & bitfinexClient.book.bids.warming_up is False:
             self._add_to_mongo(self.current_time, gdaxClient, bitfinexClient)
         else:
@@ -62,11 +59,11 @@ class Crypto(Process):
     # noinspection PyTypeChecker
     def run(self):
         # print('\nCrypto run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
+        symbols_in_basket = list(np.hstack(self.symbols))
         if self.recording:
-            self.db = dict([(sym, MongoClient(MONGO_ENDPOINT)[sym])
-                            for sym in list(np.hstack(self.symbols))])
+            self.db = dict([(sym, MongoClient(configs.MONGO_ENDPOINT)[sym]) for sym in symbols_in_basket])
         else:
-            self.db = dict([(sym, None) for sym in list(np.hstack(self.symbols))])
+            self.db = dict([(sym, None) for sym in symbols_in_basket])
 
         for gdax, bitfinex in zip(*self.symbols):
             self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
@@ -87,6 +84,7 @@ class Crypto(Process):
         except KeyboardInterrupt as e:
             print("Crypto: Caught keyboard interrupt. Canceling tasks... %s" % e)
             tasks.cancel()
+            loop.close()
             [self.workers[sym].join() for sym in self.workers.keys()]
 
         finally:
@@ -97,13 +95,13 @@ class Crypto(Process):
 if __name__ == "__main__":
     # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
-    basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'ETH-EUR', 'BTC-GBP'],  # GDAX pairs
-              ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tETHEUR', 'tBTCGBP']]  # Bitfinex pairs
+    # basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'ETH-EUR', 'BTC-GBP'],  # GDAX pairs
+    #           ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tETHEUR', 'tBTCGBP']]  # Bitfinex pairs
 
-    # basket = [['BTC-USD', 'ETH-USD', 'LTC-USD', 'BCH-USD'],
-    #           ['tBTCUSD', 'tETHUSD', 'tLTCUSD', 'tBCHUSD']]
+    basket = [['BTC-USD', 'ETH-USD', 'LTC-USD', 'BCH-USD'],
+              ['tBTCUSD', 'tETHUSD', 'tLTCUSD', 'tBCHUSD']]
 
     for gdax, bitfinex in zip(*basket):
         Crypto([[gdax], [bitfinex]]).start()
-        time.sleep(3)
+        time.sleep(5)
         print('\nProcess started up for %s' % gdax)
