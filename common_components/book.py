@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime as dt
 from sortedcontainers import SortedDict
-
-
-# configurations
-MAX_BOOK_ROWS = 250
+from common_components import configs
 
 
 class Book(ABC):
@@ -15,7 +12,7 @@ class Book(ABC):
         self.side = side
         self.sym = sym
         self.warming_up = True  # this value needs to be set within the orderbook class
-        self.max_book_size = MAX_BOOK_ROWS
+        self.max_book_size = configs.MAX_BOOK_ROWS
 
     def __str__(self):
         if self.warming_up:
@@ -36,26 +33,6 @@ class Book(ABC):
         self.price_dict = SortedDict()
         self.order_map = dict()
         self.warming_up = True
-
-    def _do_next_price(self, side, reference, notional=float(75000)):
-        if side == 'asks':
-            total_notional = float(0)
-            depth = float(0)
-            for k, v in self.price_dict.items():
-                total_notional += (k * v['size'])
-                if total_notional > notional:
-                    depth = k
-                    break
-            return float(depth - reference)
-        else:
-            total_notional = float(0)
-            depth = float(0)
-            for k, v in reversed(self.price_dict.items()):
-                total_notional += (k * v['size'])
-                if total_notional > notional:
-                    depth = k
-                    break
-            return float(reference - depth)
 
     def create_price(self, price):
         """

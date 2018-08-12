@@ -12,7 +12,7 @@ setup(
     author_email='jonathan.m.sadighian@gmail.com',
     description='Connector to record crypto exchange level 3 market data',
     install_requires=['pymongo', 'requests',
-                     'json', 'asyncio',
+                     'asyncio',
                      'sortedcontainers',
                      'numpy', 'websockets']
 )

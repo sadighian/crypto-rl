@@ -62,18 +62,6 @@ class OrderBook(ABC):
         self._reset_trades_tracker()
         return book
 
-    def render_price(self, side, reference):
-        """
-        Estimate market order slippage
-        :param side: bids or asks
-        :param reference: NBBO
-        :return: float distance from NBBO
-        """
-        if side == 'bids':
-            return round(self.bids._do_next_price('bids', reference), 2)
-        else:
-            return round(self.asks._do_next_price('asks', reference), 2)
-
     @property
     def best_bid(self):
         """

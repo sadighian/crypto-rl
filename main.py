@@ -95,13 +95,7 @@ class Crypto(Process):
 if __name__ == "__main__":
     # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
-    # basket = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'ETH-EUR', 'BTC-GBP'],  # GDAX pairs
-    #           ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tETHEUR', 'tBTCGBP']]  # Bitfinex pairs
-
-    basket = [['BTC-USD', 'ETH-USD', 'LTC-USD', 'BCH-USD'],
-              ['tBTCUSD', 'tETHUSD', 'tLTCUSD', 'tBCHUSD']]
-
-    for gdax, bitfinex in zip(*basket):
+    for gdax, bitfinex in zip(*configs.BASKET):
         Crypto([[gdax], [bitfinex]]).start()
         time.sleep(5)
         print('\nProcess started up for %s' % gdax)
