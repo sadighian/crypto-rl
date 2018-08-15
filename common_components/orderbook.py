@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
 from gdax_connector.gdax_book import GdaxBook
 from bitfinex_connector.bitfinex_book import BitfinexBook
-from datetime import datetime as dt
+from common_components.database import Database
+import pandas as pd
 
 
 class OrderBook(ABC):
 
     def __init__(self, ccy, exchange):
         self.sym = ccy
+        self.db = Database(ccy, exchange)
         self.bids = GdaxBook(ccy, 'bids') if exchange == 'gdax' else BitfinexBook(ccy, 'bids')
         self.asks = GdaxBook(ccy, 'asks') if exchange == 'gdax' else BitfinexBook(ccy, 'asks')
         self.trades = dict({
@@ -50,17 +52,15 @@ class OrderBook(ABC):
 
     def render_book(self):
         """
-        Convert the limit order book into a dictionary
-        :return: dictionary
+        Convert the limit order book into a DataFrame
+        :return: pandas dataframe
         """
-        book = dict({
-            'bids': self.bids._get_bids_to_list(),
-            'asks': self.asks._get_asks_to_list(),
-            'upticks': self._get_trades_tracker['upticks'],
-            'downticks': self._get_trades_tracker['downticks']
-        })
         self._reset_trades_tracker()
-        return book
+
+        pd_bids = self.bids._get_bids_to_list()
+        pd_asks = self.asks._get_asks_to_list()
+
+        return pd.concat([pd_bids, pd_asks], sort=False)
 
     @property
     def best_bid(self):

@@ -27,6 +27,7 @@ class BitfinexClient(Client):
                 self.queue.task_done()
                 self.book.bids.warming_up = True
                 self.book.asks.warming_up = True
+                print('%s: manually forcing connectionClosed' % self.sym)
                 raise ConnectionClosed
 
             # self.queue.task_done()

@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime as dt
 from sortedcontainers import SortedDict
 from common_components import configs
+import pandas as pd
+import pytz as tz
 
 
 class Book(ABC):
@@ -158,8 +160,8 @@ class Book(ABC):
             sizes.append(v['size'])
             counts.append(v['count'])
 
-        return dict(price=prices, size=sizes, count=counts)
-        # return prices, sizes, counts
+        return pd.DataFrame(data={'ask_price': prices, 'ask_size': sizes, 'ask_count': counts},
+                            index=[dt.now(tz=tz.timezone('US/Eastern')) for _ in range(counter - 1)])
 
     def _get_bids_to_list(self):
         """
@@ -179,5 +181,5 @@ class Book(ABC):
             sizes.append(v['size'])
             counts.append(v['count'])
 
-        return dict(price=prices, size=sizes, count=counts)
-        # return prices, sizes, counts
+        return pd.DataFrame(data={'bid_price': prices, 'bid_size': sizes, 'bid_count': counts},
+                            index=[dt.now(tz=tz.timezone('US/Eastern')) for _ in range(counter - 1)])

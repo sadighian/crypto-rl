@@ -31,29 +31,37 @@ class GdaxOrderBook(OrderBook):
         """
         book = self._get_book()
         start_time = time()
+        self.sequence = book['sequence']
+        load_time = str(dt.now(tz=self.db.tz))
+        self.db.new_tick({'type': 'load_book'})
         for bid in book['bids']:
-            self.bids.insert_order({
+            msg = {
                 'price': float(bid[0]),
                 'size': float(bid[1]),
                 'order_id': bid[2],
                 'side': 'buy',
                 'product_id': self.sym,
                 'type': 'preload',
-                'time': dt.now()
-            })
+                'sequence': self.sequence,
+                'time': load_time
+            }
+            self.db.new_tick(msg)
+            self.bids.insert_order(msg)
 
         for ask in book['asks']:
-            self.asks.insert_order({
+            msg = {
                 'price': float(ask[0]),
                 'size': float(ask[1]),
                 'order_id': ask[2],
                 'side': 'sell',
                 'product_id': self.sym,
                 'type': 'preload',
-                'time': dt.now()
-            })
+                'sequence': self.sequence,
+                'time': load_time
+            }
+            self.db.new_tick(msg)
+            self.asks.insert_order(msg)
 
-        self.sequence = book['sequence']
         del book
 
         self.bids.warming_up = False
@@ -94,6 +102,8 @@ class GdaxOrderBook(OrderBook):
         new_sequence = int(msg['sequence'])
         if self.check_sequence(new_sequence):
             return False
+
+        self.db.new_tick(msg)
 
         side = msg['side']
 

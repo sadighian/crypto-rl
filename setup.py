@@ -14,5 +14,5 @@ setup(
     install_requires=['pymongo', 'requests',
                      'asyncio',
                      'sortedcontainers',
-                     'numpy', 'websockets']
+                     'numpy', 'websockets', 'arctic', 'pytz']
 )

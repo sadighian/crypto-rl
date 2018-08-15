@@ -19,19 +19,19 @@ class BitfinexOrderBook(OrderBook):
         :return: void
         """
         start_time = time()
-
+        self.db.new_tick({'type': 'load_book'})
         for row in book[1]:
-            order = {
+            msg = {
                 "order_id": int(row[0]),
                 "price": float(row[1]),
                 "size": float(abs(row[2])),
                 "side": 'sell' if float(row[2]) < float(0) else 'buy'
             }
-
-            if order['side'] == 'buy':
-                self.bids.insert_order(order)
+            self.db.new_tick(msg)
+            if msg['side'] == 'buy':
+                self.bids.insert_order(msg)
             else:
-                self.asks.insert_order(order)
+                self.asks.insert_order(msg)
 
         self.bids.warming_up = False
         self.asks.warming_up = False
@@ -87,6 +87,8 @@ class BitfinexOrderBook(OrderBook):
                 "side": 'sell' if float(msg[1][2]) < float(0) else 'buy'
             }
 
+            self.db.new_tick(order)
+
             # order should be removed from the book
             if order['price'] == float(0):
                 if order['side'] == 'buy':
@@ -135,6 +137,13 @@ class BitfinexOrderBook(OrderBook):
             print('Heartbeat for trades')
 
         elif msg_type == 'te':
+            trade = {
+                'price': msg[2][3],
+                'size': msg[2][2],
+                'side': side,
+                'type': msg[1]
+            }
+            self.db.new_tick(trade)
             self.trades[side]['size'] += abs(msg[2][3] * msg[2][2])  # price x size
             self.trades[side]['count'] += 1
             print('%s %f' % (side, msg[2][3]))

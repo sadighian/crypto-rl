@@ -1,7 +1,5 @@
 # ./main.py
-MONGO_ENDPOINT = 'mongodb://localhost:27017/'
-RECORD_DATA = True
-SNAPSHOT_RATE = 0.25  # 0.25 = 4x second
+SNAPSHOT_RATE = 15.0  # 0.25 = 4x second
 # BASKET = [['BTC-USD', 'BCH-USD', 'ETH-USD', 'LTC-USD', 'BTC-EUR', 'ETH-EUR', 'BTC-GBP'],  # GDAX pairs
 #           ['tBTCUSD', 'tBCHUSD', 'tETHUSD', 'tLTCUSD', 'tBTCEUR', 'tETHEUR', 'tBTCGBP']]  # Bitfinex pairs
 BASKET = [['BTC-USD', 'ETH-USD', 'LTC-USD', 'BCH-USD'],
@@ -16,3 +14,10 @@ MAX_RECONNECTION_ATTEMPTS = 300
 
 # ./common_components/book.py
 MAX_BOOK_ROWS = 250
+
+
+# ./common_components/database.py
+CHUNK_SIZE = 50000
+RECORD_DATA = True
+MONGO_ENDPOINT = 'localhost'
+ARCTIC_NAME = 'crypto.tickstore'

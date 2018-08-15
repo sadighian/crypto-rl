@@ -38,8 +38,8 @@ class GdaxClient(Client):
 # if __name__ == "__main__":
 #
 #     loop = asyncio.get_event_loop()
-#     symbols = ['BCH-USD', 'ETH-USD']#, 'LTC-USD', 'BTC-USD']
-#     # symbols = ['BCH-USD']
+#     # symbols = ['BCH-USD', 'LTC-USD', 'BTC-USD']
+#     symbols = ['BCH-USD']
 #     p = dict()
 #
 #     print('Initializing...%s' % symbols)
