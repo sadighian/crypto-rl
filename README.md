@@ -41,8 +41,8 @@ following reasons:
 
 The **arctic tick store** data model is essentially a `list` of `dict()`s, where 
 each `dict()` is an incoming tick from the exchanges.
-- Each chunk consists of `50,000` ticks
-- All currency pairs are stored in the **same** MongoDB `collection`
+- Each `list` consists of `50,000` ticks
+- All currency pairs are stored in the **same** MongoDB collection
 
 ### 4.3 Limit Order Book
 **SortedDict** python class is used for the limit order book
