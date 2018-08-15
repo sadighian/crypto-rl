@@ -1,5 +1,5 @@
 # Bitfinex Connector
-As of July 16th, 2018.
+As of August 14th, 2018.
 
 ## 1. Overview
 The Bitfinex connector consists of three classes:

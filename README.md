@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder
-As of August 16th, 2018.
+As of August 14th, 2018.
 
 ## 1. Purpose
 Application is designed to subscribe and record 
