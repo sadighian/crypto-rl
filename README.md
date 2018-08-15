@@ -1,10 +1,10 @@
 # Multiprocessing Crypto Recorder
-As of July 16th, 2018.
+As of August 16th, 2018.
 
 ## 1. Purpose
-Application designed to subscribe and record the
-full limit order book data from **GDAX** and **Bitfinex** into a MongoDB 
-for reinforcement learning simulations.
+Application is designed to subscribe and record 
+full limit order book data from **GDAX** and **Bitfinex** into an Arctic Tickstore 
+database (i.e., MongoDB) to perform reinforcement learning research.
 
 ## 2. Scope
 Application is intended to be used to record limit order book data for 
@@ -13,12 +13,12 @@ developed to place order and actually trade.
 
 ## 3. Dependencies
 - abc
+- [arctic](https://github.com/manahl/arctic)
 - asyncio
 - datetime
 - json
 - multiprocessing
 - os
-- pymongo
 - requests
 - SortedDict
 - threading
@@ -30,27 +30,20 @@ developed to place order and actually trade.
 - Each crypto pair (e.g., Bitcoin-USD) run on its own `Process`
   - Each exchange data feed is processed in its own `Thread` within the 
   parent crypto pair `Process`
-- _N_ times a second, a snapshot of the limit order book is taken, and 
-persisted to a MongoDB
 
 ![Design Pattern](assets/design-pattern.png)
 
-### 4.2 MongoDB Schema
-  - The database schema consists of order book snapshots only:
-    - `gdax` or `bitfinex` (string) exchange name
-        - `bids` and `asks` (string) order book side
-          - `prices` = (array of floats) order price
-          - `size` = (array of floats) cumulative volume at price
-          - `count` = (array of integers) total number of 
-          orders at a given price
-        - `upticks` and `downticks` (string) buy or sell transactions
-          - `size` = (float) notional value of trades within the 
-          last period _N_ 
-          (e.g., price x execution size)
-          - `count` = (int) total number of transactions that occurred 
-          within the last 
-          period _N_ (e.g., 5 trades)
-        - `time` = `datetime.now()` of time the snapshot was taken
+### 4.2 Arctic Schema
+**Arctic tick store** is the database implementation for this project for the 
+following reasons:
+ - Open sourced reliability
+ - Superior performance metrics (e.g., 10x data compression)
+
+The **arctic tick store** is schema is the aggregate of all the data elements 
+present in streaming tick data from the exchanges, which is subsequently
+inserted into the underlying MongoDB in chunks.
+- Each chunk consists of `50,000` ticks
+- All currency pairs are stored in the **same** MongoDB `collection`
 
 ### 4.3 Limit Order Book
 **SortedDict** python class is used for the limit order book
@@ -63,8 +56,8 @@ for the following reasons:
 
 ## 5. Appendix
 ### 5.1 Assumptions
-- You know how to start up a mongo database and have mongoDb installed already
-- You know how to clone projections using Git
+- You know how to start up a Mongo database and have mongoDb installed already
+- You know how to use Git tools
 - You know how to use a CLI
 
 ### 5.2 To-dos:
