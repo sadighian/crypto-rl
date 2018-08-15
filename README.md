@@ -39,9 +39,8 @@ following reasons:
  - Open sourced reliability
  - Superior performance metrics (e.g., 10x data compression)
 
-The **arctic tick store** is schema is the aggregate of all the data elements 
-present in streaming tick data from the exchanges, which is subsequently
-inserted into the underlying MongoDB in chunks.
+The **arctic tick store** data model is essentially a `list` of `dict()`s, where 
+each `dict()` is an incoming tick from the exchanges.
 - Each chunk consists of `50,000` ticks
 - All currency pairs are stored in the **same** MongoDB `collection`
 
