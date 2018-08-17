@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder
-As of August 14th, 2018.
+As of August 17th, 2018.
 
 ## 1. Purpose
 Application is designed to subscribe and record 
@@ -19,6 +19,7 @@ developed to place order and actually trade.
 - json
 - multiprocessing
 - os
+- pandas
 - requests
 - SortedDict
 - threading
@@ -30,6 +31,7 @@ developed to place order and actually trade.
 - Each crypto pair (e.g., Bitcoin-USD) run on its own `Process`
   - Each exchange data feed is processed in its own `Thread` within the 
   parent crypto pair `Process`
+  - A timer for periodic polling (or order book snapshots--see `feature-integration` branch) runs on a separate thread
 
 ![Design Pattern](assets/design-pattern.png)
 
@@ -39,9 +41,9 @@ following reasons:
  - Open sourced reliability
  - Superior performance metrics (e.g., 10x data compression)
 
-The **arctic tick store** data model is essentially a `list` of `dict()`s, where 
-each `dict()` is an incoming tick from the exchanges.
-- Each `list` consists of `50,000` ticks
+The **arctic tick store** data model is essentially a `list` of `dict`s, where 
+each `dict` is an incoming tick from the exchanges.
+- Each `list` consists of `./common_components/configs.CHUNK_SIZE` ticks (e.g., 100,000)
 - All currency pairs are stored in the **same** MongoDB collection
 
 ### 4.3 Limit Order Book
