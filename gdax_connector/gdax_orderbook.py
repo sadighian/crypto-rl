@@ -29,6 +29,8 @@ class GdaxOrderBook(OrderBook):
         Load initial limit order book snapshot
         :return: void
         """
+        self.bids.warming_up = True
+        self.asks.warming_up = True
         book = self._get_book()
         start_time = time()
         self.sequence = book['sequence']
