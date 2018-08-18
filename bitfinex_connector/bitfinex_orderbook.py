@@ -144,8 +144,6 @@ class BitfinexOrderBook(OrderBook):
                 'type': msg[1]
             }
             self.db.new_tick(trade)
-            self.trades[side]['size'] += abs(msg[2][3] * msg[2][2])  # price x size
-            self.trades[side]['count'] += 1
             # print('%s %f' % (side, msg[2][3]))
 
         # elif msg_type == 'tu':

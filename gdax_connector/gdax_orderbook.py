@@ -132,14 +132,10 @@ class GdaxOrderBook(OrderBook):
             size = float(msg['size']) * float(msg['price'])
             if side == 'buy':
                 self.bids.match(msg)
-                self.trades['downticks']['size'] += size
-                self.trades['downticks']['count'] += 1
                 # print('match: %s --' % str(msg['price']))
                 return True
             else:
                 self.asks.match(msg)
-                self.trades['upticks']['size'] += size
-                self.trades['upticks']['count'] += 1
                 # print('match: %s ++' % str(msg['price']))
                 return True
 

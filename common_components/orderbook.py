@@ -12,16 +12,6 @@ class OrderBook(ABC):
         self.db = Database(ccy, exchange)
         self.bids = GdaxBook(ccy, 'bids') if exchange == 'gdax' else BitfinexBook(ccy, 'bids')
         self.asks = GdaxBook(ccy, 'asks') if exchange == 'gdax' else BitfinexBook(ccy, 'asks')
-        self.trades = dict({
-            'upticks': {
-                'size': float(0),
-                'count': int(0)
-            },
-            'downticks': {
-                'size': float(0),
-                'count': int(0)
-            }
-        })
 
     def __str__(self):
         return '%s  |  %s' % (self.bids, self.asks)
@@ -29,18 +19,6 @@ class OrderBook(ABC):
     @abstractmethod
     def new_tick(self, msg):
         pass
-
-    def _reset_trades_tracker(self):
-        self.trades = dict({
-            'upticks': {
-                'size': float(0),
-                'count': int(0)
-            },
-            'downticks': {
-                'size': float(0),
-                'count': int(0)
-            }
-        })
 
     def clear_book(self):
         """
@@ -55,7 +33,6 @@ class OrderBook(ABC):
         Convert the limit order book into a DataFrame
         :return: pandas dataframe
         """
-        self._reset_trades_tracker()
 
         pd_bids = self.bids._get_bids_to_list()
         pd_asks = self.asks._get_asks_to_list()
@@ -78,6 +55,5 @@ class OrderBook(ABC):
         """
         return self.asks.get_ask()
 
-    @property
-    def _get_trades_tracker(self):
-        return self.trades
+    def done_warming_up(self):
+        return ~self.bids.warming_up & ~self.asks.warming_up

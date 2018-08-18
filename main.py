@@ -30,12 +30,12 @@ class Crypto(Process):
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
         self.current_time = dt.now()
 
-        if gdaxClient.book.bids.warming_up is False & bitfinexClient.book.bids.warming_up is False:
+        if gdaxClient.book.done_warming_up() & bitfinexClient.book.done_warming_up():
             print('%s >> %s' % (gdaxClient.sym, gdaxClient.book))
         else:
-            if gdaxClient.book.bids.warming_up:
+            if gdaxClient.book.done_warming_up():
                 print('GDAX - %s is warming up' % gdaxClient.sym)
-            if bitfinexClient.book.bids.warming_up:
+            if bitfinexClient.book.done_warming_up():
                 print('Bitfinex - %s is warming up' % bitfinexClient.sym)
 
     # noinspection PyTypeChecker
@@ -79,5 +79,5 @@ if __name__ == "__main__":
 
     for gdax, bitfinex in zip(*configs.BASKET):
         Crypto([[gdax], [bitfinex]]).start()
-        time.sleep(9)
         print('\nProcess started up for %s' % gdax)
+        time.sleep(9)

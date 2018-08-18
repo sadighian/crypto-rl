@@ -11,8 +11,6 @@ setup(
     author='Jonathan',
     author_email='jonathan.m.sadighian@gmail.com',
     description='Connector to record crypto exchange level 3 market data',
-    install_requires=['pymongo', 'requests',
-                     'asyncio',
-                     'sortedcontainers',
-                     'numpy', 'websockets', 'arctic', 'pytz']
+    install_requires=['requests', 'asyncio', 'sortedcontainers', 'numpy', 'websockets',
+                      'arctic', 'pytz', 'pandas', 'datetime']
 )
