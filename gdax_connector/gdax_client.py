@@ -24,10 +24,8 @@ class GdaxClient(Client):
                 print('\n%s missing a tick...going to try and reload the order book\n' % self.sym)
                 self.book.load_book()
                 self.retry_counter += 1
-                self.queue.task_done()
                 continue
 
-            # self.queue.task_done()
 
 # -------------------------------------------------------------------------------------------------------
 

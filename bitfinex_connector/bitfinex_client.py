@@ -24,12 +24,10 @@ class BitfinexClient(Client):
             if self.book.new_tick(msg) is False:
                 print('\n%s missing a tick...going to try and reload the order book\n' % self.sym)
                 self.retry_counter += 1
-                self.queue.task_done()
+
                 self.book.bids.warming_up = True
                 self.book.asks.warming_up = True
                 raise ConnectionClosed
-
-            # self.queue.task_done()
 
 
 # -------------------------------------------------------------------------------------------------------
