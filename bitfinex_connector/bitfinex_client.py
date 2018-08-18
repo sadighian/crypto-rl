@@ -13,8 +13,7 @@ class BitfinexClient(Client):
 
     def run(self):
         """
-        Handle incoming level 3 data on a separate process
-        (or process, depending on implementation)
+        Handle incoming level 3 data on a separate thread
         :return:
         """
         # print('\nBitfinexClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))

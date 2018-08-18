@@ -24,7 +24,7 @@ class Crypto(Process):
     # noinspection PyTypeChecker
     def timer_worker(self, gdaxClient, bitfinexClient):
         """
-        Thread worker to be invoked every N seconds
+        Thread worker to be invoked every N seconds (e.g., configs.SNAPSHOT_RATE)
         :return: void
         """
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
@@ -40,6 +40,10 @@ class Crypto(Process):
 
     # noinspection PyTypeChecker
     def run(self):
+        """
+        Processes market data subscription per crypto pair (e.g., BTC-USD)
+        :return: void
+        """
         for gdax, bitfinex in zip(*self.symbols):
             self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
             self.workers[gdax].start(), self.workers[bitfinex].start()
@@ -68,6 +72,9 @@ class Crypto(Process):
 
 
 if __name__ == "__main__":
+    """
+    Entry point of application
+    """
     # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
     for gdax, bitfinex in zip(*configs.BASKET):
