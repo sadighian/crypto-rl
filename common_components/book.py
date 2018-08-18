@@ -142,44 +142,10 @@ class Book(ABC):
         else:
             return 0.0
 
-    def _get_asks_to_list(self):
-        """
-        Transform order book to dictionary with 3 lists:
-            1- ask prices
-            2- cumulative ask volume at a given price
-            3- number of orders resting at a given price
-        :return: dictionary
-        """
-        prices, sizes, counts = list(), list(), list()
-        counter = 0
-        for k, v in self.price_dict.items():
-            counter += 1
-            if counter > self.max_book_size:
-                break
-            prices.append(k)
-            sizes.append(v['size'])
-            counts.append(v['count'])
-
-        return pd.DataFrame(data={'ask_price': prices, 'ask_size': sizes, 'ask_count': counts},
-                            index=[dt.now(tz=tz.timezone('US/Eastern')) for _ in range(counter - 1)])
-
-    def _get_bids_to_list(self):
-        """
-        Transform order book to dictionary with 3 lists:
-            1- bid prices
-            2- cumulative bid volume at a given price
-            3- number of orders resting at a given price
-        :return: dictionary
-        """
-        prices, sizes, counts = list(), list(), list()
-        counter = 0
-        for k, v in reversed(self.price_dict.items()):
-            counter += 1
-            if counter > self.max_book_size:
-                break
-            prices.append(k)
-            sizes.append(v['size'])
-            counts.append(v['count'])
-
-        return pd.DataFrame(data={'bid_price': prices, 'bid_size': sizes, 'bid_count': counts},
-                            index=[dt.now(tz=tz.timezone('US/Eastern')) for _ in range(counter - 1)])
+    # @abstractmethod
+    # def get_asks_to_list(self):
+    #     pass
+    #
+    # @abstractmethod
+    # def get_bids_to_list(self):
+    #     pass

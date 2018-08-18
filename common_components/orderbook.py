@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from gdax_connector.gdax_book import GdaxBook
 from bitfinex_connector.bitfinex_book import BitfinexBook
-from common_components.database import Database
 import pandas as pd
 
 
@@ -9,7 +8,6 @@ class OrderBook(ABC):
 
     def __init__(self, ccy, exchange):
         self.sym = ccy
-        self.db = Database(ccy, exchange)
         self.bids = GdaxBook(ccy, 'bids') if exchange == 'gdax' else BitfinexBook(ccy, 'bids')
         self.asks = GdaxBook(ccy, 'asks') if exchange == 'gdax' else BitfinexBook(ccy, 'asks')
         self.trades = dict({
@@ -42,6 +40,9 @@ class OrderBook(ABC):
             }
         })
 
+    def done_warming_up(self):
+        return ~self.bids.warming_up & ~self.asks.warming_up
+
     def clear_book(self):
         """
         Method to reset the limit order book
@@ -49,18 +50,16 @@ class OrderBook(ABC):
         """
         self.bids.clear()
         self.asks.clear()
+        self.bids.warming_up = True
+        self.asks.warming_up = True
 
+    @abstractmethod
     def render_book(self):
         """
         Convert the limit order book into a DataFrame
         :return: pandas dataframe
         """
-        self._reset_trades_tracker()
-
-        pd_bids = self.bids._get_bids_to_list()
-        pd_asks = self.asks._get_asks_to_list()
-
-        return pd.concat([pd_bids, pd_asks], sort=False)
+        pass
 
     @property
     def best_bid(self):

@@ -1,6 +1,7 @@
 from datetime import datetime as dt
 from time import time
 import requests
+import pytz as tz
 from common_components.orderbook import OrderBook
 
 
@@ -10,12 +11,17 @@ class GdaxOrderBook(OrderBook):
         super(GdaxOrderBook, self).__init__(sym, 'gdax')
         self.sequence = 0
 
+    def render_book(self):
+        return dict(list(self.bids.get_bids_to_list().items()) + list(self.asks.get_asks_to_list().items()))
+
     def _get_book(self):
         """
         Get order book snapshot
         :return: order book
         """
         print('%s get_book request made.' % self.sym)
+        self.bids.warming_up = True
+        self.asks.warming_up = True
         start_time = time()
         self.clear_book()
         path = ('https://api.pro.coinbase.com/products/%s/book' % self.sym)
@@ -32,8 +38,9 @@ class GdaxOrderBook(OrderBook):
         book = self._get_book()
         start_time = time()
         self.sequence = book['sequence']
-        load_time = str(dt.now(tz=self.db.tz))
-        self.db.new_tick({'type': 'load_book'})
+
+        current_time = dt.now(tz=tz.utc)
+
         for bid in book['bids']:
             msg = {
                 'price': float(bid[0]),
@@ -42,10 +49,9 @@ class GdaxOrderBook(OrderBook):
                 'side': 'buy',
                 'product_id': self.sym,
                 'type': 'preload',
-                'sequence': self.sequence,
-                'time': load_time
+                'time': current_time,
+                'sequence': self.sequence
             }
-            self.db.new_tick(msg)
             self.bids.insert_order(msg)
 
         for ask in book['asks']:
@@ -56,10 +62,9 @@ class GdaxOrderBook(OrderBook):
                 'side': 'sell',
                 'product_id': self.sym,
                 'type': 'preload',
-                'sequence': self.sequence,
-                'time': load_time
+                'time': current_time,
+                'sequence': self.sequence
             }
-            self.db.new_tick(msg)
             self.asks.insert_order(msg)
 
         del book
@@ -102,8 +107,6 @@ class GdaxOrderBook(OrderBook):
         new_sequence = int(msg['sequence'])
         if self.check_sequence(new_sequence):
             return False
-
-        self.db.new_tick(msg)
 
         side = msg['side']
 

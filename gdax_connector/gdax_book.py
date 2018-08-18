@@ -1,4 +1,6 @@
 from common_components.book import Book
+from datetime import datetime as dt
+import pytz as tz
 
 
 class GdaxBook(Book):
@@ -91,3 +93,37 @@ class GdaxBook(Book):
                     self.remove_price(old_order['price'])
             else:
                 print('%s remove_order: price not in price_map [%s]' % (msg['product_id'], str(old_order['price'])))
+
+    def get_bids_to_list(self):
+
+        book = dict()
+        counter = 0
+
+        for k, v in reversed(self.price_dict.items()):
+            if counter >= self.max_book_size:
+                book['index'] = dt.now(tz=tz.utc)
+                break
+
+            book['gdax_bid_price_%i' % counter] = k
+            book['gdax_bid_size_%i' % counter] = v['size']
+
+            counter += 1
+        # print(book)
+        return book
+
+    def get_asks_to_list(self):
+
+        book = dict()
+        counter = 0
+
+        for k, v in self.price_dict.items():
+            if counter >= self.max_book_size:
+                book['index'] = dt.now(tz=tz.utc)
+                break
+
+            book['gdax_ask_price_%i' % counter] = k
+            book['gdax_ask_size_%i' % counter] = v['size']
+
+            counter += 1
+
+        return book

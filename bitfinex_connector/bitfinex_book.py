@@ -1,4 +1,6 @@
 from common_components.book import Book
+from datetime import datetime as dt
+import pytz as tz
 
 
 class BitfinexBook(Book):
@@ -78,3 +80,37 @@ class BitfinexBook(Book):
 
         else:
             print('remove_order: order_id not found %s\n' % msg)
+
+    def get_bids_to_list(self):
+
+        book = dict()
+        counter = 0
+
+        for k, v in reversed(self.price_dict.items()):
+            if counter >= self.max_book_size:
+                book['index'] = dt.now(tz=tz.utc)
+                break
+
+            book['bitfinex_bid_price_%i' % counter] = k
+            book['bitfinex_bid_size_%i' % counter] = v['size']
+
+            counter += 1
+        # print(book)
+        return book
+
+    def get_asks_to_list(self):
+
+        book = dict()
+        counter = 0
+
+        for k, v in self.price_dict.items():
+            if counter >= self.max_book_size:
+                book['index'] = dt.now(tz=tz.utc)
+                break
+
+            book['bitfinex_ask_price_%i' % counter] = k
+            book['bitfinex_ask_size_%i' % counter] = v['size']
+
+            counter += 1
+
+        return book

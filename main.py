@@ -4,8 +4,8 @@ from threading import Timer
 from bitfinex_connector.bitfinex_client import BitfinexClient
 from gdax_connector.gdax_client import GdaxClient
 from common_components import configs
+from common_components.database import Database
 from datetime import datetime as dt
-from pymongo import MongoClient
 from multiprocessing import Process
 import time
 # import threading
@@ -20,6 +20,7 @@ class Crypto(Process):
         self.timer_frequency = configs.SNAPSHOT_RATE
         self.workers = dict()
         self.current_time = dt.now()
+        self.db = Database(symbols[0])
 
     # noinspection PyTypeChecker
     def timer_worker(self, gdaxClient, bitfinexClient):
@@ -28,14 +29,17 @@ class Crypto(Process):
         :return: void
         """
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
-        self.current_time = dt.now()
 
-        if gdaxClient.book.bids.warming_up is False & bitfinexClient.book.bids.warming_up is False:
+        if gdaxClient.book.done_warming_up() & bitfinexClient.book.done_warming_up():
             print('%s >> %s' % (gdaxClient.sym, gdaxClient.book))
+            print((gdaxClient.book.render_book()))
+            print((bitfinexClient.book.render_book()))
+            print('\n')
+            # self.db.new_book(gdaxClient.book.render_book().update(bitfinexClient.book.render_book()))
         else:
-            if gdaxClient.book.bids.warming_up:
+            if ~gdaxClient.book.done_warming_up():
                 print('GDAX - %s is warming up' % gdaxClient.sym)
-            if bitfinexClient.book.bids.warming_up:
+            if ~bitfinexClient.book.done_warming_up():
                 print('Bitfinex - %s is warming up' % bitfinexClient.sym)
 
     # noinspection PyTypeChecker
@@ -48,7 +52,7 @@ class Crypto(Process):
             self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
             self.workers[gdax].start(), self.workers[bitfinex].start()
             # print('Crypto: [%s] & [%s] workers instantiated on process_id %s' % (gdax, bitfinex, str(os.getpid())))
-            Timer(5.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
+            Timer(6.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
 
         tasks = asyncio.gather(*[self.workers[sym].subscribe() for sym in self.workers.keys()])
         loop = asyncio.get_event_loop()
@@ -79,5 +83,5 @@ if __name__ == "__main__":
 
     for gdax, bitfinex in zip(*configs.BASKET):
         Crypto([[gdax], [bitfinex]]).start()
-        time.sleep(9)
         print('\nProcess started up for %s' % gdax)
+        time.sleep(9)

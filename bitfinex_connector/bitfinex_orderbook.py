@@ -12,6 +12,9 @@ class BitfinexOrderBook(OrderBook):
             'trades': int(0)
         }
 
+    def render_book(self):
+        return dict(list(self.bids.get_bids_to_list().items()) + list(self.asks.get_asks_to_list().items()))
+
     def load_book(self, book):
         """
         Load initial limit order book snapshot
@@ -19,7 +22,6 @@ class BitfinexOrderBook(OrderBook):
         :return: void
         """
         start_time = time()
-        self.db.new_tick({'type': 'load_book'})
         for row in book[1]:
             msg = {
                 "order_id": int(row[0]),
@@ -27,14 +29,14 @@ class BitfinexOrderBook(OrderBook):
                 "size": float(abs(row[2])),
                 "side": 'sell' if float(row[2]) < float(0) else 'buy'
             }
-            self.db.new_tick(msg)
+
             if msg['side'] == 'buy':
                 self.bids.insert_order(msg)
             else:
                 self.asks.insert_order(msg)
 
-        self.bids.warming_up = False
-        self.asks.warming_up = False
+        self.bids.done_warming_up = False
+        self.asks.done_warming_up = False
 
         elapsed = time() - start_time
         print('%s: book loaded..............in %f seconds\n' % (self.sym, elapsed))
@@ -87,8 +89,6 @@ class BitfinexOrderBook(OrderBook):
                 "side": 'sell' if float(msg[1][2]) < float(0) else 'buy'
             }
 
-            self.db.new_tick(order)
-
             # order should be removed from the book
             if order['price'] == float(0):
                 if order['side'] == 'buy':
@@ -137,13 +137,6 @@ class BitfinexOrderBook(OrderBook):
             print('Heartbeat for trades')
 
         elif msg_type == 'te':
-            trade = {
-                'price': msg[2][3],
-                'size': msg[2][2],
-                'side': side,
-                'type': msg[1]
-            }
-            self.db.new_tick(trade)
             self.trades[side]['size'] += abs(msg[2][3] * msg[2][2])  # price x size
             self.trades[side]['count'] += 1
             # print('%s %f' % (side, msg[2][3]))
