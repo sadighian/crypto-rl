@@ -1,5 +1,6 @@
-# Multiprocessing Crypto Recorder
+# Multiprocessing Crypto Recorder (order book snapshots)
 As of August 17th, 2018.
+
 
 ## 1. Purpose
 Application is designed to subscribe and record 
@@ -42,7 +43,7 @@ following reasons:
  - Superior performance metrics (e.g., 10x data compression)
 
 The **arctic tick store** data model is essentially a `list` of `dict`s, where 
-each `dict` is an incoming tick from the exchanges.
+each `dict` is an incoming order book snapshot
 - Each `list` consists of `./common_components/configs.CHUNK_SIZE` ticks (e.g., 100,000)
 - All currency pairs are stored in the **same** MongoDB collection
 
