@@ -24,7 +24,6 @@ class Database(object):
         if self.db is not None:
             self.counter += 1
             self.data.append(msg)
-            print(msg)
             if self.counter % configs.CHUNK_SIZE == 0:
                 print('%s added %i msgs to Arctic' % (self.sym, self.counter))
                 self.collection.write(self.sym, self.data)

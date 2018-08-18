@@ -29,13 +29,9 @@ class Crypto(Process):
         :return: void
         """
         Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
-
         if gdaxClient.book.done_warming_up() & bitfinexClient.book.done_warming_up():
-            print('%s >> %s' % (gdaxClient.sym, gdaxClient.book))
-            print((gdaxClient.book.render_book()))
-            print((bitfinexClient.book.render_book()))
-            print('\n')
-            # self.db.new_book(gdaxClient.book.render_book().update(bitfinexClient.book.render_book()))
+            # print('%s >> %s' % (gdaxClient.sym, gdaxClient.book))
+            self.db.new_book(dict(list(gdaxClient.book.render_book().items()) + list(bitfinexClient.book.render_book().items())))
         else:
             if ~gdaxClient.book.done_warming_up():
                 print('GDAX - %s is warming up' % gdaxClient.sym)
