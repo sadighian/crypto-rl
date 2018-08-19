@@ -1,4 +1,4 @@
-# Multiprocessing Crypto Recorder (streaming ticks)
+# Multiprocessing Crypto Recorder (streaming ticks - full)
 As of August 17th, 2018.
 
 ## 1. Purpose
