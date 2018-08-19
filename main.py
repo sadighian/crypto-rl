@@ -16,9 +16,7 @@ class Crypto(object):
         Processes market data subscription per crypto pair (e.g., BTC-USD)
         :return: void
         """
-        counter = 0
         for gdax, bitfinex in self.symbols:
-            counter += 1
             self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
             self.workers[gdax].start(), self.workers[bitfinex].start()
 
