@@ -17,7 +17,6 @@ class GdaxOrderBook(OrderBook):
         """
         print('%s get_book request made.' % self.sym)
         start_time = time()
-        self.clear_book()
         path = ('https://api.pro.coinbase.com/products/%s/book' % self.sym)
         book = requests.get(path, params={'level': 3}).json()
         elapsed = time() - start_time
@@ -29,8 +28,6 @@ class GdaxOrderBook(OrderBook):
         Load initial limit order book snapshot
         :return: void
         """
-        self.bids.warming_up = True
-        self.asks.warming_up = True
         book = self._get_book()
         start_time = time()
         self.sequence = book['sequence']
@@ -48,7 +45,6 @@ class GdaxOrderBook(OrderBook):
                 'time': load_time
             }
             self.db.new_tick(msg)
-            self.bids.insert_order(msg)
 
         for ask in book['asks']:
             msg = {
@@ -62,12 +58,8 @@ class GdaxOrderBook(OrderBook):
                 'time': load_time
             }
             self.db.new_tick(msg)
-            self.asks.insert_order(msg)
 
         del book
-
-        self.bids.warming_up = False
-        self.asks.warming_up = False
 
         elapsed = time() - start_time
         print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
@@ -106,55 +98,3 @@ class GdaxOrderBook(OrderBook):
             return False
 
         self.db.new_tick(msg)
-
-        side = msg['side']
-
-        if message_type == 'received':
-            return True
-
-        elif message_type == 'open':
-            if side == 'buy':
-                self.bids.insert_order(msg)
-                return True
-            else:
-                self.asks.insert_order(msg)
-                return True
-
-        elif message_type == 'done':
-            if side == 'buy':
-                self.bids.remove_order(msg)
-                return True
-            else:
-                self.asks.remove_order(msg)
-                return True
-
-        elif message_type == 'match':
-            size = float(msg['size']) * float(msg['price'])
-            if side == 'buy':
-                self.bids.match(msg)
-                # print('match: %s --' % str(msg['price']))
-                return True
-            else:
-                self.asks.match(msg)
-                # print('match: %s ++' % str(msg['price']))
-                return True
-
-        elif message_type == 'change':
-            if side == 'buy':
-                self.bids.change(msg)
-                return True
-            else:
-                self.asks.change(msg)
-                return True
-
-        elif message_type == 'preload':
-            if side == 'buy':
-                self.bids._insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'buy')
-                return True
-            else:
-                self.asks._insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'sell')
-                return True
-
-        else:
-            print('\n\n\nunhandled message type\n\n\n')
-            return False

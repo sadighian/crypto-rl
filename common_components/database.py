@@ -21,13 +21,13 @@ class Database(object):
             self.db = None
             self.collection = None
 
-    def new_tick(self, msg):
+    def new_tick(self, msg, initial_image=None):
         if self.db is not None:
             self.counter += 1
             msg['index'] = dt.now(tz=self.tz)
             self.data.append(msg)
             if self.counter % configs.CHUNK_SIZE == 0:
                 print('%s added %i msgs to Arctic' % (self.sym, self.counter))
-                self.collection.write(self.sym, self.data)
+                self.collection.write(self.sym, self.data, initial_image=initial_image)
                 self.counter = 0
                 self.data.clear()

@@ -8,14 +8,12 @@ class GdaxClient(Client):
 
     def __init__(self, ccy):
         super(GdaxClient, self).__init__(ccy, 'gdax')
-        # print('\nGdaxClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
     def run(self):
         """
         Handle incoming level 3 data on a separate thread
         :return: void
         """
-        # print('\nGdaxClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
         while True:
             msg = self.queue.get()
 

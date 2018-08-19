@@ -9,14 +9,12 @@ class BitfinexClient(Client):
 
     def __init__(self, ccy):
         super(BitfinexClient, self).__init__(ccy, 'bitfinex')
-        # print('\nBitfinexClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
     def run(self):
         """
         Handle incoming level 3 data on a separate thread
         :return:
         """
-        # print('\nBitfinexClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
         while True:
             msg = self.queue.get()
 
@@ -24,8 +22,6 @@ class BitfinexClient(Client):
                 print('\n%s missing a tick...going to try and reload the order book\n' % self.sym)
                 self.retry_counter += 1
 
-                self.book.bids.warming_up = True
-                self.book.asks.warming_up = True
                 print('%s: manually forcing connectionClosed' % self.sym)
                 raise ConnectionClosed
 

@@ -28,13 +28,6 @@ class BitfinexOrderBook(OrderBook):
                 "side": 'sell' if float(row[2]) < float(0) else 'buy'
             }
             self.db.new_tick(msg)
-            if msg['side'] == 'buy':
-                self.bids.insert_order(msg)
-            else:
-                self.asks.insert_order(msg)
-
-        self.bids.warming_up = False
-        self.asks.warming_up = False
 
         elapsed = time() - start_time
         print('%s: book loaded..............in %f seconds\n' % (self.sym, elapsed))
@@ -86,33 +79,7 @@ class BitfinexOrderBook(OrderBook):
                 "size": float(abs(msg[1][2])),
                 "side": 'sell' if float(msg[1][2]) < float(0) else 'buy'
             }
-
             self.db.new_tick(order)
-
-            # order should be removed from the book
-            if order['price'] == float(0):
-                if order['side'] == 'buy':
-                    self.bids.remove_order(order)
-                elif order['side'] == 'sell':
-                    self.asks.remove_order(order)
-
-            # order is a new order or size update for bids
-            elif order['side'] == 'buy':
-                if order['order_id'] in self.bids.order_map:
-                    self.bids.change(order)
-                else:
-                    self.bids.insert_order(order)
-
-            # order is a new order or size update for asks
-            elif order['side'] == 'sell':
-                if order['order_id'] in self.asks.order_map:
-                    self.asks.change(order)
-                else:
-                    self.asks.insert_order(order)
-
-            # unhandled msg
-            else:
-                print('\nUnhandled list msg %s' % msg)
 
             return True
 
@@ -129,9 +96,9 @@ class BitfinexOrderBook(OrderBook):
         msg_type = msg[1]
 
         if msg[2][2] > 0.0:
-            side = 'upticks'
+            side = 'sell'  # sell = buyer initiated
         else:
-            side = 'downticks'
+            side = 'buy'  # buy = seller initiated
 
         if msg_type == 'hb':
             print('Heartbeat for trades')
