@@ -1,4 +1,4 @@
-# Multiprocessing Crypto Recorder (streaming ticks)
+# Multiprocessing Crypto Recorder (Lightewight - streaming ticks)
 As of August 17th, 2018.
 
 ## 1. Purpose
@@ -21,19 +21,13 @@ developed to place order and actually trade.
 - os
 - pandas
 - requests
-- SortedDict
 - threading
 - time
 - websockets
 
 ## 4. Design Pattern
 ### 4.1 Architecture
-- Each crypto pair (e.g., Bitcoin-USD) run on its own `Process`
-  - Each exchange data feed is processed in its own `Thread` within the 
-  parent crypto pair `Process`
-  - A timer for periodic polling (or order book snapshots--see `feature-integration` branch) runs on a separate thread
-
-![Design Pattern](assets/design-pattern.png)
+- Each crypto pair for each exchange (e.g., Bitcoin-USD) runs on its own `Thread`
 
 ### 4.2 Arctic Schema
 **Arctic tick store** is the database implementation for this project for the 
@@ -47,13 +41,7 @@ each `dict` is an incoming tick from the exchanges.
 - All currency pairs are stored in the **same** MongoDB collection
 
 ### 4.3 Limit Order Book
-**SortedDict** python class is used for the limit order book
-for the following reasons:
-- Sorted Price **Insertions** within the limit order book
- can be performed with **O(log n)**
-- Price **Deletions** within the limit order book can be performed with **O(1)**
-- **Getting / setting** values are performed with **O(1)**
-- **SortedDict** interface is intuitive, thus making implementation easier
+This is the `lightweight` branch, which does not have a limit order book.
 
 ## 5. Appendix
 ### 5.1 Assumptions
