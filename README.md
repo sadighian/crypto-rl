@@ -6,6 +6,10 @@ Application is designed to subscribe and record
 full limit order book data from **GDAX** and **Bitfinex** into an Arctic Tickstore 
 database (i.e., MongoDB) to perform reinforcement learning research.
 
+### Note: There are multiple branches of this project, each with a different implementation pattern. 
+ - This is the "FULL" version, which includes the maintenance of the LOB and runs on multiple processes. 
+ - Alternative, the "LIGHT" version does NOT have an LOB and runs on 1 process.
+
 ## 2. Scope
 Application is intended to be used to record limit order book data for 
 reinforcement learning modeling. Currently, there is no functionality 
