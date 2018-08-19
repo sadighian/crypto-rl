@@ -28,15 +28,15 @@ developed to place order and actually trade.
 
 ## 4. Design Pattern
 ### 4.1 Architecture
-- Each crypto pair (e.g., Bitcoin-USD) run on its own `Process`
+- Each crypto pair (e.g., Bitcoin-USD) runs on its own `Process`
   - Each exchange data feed is processed in its own `Thread` within the 
   parent crypto pair `Process`
-  - A timer for periodic polling (or order book snapshots--see `feature-integration` branch) runs on a separate thread
+  - A timer for periodic polling (or order book snapshots--see `mongo-integration` branch) runs on a separate thread
 
 ![Design Pattern](assets/design-pattern.png)
 
 ### 4.2 Arctic Schema
-**Arctic tick store** is the database implementation for this project for the 
+**Arctic tick store** is the database implementation of choice for this project for the 
 following reasons:
  - Open sourced reliability
  - Superior performance metrics (e.g., 10x data compression)
