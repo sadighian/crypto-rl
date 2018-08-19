@@ -1,4 +1,4 @@
-# Multiprocessing Crypto Recorder (Lightewight - streaming ticks)
+# Multithreading Crypto Recorder (Lightewight - streaming ticks)
 As of August 17th, 2018.
 
 ## 1. Purpose
