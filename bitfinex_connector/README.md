@@ -3,9 +3,8 @@ As of August 17th, 2018.
 
 ## 1. Overview
 The Bitfinex connector consists of three classes:
-1. `bitfinex_book.py` which is the Bitfinex implementation of `./common_components/book.py`
-2. `bitfinex_orderbook.py` which is the Bitfinex implementation of `./common_components/orderbook.py`
-3. `bitfinex_client.py` which is the Bitfinex implementation of `./common_components/client.py`
+1. `bitfinex_orderbook.py` which is the Bitfinex implementation of `./common_components/orderbook.py`
+2. `bitfinex_client.py` which is the Bitfinex implementation of `./common_components/client.py`
 
 ## 2. Subscriptions
 - WebSocket connections are made asynchronously with the `websockets` module
