@@ -17,7 +17,7 @@ MAX_BOOK_ROWS = 250
 
 
 # ./common_components/database.py
-CHUNK_SIZE = 100000
+BATCH_SIZE = 100000
 RECORD_DATA = True
 MONGO_ENDPOINT = 'localhost'
 ARCTIC_NAME = 'crypto.tickstore'

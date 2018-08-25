@@ -26,7 +26,7 @@ class Database(object):
             self.counter += 1
             msg['index'] = dt.now(tz=self.tz)
             self.data.append(msg)
-            if self.counter % configs.CHUNK_SIZE == 0:
+            if self.counter % configs.BATCH_SIZE == 0:
                 print('%s added %i msgs to Arctic' % (self.sym, self.counter))
                 self.collection.write(self.sym, self.data)
                 self.counter = 0
