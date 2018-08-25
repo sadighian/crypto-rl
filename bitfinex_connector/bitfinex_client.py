@@ -19,11 +19,8 @@ class BitfinexClient(Client):
             msg = self.queue.get()
 
             if self.book.new_tick(msg) is False:
-                print('\n%s missing a tick...going to try and reload the order book\n' % self.sym)
                 self.retry_counter += 1
-
-                print('%s: manually forcing connectionClosed' % self.sym)
-                raise ConnectionClosed
+                print('\n[Bitfinex - %s]...going to try and reload the order book\n' % self.sym)
 
 
 # -------------------------------------------------------------------------------------------------------

@@ -1,10 +1,10 @@
 # ./main.py
 BASKET = [('BTC-USD', 'tBTCUSD'),
-          # ('ETH-USD', 'tETHUSD'),
-          # ('LTC-USD', 'tLTCUSD'),
-          # ('BCH-USD', 'tBCHUSD'),
-          # ('ETC-USD', 'tETCUSD'),
-          # ('BTC-GBP', 'tBTCGBP'),
+          ('ETH-USD', 'tETHUSD'),
+          ('LTC-USD', 'tLTCUSD'),
+          ('BCH-USD', 'tBCHUSD'),
+          ('ETC-USD', 'tETCUSD'),
+          ('BTC-GBP', 'tBTCGBP'),
           ('BTC-EUR', 'tBTCEUR')]
 
 
