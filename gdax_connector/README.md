@@ -3,9 +3,8 @@ As of August 17th, 2018.
 
 ## 1. Overview
 The GDAX connector consists of three classes:
-1. `gdax_book.py` which is the gdax implementation of `./common_components/book.py`
-2. `gdax_orderbook.py` which is the gdax implementation of `./common_components/orderbook.py`
-3. `gdax_client.py` which is the gdax implementation of `./common_components/client.py`
+1. `gdax_orderbook.py` which is the gdax implementation of `./common_components/orderbook.py`
+2. `gdax_client.py` which is the gdax implementation of `./common_components/client.py`
 
 ## 2. Subscriptions
 - WebSocket connections are made asynchronously using the `websockets` module
