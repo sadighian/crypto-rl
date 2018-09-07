@@ -1,22 +1,17 @@
 from common_components.client import Client
-from websockets import ConnectionClosed
-# import asyncio
-# import threading
-# import os
+import asyncio
 
 
 class BitfinexClient(Client):
 
     def __init__(self, ccy):
         super(BitfinexClient, self).__init__(ccy, 'bitfinex')
-        # print('\nBitfinexClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
     def run(self):
         """
         Handle incoming level 3 data on a separate thread
         :return:
         """
-        # print('\nBitfinexClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
         while True:
             msg = self.queue.get()
 
@@ -35,7 +30,6 @@ class BitfinexClient(Client):
 # BitfinexClient class in isolation.
 # """
 # if __name__ == "__main__":
-#     # print('BitfinexClient __main__ - Process ID: %s' % str(os.getpid()))
 #     symbols = ['tETHEUR']  #, 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
 #     print('Initializing...%s' % symbols)
 #     loop = asyncio.get_event_loop()

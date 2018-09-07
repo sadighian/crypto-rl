@@ -129,14 +129,11 @@ class GdaxOrderBook(OrderBook):
                 return True
 
         elif message_type == 'match':
-            size = float(msg['size']) * float(msg['price'])
             if side == 'buy':
                 self.bids.match(msg)
-                # print('match: %s --' % str(msg['price']))
                 return True
             else:
                 self.asks.match(msg)
-                # print('match: %s ++' % str(msg['price']))
                 return True
 
         elif message_type == 'change':

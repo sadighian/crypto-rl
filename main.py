@@ -1,15 +1,11 @@
 import asyncio
-import numpy as np
 from threading import Timer
 from bitfinex_connector.bitfinex_client import BitfinexClient
 from gdax_connector.gdax_client import GdaxClient
 from common_components import configs
 from datetime import datetime as dt
-from pymongo import MongoClient
 from multiprocessing import Process
 import time
-# import threading
-# import os
 
 
 class Crypto(Process):
@@ -20,6 +16,7 @@ class Crypto(Process):
         self.timer_frequency = configs.SNAPSHOT_RATE
         self.workers = dict()
         self.current_time = dt.now()
+        self.daemon = False
 
     # noinspection PyTypeChecker
     def timer_worker(self, gdaxClient, bitfinexClient):
@@ -44,11 +41,10 @@ class Crypto(Process):
         Processes market data subscription per crypto pair (e.g., BTC-USD)
         :return: void
         """
-        for gdax, bitfinex in zip(*self.symbols):
-            self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
-            self.workers[gdax].start(), self.workers[bitfinex].start()
-            # print('Crypto: [%s] & [%s] workers instantiated on process_id %s' % (gdax, bitfinex, str(os.getpid())))
-            Timer(5.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
+        gdax, bitfinex = self.symbols
+        self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
+        self.workers[gdax].start(), self.workers[bitfinex].start()
+        Timer(5.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
 
         tasks = asyncio.gather(*[self.workers[sym].subscribe() for sym in self.workers.keys()])
         loop = asyncio.get_event_loop()
@@ -75,9 +71,7 @@ if __name__ == "__main__":
     """
     Entry point of application
     """
-    # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
-
-    for gdax, bitfinex in zip(*configs.BASKET):
-        Crypto([[gdax], [bitfinex]]).start()
+    for gdax, bitfinex in configs.BASKET:
+        Crypto((gdax, bitfinex)).start()
         print('\nProcess started up for %s' % gdax)
         time.sleep(9)

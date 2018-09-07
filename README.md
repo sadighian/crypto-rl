@@ -1,14 +1,21 @@
 # Multiprocessing Crypto Recorder (streaming ticks - full)
-As of August 17th, 2018.
+As of September 7th, 2018.
 
 ## 1. Purpose
-Application is designed to subscribe and record 
-full limit order book data from **GDAX** and **Bitfinex** into an Arctic Tickstore 
-database (i.e., MongoDB) to perform reinforcement learning research.
+To record full limit order book and trade tick data from **GDAX** and **Bitfinex** 
+into an Arctic Tickstore database (i.e., MongoDB) to 
+perform reinforcement learning research.
 
-### Note: There are multiple branches of this project, each with a different implementation pattern. 
- - This is the "FULL" version, which includes the real-time LOB and runs across multiple processes. 
- - Alternative, the "LIGHT" version does NOT have an LOB and runs on 1 process.
+There are multiple branches of this project, each with a different implementation pattern for persisting data:
+ - **FULL** branch is intended to be the foundation of a fully automated trading system (i.e., process-thread /
+ consumer-producer design patterns is ideal for a trading system that requires parallel processing) and 
+ persists streaming tick data into an **Arctic tick store**
+ - **LIGHT WEIGHT** branch is intended to record streaming data more efficiently than the __full__ branch (i.e., 
+ all websocket connections are made from a single process __and__ the limit order book is not maintained) and
+ persists streaming tick data into an **Arctic tick store**
+ - **BOOK SNAPSHOT** branch has the same design pattern as the __full__ branch, but instead of recording streaming 
+ ticks, snapshots of the limit order book are taken every **N** seconds and persisted 
+ into an **Arctic tick store**
 
 ## 2. Scope
 Application is intended to be used to record limit order book data for 
@@ -31,11 +38,13 @@ developed to place order and actually trade.
 - websockets
 
 ## 4. Design Pattern
+The design pattern is intended to serve as a foundation for implementing a trading strategy.
 ### 4.1 Architecture
 - Each crypto pair (e.g., Bitcoin-USD) runs on its own `Process`
   - Each exchange data feed is processed in its own `Thread` within the 
   parent crypto pair `Process`
-  - A timer for periodic polling (or order book snapshots--see `mongo-integration` branch) runs on a separate thread
+  - A timer for periodic polling (or order book snapshots--see `mongo-integration` or `arctic-book-snapshot` 
+  branch) runs on a separate thread
 
 ![Design Pattern](assets/design-pattern.png)
 
@@ -61,10 +70,11 @@ for the following reasons:
 
 ## 5. Appendix
 ### 5.1 Assumptions
-- You know how to start up a Mongo database and have mongoDb installed already
+- You know how to start up a MongoDB database and have mongoDB installed already
 - You know how to use Git tools
-- You know how to use a CLI
+- You are familiar with python3
 
 ### 5.2 To-dos:
 1. Create a back testing simulation environment using GYM
 2. Integrate Tensorflow into trading model
+3. Integrate FIX API

@@ -1,21 +1,17 @@
 from common_components.client import Client
-# import asyncio
-# import threading
-# import os
+import asyncio
 
 
 class GdaxClient(Client):
 
     def __init__(self, ccy):
         super(GdaxClient, self).__init__(ccy, 'gdax')
-        # print('\nGdaxClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
     def run(self):
         """
         Handle incoming level 3 data on a separate thread
         :return: void
         """
-        # print('\nGdaxClient run - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
         while True:
             msg = self.queue.get()
 
@@ -35,8 +31,7 @@ class GdaxClient(Client):
 # if __name__ == "__main__":
 #
 #     loop = asyncio.get_event_loop()
-#     # symbols = ['BCH-USD', 'LTC-USD', 'BTC-USD']
-#     symbols = ['BCH-USD']
+#     symbols = ['BCH-USD', 'LTC-USD', 'BTC-USD']
 #     p = dict()
 #
 #     print('Initializing...%s' % symbols)

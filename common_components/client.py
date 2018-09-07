@@ -7,14 +7,12 @@ import websockets
 from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from gdax_connector.gdax_orderbook import GdaxOrderBook
 from common_components import configs
-# import threading
-# import os
 
 
 class Client(Thread):
 
     def __init__(self, ccy, exchange):
-        super(Client, self).__init__(name=ccy, daemon=False)
+        super(Client, self).__init__(name=ccy, daemon=True)
         self.sym = ccy
         self.exchange = exchange
         self.ws = None
@@ -22,7 +20,6 @@ class Client(Thread):
         self.max_retries = configs.MAX_RECONNECTION_ATTEMPTS
         self.last_subscribe_time = None
         self.queue = Queue(maxsize=0)
-        # print('\nClient __init__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
         if self.exchange == 'gdax':
             self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
@@ -86,7 +83,6 @@ class Client(Thread):
 
             while True:
                 self.queue.put(json.loads(await self.ws.recv()))
-                # print(self.book)
 
         except websockets.ConnectionClosed as exception:
             print('%s: subscription exception %s' % (self.exchange, exception))
