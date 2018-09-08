@@ -1,10 +1,20 @@
-# Multithreading Crypto Recorder (Lightewight - streaming ticks)
-As of August 17th, 2018.
+# Multithreading Crypto Recorder (Light weight - streaming ticks)
+As of September 7th, 2018.
 
 ## 1. Purpose
-Application is designed to subscribe and record 
-full limit order book data from **GDAX** and **Bitfinex** into an Arctic Tickstore 
-database (i.e., MongoDB) to perform reinforcement learning research.
+The purpose of this application is to record full limit order book and trade tick data from **GDAX** and **Bitfinex** 
+into an Arctic Tickstore database (i.e., MongoDB) to perform reinforcement learning research.
+
+There are multiple branches of this project, each with a different implementation pattern for persisting data:
+ - **FULL** branch is intended to be the foundation of a fully automated trading system (i.e., process-thread /
+ consumer-producer design patterns are ideal for a trading system that requires parallel processing) and 
+ persists streaming tick data into an **Arctic tick store**
+ - **LIGHT WEIGHT** branch is intended to record streaming data more efficiently than the __full__ branch (i.e., 
+ all websocket connections are made from a single process __and__ the limit order book is not maintained) and
+ persists streaming tick data into an **Arctic tick store**
+ - **ORDER BOOK SNAPSHOT** branch has the same design pattern as the __full__ branch, but instead of recording streaming 
+ ticks, snapshots of the limit order book are taken every **N** seconds and persisted 
+ into an **Arctic tick store**
 
 ## 2. Scope
 Application is intended to be used to record limit order book data for 
