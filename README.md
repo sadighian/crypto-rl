@@ -2,9 +2,8 @@
 As of September 7th, 2018.
 
 ## 1. Purpose
-To record full limit order book and trade tick data from **GDAX** and **Bitfinex** 
-into an Arctic Tickstore database (i.e., MongoDB) to 
-perform reinforcement learning research.
+The purpose of this application is to record full limit order book and trade tick data from **GDAX** and **Bitfinex** 
+into an Arctic Tickstore database (i.e., MongoDB) to perform reinforcement learning research.
 
 There are multiple branches of this project, each with a different implementation pattern for persisting data:
  - **FULL** branch is intended to be the foundation of a fully automated trading system (i.e., process-thread /
