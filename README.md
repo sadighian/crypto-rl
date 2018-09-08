@@ -12,7 +12,7 @@ There are multiple branches of this project, each with a different implementatio
  - **LIGHT WEIGHT** branch is intended to record streaming data more efficiently than the __full__ branch (i.e., 
  all websocket connections are made from a single process __and__ the limit order book is not maintained) and
  persists streaming tick data into an **Arctic tick store**
- - **BOOK SNAPSHOT** branch has the same design pattern as the __full__ branch, but instead of recording streaming 
+ - **ORDER BOOK SNAPSHOT** branch has the same design pattern as the __full__ branch, but instead of recording streaming 
  ticks, snapshots of the limit order book are taken every **N** seconds and persisted 
  into an **Arctic tick store**
 
