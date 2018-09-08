@@ -2,15 +2,20 @@ from setuptools import setup
 
 setup(
     name='crypto',
-    version='1.0',
-    packages=['gdax_connector',
-              'bitfinex_connector',
-              'common_components'],
-    url='http://github.com/redbanies3ofthem/crypto',
-    license='TBD',
-    author='Jonathan',
+    version='2',
+    packages=['gdax_connector', 'common_components', 'bitfinex_connector'],
+    url='https://github.com/RedBanies3ofThem/crypto',
+    license='',
+    author='Jonathan Sadighian',
     author_email='jonathan.m.sadighian@gmail.com',
-    description='Connector to record crypto exchange level 3 market data',
-    install_requires=['requests', 'asyncio', 'sortedcontainers', 'numpy', 'websockets',
-                      'arctic', 'pytz', 'pandas', 'datetime']
+    description='Application to record streaming order and trade tick data from Coinbase and BITFINEX into an Arctic Tick Store',
+    install_requires=['requests',
+                        'asyncio',
+                        'sortedcontainers',
+                        'numpy',
+                        'websockets',
+                        'arctic',
+                        'pytz',
+                        'pandas',
+                        'datetime']
 )
