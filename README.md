@@ -7,7 +7,7 @@ into an Arctic Tickstore database (i.e., MongoDB) to perform reinforcement learn
 
 There are multiple branches of this project, each with a different implementation pattern for persisting data:
  - **FULL** branch is intended to be the foundation of a fully automated trading system (i.e., process-thread /
- consumer-producer design patterns is ideal for a trading system that requires parallel processing) and 
+ consumer-producer design patterns are ideal for a trading system that requires parallel processing) and 
  persists streaming tick data into an **Arctic tick store**
  - **LIGHT WEIGHT** branch is intended to record streaming data more efficiently than the __full__ branch (i.e., 
  all websocket connections are made from a single process __and__ the limit order book is not maintained) and
