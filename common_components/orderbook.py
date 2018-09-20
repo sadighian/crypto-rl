@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from gdax_connector.gdax_book import GdaxBook
 from bitfinex_connector.bitfinex_book import BitfinexBook
 import pandas as pd
+import pytz as tz
 
 
 class OrderBook(ABC):
