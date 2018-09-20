@@ -103,7 +103,7 @@ class GdaxOrderBook(OrderBook):
             return False
 
         if diff < 0:  # filter out stale ticks
-            print('%s has an obsolete tick [incoming=%i] [current=%i]' % (self.sym, new_sequence, self.sequence))
+            # print('%s has an obsolete tick [incoming=%i] [current=%i]' % (self.sym, new_sequence, self.sequence))
             return True
 
         self.sequence = new_sequence
