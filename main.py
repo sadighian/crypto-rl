@@ -20,7 +20,8 @@ class Crypto(Process):
         self.timer_frequency = configs.SNAPSHOT_RATE
         self.workers = dict()
         self.current_time = dt.now()
-        self.db = Database(symbols[0])
+        gdax, bitfinex = symbols
+        self.db = Database(bitfinex, 'bitfinex')
 
     # noinspection PyTypeChecker
     def timer_worker(self, gdaxClient, bitfinexClient):
@@ -44,11 +45,11 @@ class Crypto(Process):
         Processes market data subscription per crypto pair (e.g., BTC-USD)
         :return: void
         """
-        for gdax, bitfinex in zip(*self.symbols):
-            self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
-            self.workers[gdax].start(), self.workers[bitfinex].start()
-            # print('Crypto: [%s] & [%s] workers instantiated on process_id %s' % (gdax, bitfinex, str(os.getpid())))
-            Timer(6.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
+        gdax, bitfinex = self.symbols
+        self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
+        self.workers[gdax].start(), self.workers[bitfinex].start()
+        # print('Crypto: [%s] & [%s] workers instantiated on process_id %s' % (gdax, bitfinex, str(os.getpid())))
+        Timer(6.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
 
         tasks = asyncio.gather(*[self.workers[sym].subscribe() for sym in self.workers.keys()])
         loop = asyncio.get_event_loop()
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     """
     # print('\n__name__ = __main__ - Process ID: %s | Thread: %s' % (str(os.getpid()), threading.current_thread().name))
 
-    for gdax, bitfinex in zip(*configs.BASKET):
-        Crypto([[gdax], [bitfinex]]).start()
+    for gdax, bitfinex in configs.BASKET:
+        Crypto((gdax, bitfinex)).start()
         print('\nProcess started up for %s' % gdax)
         time.sleep(9)

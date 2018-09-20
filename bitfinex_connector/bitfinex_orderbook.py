@@ -13,6 +13,9 @@ class BitfinexOrderBook(OrderBook):
             'trades': int(0)
         }
 
+    def render_book(self):
+        return dict(list(self.bids.get_bids_to_list().items()) + list(self.asks.get_asks_to_list().items()))
+
     def load_book(self, book):
         """
         Load initial limit order book snapshot
@@ -20,7 +23,6 @@ class BitfinexOrderBook(OrderBook):
         :return: void
         """
         start_time = time()
-        self.db.new_tick({'type': 'load_book', 'product_id': self.sym})
         for row in book[1]:
             msg = {
                 "order_id": int(row[0]),
@@ -30,7 +32,7 @@ class BitfinexOrderBook(OrderBook):
                 "product_id": self.sym,
                 "type": 'preload'
             }
-            self.db.new_tick(msg)
+
             if msg['side'] == 'buy':
                 self.bids.insert_order(msg)
             else:
@@ -92,8 +94,6 @@ class BitfinexOrderBook(OrderBook):
                 "type": 'update'
             }
 
-            self.db.new_tick(order)
-
             # order should be removed from the book
             if order['price'] == float(0):
                 if order['side'] == 'buy':
@@ -149,7 +149,6 @@ class BitfinexOrderBook(OrderBook):
                 'type': msg_type,
                 "product_id": self.sym
             }
-            self.db.new_tick(trade)
             # print('%s %f' % (side, msg[2][3]))
 
         # elif msg_type == 'tu':

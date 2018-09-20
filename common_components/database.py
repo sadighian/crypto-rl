@@ -21,7 +21,7 @@ class Database(object):
             self.db = None
             self.collection = None
 
-    def new_tick(self, msg):
+    def new_book(self, msg):
         if self.db is not None:
             self.counter += 1
             msg['index'] = dt.now(tz=self.tz)

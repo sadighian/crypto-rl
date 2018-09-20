@@ -2,6 +2,7 @@ from datetime import datetime as dt
 from time import time
 import requests
 from common_components.orderbook import OrderBook
+import pytz as tz
 
 
 class GdaxOrderBook(OrderBook):
@@ -9,6 +10,9 @@ class GdaxOrderBook(OrderBook):
     def __init__(self, sym):
         super(GdaxOrderBook, self).__init__(sym, 'gdax')
         self.sequence = 0
+
+    def render_book(self):
+        return dict(list(self.bids.get_bids_to_list().items()) + list(self.asks.get_asks_to_list().items()))
 
     def _get_book(self):
         """
@@ -34,8 +38,7 @@ class GdaxOrderBook(OrderBook):
         book = self._get_book()
         start_time = time()
         self.sequence = book['sequence']
-        load_time = str(dt.now(tz=self.db.tz))
-        self.db.new_tick({'type': 'load_book', 'product_id': self.sym})
+        load_time = str(dt.now(tz=tz.utc))
         for bid in book['bids']:
             msg = {
                 'price': float(bid[0]),
@@ -47,7 +50,6 @@ class GdaxOrderBook(OrderBook):
                 'sequence': self.sequence,
                 'time': load_time
             }
-            self.db.new_tick(msg)
             self.bids.insert_order(msg)
 
         for ask in book['asks']:
@@ -61,7 +63,6 @@ class GdaxOrderBook(OrderBook):
                 'sequence': self.sequence,
                 'time': load_time
             }
-            self.db.new_tick(msg)
             self.asks.insert_order(msg)
 
         del book
@@ -107,8 +108,6 @@ class GdaxOrderBook(OrderBook):
             return True
 
         self.sequence = new_sequence
-
-        self.db.new_tick(msg)
 
         side = msg['side']
         if message_type == 'received':
