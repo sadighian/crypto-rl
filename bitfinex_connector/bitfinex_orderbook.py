@@ -1,4 +1,5 @@
 from time import time
+from datetime import datetime as dt
 import numpy as np
 from common_components.orderbook import OrderBook
 
@@ -19,13 +20,15 @@ class BitfinexOrderBook(OrderBook):
         :return: void
         """
         start_time = time()
-        self.db.new_tick({'type': 'load_book'})
+        self.db.new_tick({'type': 'load_book', 'product_id': self.sym})
         for row in book[1]:
             msg = {
                 "order_id": int(row[0]),
                 "price": float(row[1]),
                 "size": float(abs(row[2])),
-                "side": 'sell' if float(row[2]) < float(0) else 'buy'
+                "side": 'sell' if float(row[2]) < float(0) else 'buy',
+                "product_id": self.sym,
+                "type": 'preload'
             }
             self.db.new_tick(msg)
             if msg['side'] == 'buy':
@@ -84,7 +87,9 @@ class BitfinexOrderBook(OrderBook):
                 "order_id": int(msg[1][0]),
                 "price": float(msg[1][1]),
                 "size": float(abs(msg[1][2])),
-                "side": 'sell' if float(msg[1][2]) < float(0) else 'buy'
+                "side": 'sell' if float(msg[1][2]) < float(0) else 'buy',
+                "product_id": self.sym,
+                "type": 'update'
             }
 
             self.db.new_tick(order)
@@ -141,7 +146,8 @@ class BitfinexOrderBook(OrderBook):
                 'price': msg[2][3],
                 'size': msg[2][2],
                 'side': side,
-                'type': msg[1]
+                'type': msg_type,
+                "product_id": self.sym
             }
             self.db.new_tick(trade)
             # print('%s %f' % (side, msg[2][3]))

@@ -35,7 +35,7 @@ class GdaxOrderBook(OrderBook):
         start_time = time()
         self.sequence = book['sequence']
         load_time = str(dt.now(tz=self.db.tz))
-        self.db.new_tick({'type': 'load_book'})
+        self.db.new_tick({'type': 'load_book', 'product_id': self.sym})
         for bid in book['bids']:
             msg = {
                 'price': float(bid[0]),
@@ -72,17 +72,13 @@ class GdaxOrderBook(OrderBook):
         elapsed = time() - start_time
         print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
 
-    def check_sequence(self, new_sequence):
+    def check_sequence(self, diff):
         """
         Check for gap in incoming tick sequence
         :param new_sequence: incoming tick
         :return: True = reset order book / False = no sequence gap
         """
-        diff = new_sequence - self.sequence
-        if diff == 1:
-            self.sequence = new_sequence
-            return False
-        elif diff <= 0:
+        if diff <= 1:
             return False
         else:
             print('sequence gap: %s missing %i messages.\n' % (self.sym, diff))
@@ -102,13 +98,19 @@ class GdaxOrderBook(OrderBook):
             return True
 
         new_sequence = int(msg['sequence'])
-        if self.check_sequence(new_sequence):
+        diff = new_sequence - self.sequence
+        if self.check_sequence(diff):
             return False
+
+        if diff < 0:  # filter out stale ticks
+            print('%s has an obsolete tick [incoming=%i] [current=%i]' % (self.sym, new_sequence, self.sequence))
+            return True
+
+        self.sequence = new_sequence
 
         self.db.new_tick(msg)
 
         side = msg['side']
-
         if message_type == 'received':
             return True
 

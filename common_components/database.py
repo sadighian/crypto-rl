@@ -25,6 +25,7 @@ class Database(object):
         if self.db is not None:
             self.counter += 1
             msg['index'] = dt.now(tz=self.tz)
+            msg['system_time'] = str(msg['index'])
             self.data.append(msg)
             if self.counter % configs.BATCH_SIZE == 0:
                 print('%s added %i msgs to Arctic' % (self.sym, self.counter))

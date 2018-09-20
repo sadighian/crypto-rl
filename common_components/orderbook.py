@@ -3,6 +3,7 @@ from gdax_connector.gdax_book import GdaxBook
 from bitfinex_connector.bitfinex_book import BitfinexBook
 from common_components.database import Database
 import pandas as pd
+import pytz as tz
 
 
 class OrderBook(ABC):
