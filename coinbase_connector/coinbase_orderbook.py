@@ -2,6 +2,7 @@ from datetime import datetime as dt
 from time import time
 import requests
 from common_components.orderbook import OrderBook
+import numpy as np
 
 
 class CoinbaseOrderBook(OrderBook):
@@ -102,6 +103,9 @@ class CoinbaseOrderBook(OrderBook):
             if message_type == 'subscriptions':
                 print('Coinbase Subscriptions successful for : %s' % self.sym)
                 self.load_book()
+            return True
+        elif np.isnan(msg['sequence']):
+            print('\nfound a nan in the sequence')
             return True
 
         new_sequence = int(msg['sequence'])
