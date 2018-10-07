@@ -1,7 +1,7 @@
 import asyncio
 from threading import Timer
 from bitfinex_connector.bitfinex_client import BitfinexClient
-from gdax_connector.gdax_client import GdaxClient
+from coinbase_connector.coinbase_client import CoinbaseClient
 from common_components import configs
 from datetime import datetime as dt
 from multiprocessing import Process
@@ -19,19 +19,19 @@ class Crypto(Process):
         self.daemon = False
 
     # noinspection PyTypeChecker
-    def timer_worker(self, gdaxClient, bitfinexClient):
+    def timer_worker(self, coinbaseClient, bitfinexClient):
         """
         Thread worker to be invoked every N seconds (e.g., configs.SNAPSHOT_RATE)
         :return: void
         """
-        Timer(self.timer_frequency, self.timer_worker, args=(gdaxClient, bitfinexClient,)).start()
+        Timer(self.timer_frequency, self.timer_worker, args=(coinbaseClient, bitfinexClient,)).start()
         self.current_time = dt.now()
 
-        if gdaxClient.book.done_warming_up() & bitfinexClient.book.done_warming_up():
-            print('%s >> %s' % (gdaxClient.sym, gdaxClient.book))
+        if coinbaseClient.book.done_warming_up() & bitfinexClient.book.done_warming_up():
+            print('%s >> %s' % (coinbaseClient.sym, coinbaseClient.book))
         else:
-            if gdaxClient.book.done_warming_up():
-                print('GDAX - %s is warming up' % gdaxClient.sym)
+            if coinbaseClient.book.done_warming_up():
+                print('Coinbase - %s is warming up' % coinbaseClient.sym)
             if bitfinexClient.book.done_warming_up():
                 print('Bitfinex - %s is warming up' % bitfinexClient.sym)
 
@@ -41,10 +41,10 @@ class Crypto(Process):
         Processes market data subscription per crypto pair (e.g., BTC-USD)
         :return: void
         """
-        gdax, bitfinex = self.symbols
-        self.workers[gdax], self.workers[bitfinex] = GdaxClient(gdax), BitfinexClient(bitfinex)
-        self.workers[gdax].start(), self.workers[bitfinex].start()
-        Timer(5.0, self.timer_worker, args=(self.workers[gdax], self.workers[bitfinex],)).start()
+        coinbase, bitfinex = self.symbols
+        self.workers[coinbase], self.workers[bitfinex] = CoinbaseClient(coinbase), BitfinexClient(bitfinex)
+        self.workers[coinbase].start(), self.workers[bitfinex].start()
+        Timer(5.0, self.timer_worker, args=(self.workers[coinbase], self.workers[bitfinex],)).start()
 
         tasks = asyncio.gather(*[self.workers[sym].subscribe() for sym in self.workers.keys()])
         loop = asyncio.get_event_loop()
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     """
     Entry point of application
     """
-    for gdax, bitfinex in configs.BASKET:
-        Crypto((gdax, bitfinex)).start()
-        print('\nProcess started up for %s' % gdax)
+    for coinbase, bitfinex in configs.BASKET:
+        Crypto((coinbase, bitfinex)).start()
+        print('\nProcess started up for %s' % coinbase)
         time.sleep(9)

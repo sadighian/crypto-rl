@@ -1,10 +1,10 @@
 from common_components.book import Book
 
 
-class GdaxBook(Book):
+class CoinbaseBook(Book):
 
     def __init__(self, sym, side):
-        super(GdaxBook, self).__init__(sym, side)
+        super(CoinbaseBook, self).__init__(sym, side)
 
     def insert_order(self, msg):
         """

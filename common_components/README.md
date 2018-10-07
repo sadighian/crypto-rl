@@ -1,9 +1,9 @@
 # Common Components
-As of August 14th, 2018.
+As of October 10th, 2018.
 
 ## 1. Overview
 The `common_components` module contains the base classes for the overall project. 
-Each base class is overriden in the `bitfinex_connector` and `gdax_connector` projects. 
+Each base class is overriden in the `bitfinex_connector` and `coinbase_connector` projects. 
 
 ## 2. Base Classes
 
@@ -24,4 +24,4 @@ This class is the single source of all configurations within the project.
 
 ### 3.2 Database
 This class is the interface with the `Arctic Tick Store` database and is 
-implemented both `bitfinex_orderbook.py` and `gdax_orderbook.py` classes
+implemented both `bitfinex_orderbook.py` and `coinbase_orderbook.py` classes

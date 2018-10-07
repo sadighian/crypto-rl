@@ -2,10 +2,10 @@ from common_components.client import Client
 import asyncio
 
 
-class GdaxClient(Client):
+class CoinbaseClient(Client):
 
     def __init__(self, ccy):
-        super(GdaxClient, self).__init__(ccy, 'gdax')
+        super(CoinbaseClient, self).__init__(ccy, 'coinbase')
 
     def run(self):
         """
@@ -18,7 +18,7 @@ class GdaxClient(Client):
             if self.book.new_tick(msg) is False:
                 self.book.load_book()
                 self.retry_counter += 1
-                print('\n[GDAX - %s] ...going to try and reload the order book\n' % self.sym)
+                print('\n[Coinbase - %s] ...going to try and reload the order book\n' % self.sym)
                 continue
 
 
@@ -26,7 +26,7 @@ class GdaxClient(Client):
 
 # """
 # This __main__ function is used for testing the
-# GdaxClient class in isolation.
+# CoinbaseClient class in isolation.
 # """
 # if __name__ == "__main__":
 #
@@ -36,7 +36,7 @@ class GdaxClient(Client):
 #
 #     print('Initializing...%s' % symbols)
 #     for sym in symbols:
-#         p[sym] = GdaxClient(sym)
+#         p[sym] = CoinbaseClient(sym)
 #         p[sym].start()
 #
 #     tasks = asyncio.gather(*[(p[sym].subscribe()) for sym in symbols])

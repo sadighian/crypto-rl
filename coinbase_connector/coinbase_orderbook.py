@@ -4,10 +4,10 @@ import requests
 from common_components.orderbook import OrderBook
 
 
-class GdaxOrderBook(OrderBook):
+class CoinbaseOrderBook(OrderBook):
 
     def __init__(self, sym):
-        super(GdaxOrderBook, self).__init__(sym, 'gdax')
+        super(CoinbaseOrderBook, self).__init__(sym, 'coinbase')
         self.sequence = 0
 
     def _get_book(self):
@@ -72,16 +72,23 @@ class GdaxOrderBook(OrderBook):
         elapsed = time() - start_time
         print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
 
-    def check_sequence(self, diff):
+    def check_sequence(self, new_sequence, message_type):
         """
         Check for gap in incoming tick sequence
         :param new_sequence: incoming tick
         :return: True = reset order book / False = no sequence gap
         """
-        if diff <= 1:
+        diff = new_sequence - self.sequence
+        if diff == 1:
+            self.sequence = new_sequence
             return False
+        elif diff <= 0:
+            return False
+        elif message_type == 'preload':  # used for simulations
+            self.sequence = new_sequence
         else:
-            print('sequence gap: %s missing %i messages.\n' % (self.sym, diff))
+            # print('sequence gap: %s missing %i messages.\n' % (self.sym, diff))
+            print('\nBad sequence')
             return True
 
     def new_tick(self, msg):
@@ -93,20 +100,13 @@ class GdaxOrderBook(OrderBook):
         message_type = msg['type']
         if 'sequence' not in msg:
             if message_type == 'subscriptions':
-                print('GDAX Subscriptions successful for : %s' % self.sym)
+                print('Coinbase Subscriptions successful for : %s' % self.sym)
                 self.load_book()
             return True
 
         new_sequence = int(msg['sequence'])
-        diff = new_sequence - self.sequence
-        if self.check_sequence(diff):
+        if self.check_sequence(new_sequence, message_type):
             return False
-
-        if diff < 0:  # filter out stale ticks
-            # print('%s has an obsolete tick [incoming=%i] [current=%i]' % (self.sym, new_sequence, self.sequence))
-            return True
-
-        self.sequence = new_sequence
 
         self.db.new_tick(msg)
 
@@ -148,11 +148,15 @@ class GdaxOrderBook(OrderBook):
 
         elif message_type == 'preload':
             if side == 'buy':
-                self.bids._insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'buy')
+                self.bids.insert_order(msg)
                 return True
             else:
-                self.asks._insert_orders(msg['price'], msg['remaining_size'], msg['order_id'], self.sym, 'sell')
+                self.asks.insert_order(msg)
                 return True
+
+        elif message_type == 'load_book':
+            self.clear_book()
+            return True
 
         else:
             print('\n\n\nunhandled message type\n\n\n')

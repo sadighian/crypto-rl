@@ -69,32 +69,6 @@ class Book(ABC):
         """
         pass
 
-    def _insert_orders(self, price, size, oid, product_id, side):
-        """
-        Used for preloading limit order book for legacy version
-        of this project for GDAX only.
-        :param price: order price
-        :param size: order size
-        :param oid: order id
-        :param side: buy or sell
-        :param product_id: currency ticker
-        :return:
-        """
-        order = {
-            'order_id': oid,
-            'price': float(price),
-            'size': float(size),
-            'side': side,
-            'time': dt.now(),
-            'type': 'preload',
-            'product_id': product_id
-        }
-        if order['price'] not in self.price_dict:
-            self.create_price(order['price'])
-        self.price_dict[order['price']]['size'] += order['size']
-        self.price_dict[order['price']]['count'] += 1
-        self.order_map[order['order_id']] = order
-
     @abstractmethod
     def match(self, msg):
         """

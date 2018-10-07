@@ -1,25 +1,28 @@
 # Multiprocessing Crypto Recorder (streaming ticks - full)
-As of September 7th, 2018.
+As of October 10th, 2018.
 
 ## 1. Purpose
-The purpose of this application is to record full limit order book and trade tick data from **GDAX** and **Bitfinex** 
-into an Arctic Tickstore database (i.e., MongoDB) to perform reinforcement learning research.
+The purpose of this application is to record full limit order book and trade tick data 
+from **Coinbase Pro** and **Bitfinex** into an Arctic Tickstore database (i.e., MongoDB) 
+to perform reinforcement learning research.
 
 There are multiple branches of this project, each with a different implementation pattern for persisting data:
- - **FULL** branch is intended to be the foundation of a fully automated trading system (i.e., process-thread /
- consumer-producer design patterns are ideal for a trading system that requires parallel processing) and 
- persists streaming tick data into an **Arctic tick store**
+ - **FULL** branch is intended to be the foundation for a fully automated trading system (i.e., implementation of
+ design patterns that are ideal for a trading system that requires parallel processing) and  persists streaming 
+ tick data into an **Arctic Tick Store**
  - **LIGHT WEIGHT** branch is intended to record streaming data more efficiently than the __full__ branch (i.e., 
  all websocket connections are made from a single process __and__ the limit order book is not maintained) and
  persists streaming tick data into an **Arctic tick store**
- - **ORDER BOOK SNAPSHOT** branch has the same design pattern as the __full__ branch, but instead of recording streaming 
- ticks, snapshots of the limit order book are taken every **N** seconds and persisted 
+ - **ORDER BOOK SNAPSHOT** branch has the same design pattern as the __full__ branch, but instead of recording 
+ streaming ticks, snapshots of the limit order book are taken every **N** seconds and persisted 
  into an **Arctic tick store**
+ - **MONGO INTEGRATION** branch is the same implementation as **ORDER BOOK SNAPSHOT**, with the difference being 
+ a standard MongoDB is used, rather than Arctic. This branch was originally used to benchmark Arctic's 
+ performance and might not be up to date with the **FULL** branch.
 
 ## 2. Scope
-Application is intended to be used to record limit order book data for 
-reinforcement learning modeling. Currently, there is no functionality 
-developed to place order and actually trade.
+Application is intended to be used to record limit order book data for reinforcement learning modeling. 
+Currently, there is no functionality developed to place order and actually trade.
 
 ## 3. Dependencies
 - abc
@@ -30,6 +33,7 @@ developed to place order and actually trade.
 - multiprocessing
 - os
 - pandas
+- pytz
 - requests
 - SortedDict
 - threading
@@ -40,8 +44,7 @@ developed to place order and actually trade.
 The design pattern is intended to serve as a foundation for implementing a trading strategy.
 ### 4.1 Architecture
 - Each crypto pair (e.g., Bitcoin-USD) runs on its own `Process`
-  - Each exchange data feed is processed in its own `Thread` within the 
-  parent crypto pair `Process`
+  - Each exchange data feed is processed in its own `Thread` within the parent crypto pair `Process`
   - A timer for periodic polling (or order book snapshots--see `mongo-integration` or `arctic-book-snapshot` 
   branch) runs on a separate thread
 
@@ -54,9 +57,9 @@ following reasons:
  - Superior performance metrics (e.g., 10x data compression)
 
 The **arctic tick store** data model is essentially a `list` of `dict`s, where 
-each `dict` is an incoming tick from the exchanges.
-- Each `list` consists of `./common_components/configs.CHUNK_SIZE` ticks (e.g., 100,000)
-- All currency pairs are stored in the **same** MongoDB collection
+each `dict` is an incoming **tick** from the exchanges.
+- Each `list` consists of `./common_components/configs.BATCH_SIZE` ticks (e.g., 100,000 ticks)
+- Per the Arctic Tick Store design, all currency pairs are stored in the **same** MongoDB collection
 
 ### 4.3 Limit Order Book
 **SortedDict** python class is used for the limit order book
@@ -76,4 +79,4 @@ for the following reasons:
 ### 5.2 To-dos:
 1. Create a back testing simulation environment using GYM
 2. Integrate Tensorflow into trading model
-3. Integrate FIX API
+3. Integrate FIX API to enable live trading

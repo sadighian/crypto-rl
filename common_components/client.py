@@ -5,7 +5,7 @@ from multiprocessing import Queue #JoinableQueue as Queue
 from threading import Thread
 import websockets
 from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
-from gdax_connector.gdax_orderbook import GdaxOrderBook
+from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from common_components import configs
 
 
@@ -21,12 +21,12 @@ class Client(Thread):
         self.last_subscribe_time = None
         self.queue = Queue(maxsize=0)
 
-        if self.exchange == 'gdax':
+        if self.exchange == 'coinbase':
             self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
             self.request_unsubscribe = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
-            self.book = GdaxOrderBook(self.sym)
+            self.book = CoinbaseOrderBook(self.sym)
             self.trades_request = None
-            self.ws_endpoint = configs.GDAX_ENDPOINT
+            self.ws_endpoint = configs.COINBASE_ENDPOINT
 
         elif self.exchange == 'bitfinex':
             self.request = json.dumps({
@@ -47,10 +47,10 @@ class Client(Thread):
             self.ws_endpoint = configs.BITFINEX_ENDPOINT
 
     async def unsubscribe(self):
-        if self.exchange == 'gdax':
+        if self.exchange == 'coinbase':
             await self.ws.send(self.request_unsubscribe)
             output = json.loads(await self.ws.recv())
-            print('Client - Gdax: Unsubscribe successful %s' % output)
+            print('Client - coinbase: Unsubscribe successful %s' % output)
 
         elif self.exchange == 'bitfinex':
             for channel in self.book.channel_id:
@@ -103,7 +103,7 @@ class Client(Thread):
 
     def run(self):
         """
-        Thread to override in GDAX or Bitfinex implementation class
+        Thread to override in Coinbase or Bitfinex implementation class
         :return:
         """
         pass

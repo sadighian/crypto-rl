@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
-from gdax_connector.gdax_book import GdaxBook
+from coinbase_connector.coinbase_book import CoinbaseBook
 from bitfinex_connector.bitfinex_book import BitfinexBook
 from common_components.database import Database
 import pandas as pd
-import pytz as tz
 
 
 class OrderBook(ABC):
@@ -11,8 +10,8 @@ class OrderBook(ABC):
     def __init__(self, ccy, exchange):
         self.sym = ccy
         self.db = Database(ccy, exchange)
-        self.bids = GdaxBook(ccy, 'bids') if exchange == 'gdax' else BitfinexBook(ccy, 'bids')
-        self.asks = GdaxBook(ccy, 'asks') if exchange == 'gdax' else BitfinexBook(ccy, 'asks')
+        self.bids = CoinbaseBook(ccy, 'bids') if exchange == 'coinbase' else BitfinexBook(ccy, 'bids')
+        self.asks = CoinbaseBook(ccy, 'asks') if exchange == 'coinbase' else BitfinexBook(ccy, 'asks')
 
     def __str__(self):
         return '%s  |  %s' % (self.bids, self.asks)

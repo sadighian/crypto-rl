@@ -1,16 +1,16 @@
 # ./main.py
-SNAPSHOT_RATE = 10.0  # 0.25 = 4x second
-BASKET = [('BTC-USD', 'tBTCUSD'),
+SNAPSHOT_RATE = 1.0  # 0.25 = 4x second
+BASKET = [('BTC-USD', 'tBTCUSD')]#,
           # ('ETH-USD', 'tETHUSD'),
           # ('LTC-USD', 'tLTCUSD'),
           # ('BCH-USD', 'tBCHUSD'),
           # ('ETC-USD', 'tETCUSD'),
           # ('BTC-GBP', 'tBTCGBP'),
-          ('BTC-EUR', 'tBTCEUR')]
+          # ('BTC-EUR', 'tBTCEUR')]
 
 
 # ./common_components/client.py
-GDAX_ENDPOINT = 'wss://ws-feed.pro.coinbase.com'
+COINBASE_ENDPOINT = 'wss://ws-feed.pro.coinbase.com'
 BITFINEX_ENDPOINT = 'wss://api.bitfinex.com/ws/2'
 MAX_RECONNECTION_ATTEMPTS = 300
 
