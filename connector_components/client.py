@@ -1,12 +1,12 @@
 import json
 import time
 from datetime import datetime as dt
-from multiprocessing import Queue #JoinableQueue as Queue
+from multiprocessing import Queue
 from threading import Thread
 import websockets
 from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
-from common_components import configs
+from configurations.configs import MAX_RECONNECTION_ATTEMPTS, COINBASE_ENDPOINT, BITFINEX_ENDPOINT
 
 
 class Client(Thread):
@@ -17,7 +17,7 @@ class Client(Thread):
         self.exchange = exchange
         self.ws = None
         self.retry_counter = 0
-        self.max_retries = configs.MAX_RECONNECTION_ATTEMPTS
+        self.max_retries = MAX_RECONNECTION_ATTEMPTS
         self.last_subscribe_time = None
         self.queue = Queue(maxsize=0)
 
@@ -26,7 +26,7 @@ class Client(Thread):
             self.request_unsubscribe = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
             self.book = CoinbaseOrderBook(self.sym)
             self.trades_request = None
-            self.ws_endpoint = configs.COINBASE_ENDPOINT
+            self.ws_endpoint = COINBASE_ENDPOINT
 
         elif self.exchange == 'bitfinex':
             self.request = json.dumps({
@@ -44,7 +44,7 @@ class Client(Thread):
                 "symbol": self.sym
             })
             self.book = BitfinexOrderBook(self.sym)
-            self.ws_endpoint = configs.BITFINEX_ENDPOINT
+            self.ws_endpoint = BITFINEX_ENDPOINT
 
     async def unsubscribe(self):
         if self.exchange == 'coinbase':

@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder (streaming ticks - full)
-As of October 10th, 2018.
+As of November 1st, 2018.
 
 ## 1. Purpose
 The purpose of this application is to record full limit order book and trade tick data 
@@ -10,6 +10,9 @@ There are multiple branches of this project, each with a different implementatio
  - **FULL** branch is intended to be the foundation for a fully automated trading system (i.e., implementation of
  design patterns that are ideal for a trading system that requires parallel processing) and  persists streaming 
  tick data into an **Arctic Tick Store**
+ 
+ **Note:** the branches below (i.e., lightweight, order book snapshot, mongo integration) are no longer actively maintained as of October 2018, 
+ and are here for reference.
  - **LIGHT WEIGHT** branch is intended to record streaming data more efficiently than the __full__ branch (i.e., 
  all websocket connections are made from a single process __and__ the limit order book is not maintained) and
  persists streaming tick data into an **Arctic tick store**
@@ -48,7 +51,7 @@ The design pattern is intended to serve as a foundation for implementing a tradi
   - A timer for periodic polling (or order book snapshots--see `mongo-integration` or `arctic-book-snapshot` 
   branch) runs on a separate thread
 
-![Design Pattern](assets/design-pattern.png)
+![Design Pattern](images/design-pattern.png)
 
 ### 4.2 Arctic Schema
 **Arctic tick store** is the database implementation of choice for this project for the 
@@ -70,13 +73,31 @@ for the following reasons:
 - **Getting / setting** values are performed with **O(1)**
 - **SortedDict** interface is intuitive, thus making implementation easier
 
-## 5. Appendix
-### 5.1 Assumptions
+## 5. Examples and Usage
+### 5.1 Crypto.py
+This class is the entry point for recording tick data. 
+To start the application, type `python crypto.py` into your command prompt.
+
+### 5.2 Simulator.py
+This class is used for retrieving historical tick data which was stored in the `Arctic Tick Store`
+for the purpose of data replays. 
+
+To run the simulation, type `python simulator.py` into your command prompt.
+
+**Note** you will need insert your own logic in this class for your 
+own research/simulation purposes.
+
+**Also**, make sure to adjust the `query` parameters within the `simulator.py` file
+before running the script, to make sure you're retrieving data you have aggregated
+in your `Arctic Tick Store`. 
+
+## 6. Appendix
+### 6.1 Assumptions
 - You know how to start up a MongoDB database and have mongoDB installed already
 - You know how to use Git tools
 - You are familiar with python3
 
-### 5.2 To-dos:
+### 6.2 To-dos:
 1. Create a back testing simulation environment using GYM
 2. Integrate Tensorflow into trading model
 3. Integrate FIX API to enable live trading

@@ -1,11 +1,11 @@
 # GDAX Connector
-As of October 10th, 2018.
+As of November 1st, 2018.
 
 ## 1. Overview
 The Coinbase connector consists of three classes:
-1. `coinbase_book.py` which is the gdax implementation of `./common_components/book.py`
-2. `coinbase_orderbook.py` which is the gdax implementation of `./common_components/orderbook.py`
-3. `coinbase_client.py` which is the gdax implementation of `./common_components/client.py`
+1. `coinbase_book.py` which is the gdax implementation of `./connector_components/book.py`
+2. `coinbase_orderbook.py` which is the gdax implementation of `./connector_components/orderbook.py`
+3. `coinbase_client.py` which is the gdax implementation of `./connector_components/client.py`
 
 ## 2. Subscriptions
 - WebSocket connections are made asynchronously using the `websockets` module

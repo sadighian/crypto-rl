@@ -1,7 +1,6 @@
 from time import time
-from datetime import datetime as dt
 import numpy as np
-from common_components.orderbook import OrderBook
+from connector_components.orderbook import OrderBook
 
 
 class BitfinexOrderBook(OrderBook):
@@ -13,7 +12,7 @@ class BitfinexOrderBook(OrderBook):
             'trades': int(0)
         }
 
-    def load_book(self, book):
+    def _load_book(self, book):
         """
         Load initial limit order book snapshot
         :param book: order book snapshot
@@ -49,15 +48,27 @@ class BitfinexOrderBook(OrderBook):
         :return: False if there is an exception
         """
         # check for data messages, which only come in lists
-        if type(msg) is list:
+        if isinstance(msg, list):
             if msg[0] == self.channel_id['book']:
                 return self._process_book(msg)
             elif msg[0] == self.channel_id['trades']:
                 return self._process_trades(msg)
 
         # non-data messages
-        elif type(msg) is dict:
-            return self._process_events(msg)
+        elif isinstance(msg, dict):
+            if 'event' in msg:
+                return self._process_events(msg)
+            elif msg['type'] == 'te':
+                # trades are not currently supported for data replays
+                return True
+            elif msg['type'] == 'update':
+                return self._process_book_replay(msg)
+            elif msg['type'] == 'preload':
+                return self._process_book_replay(msg)
+            elif msg['type'] == 'load_book':
+                return True
+            else:
+                print('new_tick() message does not know how to be processed = %s' % str(msg))
 
         # unhandled exception
         else:
@@ -78,7 +89,7 @@ class BitfinexOrderBook(OrderBook):
         # order book message (initial snapshot)
         elif np.shape(msg[1])[0] > 3:
             print('%s loading book...' % self.sym)
-            self.load_book(msg)
+            self._load_book(msg)
             return True
 
         else:
@@ -121,6 +132,43 @@ class BitfinexOrderBook(OrderBook):
 
             return True
 
+    def _process_book_replay(self, order):
+        """
+        Internal method to process FULL BOOK market data
+        :param msg: incoming tick
+        :return: False if resubscription in required
+        """
+        # clean up the datatypes
+        order['price'] = float(order['price'])
+        order['size'] = float(order['size'])
+
+        # order should be removed from the book
+        if order['price'] == float(0):
+            if order['side'] == 'buy':
+                self.bids.remove_order(order)
+            elif order['side'] == 'sell':
+                self.asks.remove_order(order)
+
+        # order is a new order or size update for bids
+        elif order['side'] == 'buy':
+            if order['order_id'] in self.bids.order_map:
+                self.bids.change(order)
+            else:
+                self.bids.insert_order(order)
+
+        # order is a new order or size update for asks
+        elif order['side'] == 'sell':
+            if order['order_id'] in self.asks.order_map:
+                self.asks.change(order)
+            else:
+                self.asks.insert_order(order)
+
+        # unhandled msg
+        else:
+            print('\n_process_book_replay() Unhandled list msg %s' % order)
+
+        return True
+
     def _process_trades(self, msg):
         """
         Internal method to process trade messages
@@ -143,8 +191,8 @@ class BitfinexOrderBook(OrderBook):
 
         elif msg_type == 'te':
             trade = {
-                'price': msg[2][3],
-                'size': msg[2][2],
+                'price': float(msg[2][3]),
+                'size': float(msg[2][2]),
                 'side': side,
                 'type': msg_type,
                 "product_id": self.sym

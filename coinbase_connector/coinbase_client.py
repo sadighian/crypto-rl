@@ -1,4 +1,4 @@
-from common_components.client import Client
+from connector_components.client import Client
 import asyncio
 
 

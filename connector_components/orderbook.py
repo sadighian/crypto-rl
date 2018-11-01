@@ -1,8 +1,8 @@
-from abc import ABC, abstractmethod
 from coinbase_connector.coinbase_book import CoinbaseBook
 from bitfinex_connector.bitfinex_book import BitfinexBook
-from common_components.database import Database
-import pandas as pd
+from database.database import Database
+from abc import ABC, abstractmethod
+import numpy as np
 
 
 class OrderBook(ABC):
@@ -28,16 +28,33 @@ class OrderBook(ABC):
         self.bids.clear()
         self.asks.clear()
 
+    # def render_book(self):
+    #     """
+    #     Convert the limit order book into a DataFrame
+    #     :return: pandas dataframe
+    #     """
+    #
+    #     pd_bids = self.bids._get_bids_to_list()
+    #     pd_asks = self.asks._get_asks_to_list()
+    #
+    #     return pd.concat([pd_bids, pd_asks], sort=False)
+
     def render_book(self):
         """
-        Convert the limit order book into a DataFrame
-        :return: pandas dataframe
+        Create stationary feature set for limit order book
+
+        Credit: https://arxiv.org/abs/1810.09965v1
+
+        :return: numpy array
         """
+        best_bid, bid_value = self.bids.get_bid()
+        best_ask, ask_value = self.asks.get_ask()
+        midpoint = (best_bid + best_ask) / 2.0
 
-        pd_bids = self.bids._get_bids_to_list()
-        pd_asks = self.asks._get_asks_to_list()
+        bids = self.bids._get_bids_to_list(midpoint)
+        asks = self.asks._get_asks_to_list(midpoint)
 
-        return pd.concat([pd_bids, pd_asks], sort=False)
+        return np.hstack((bids, asks))
 
     @property
     def best_bid(self):

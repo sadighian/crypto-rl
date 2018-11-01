@@ -1,4 +1,5 @@
-from common_components.client import Client
+from connector_components.client import Client
+import websockets
 import asyncio
 
 
@@ -20,7 +21,7 @@ class BitfinexClient(Client):
                 self.book.bids.warming_up = True
                 self.book.asks.warming_up = True
                 print('\n[Bitfinex - %s] ...going to try and reload the order book\n' % self.sym)
-                continue
+                raise websockets.ConnectionClosed(1006, 'no reason')  # raise an exception to invoke reconnecting
 
 
 # -------------------------------------------------------------------------------------------------------

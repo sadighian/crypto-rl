@@ -1,7 +1,7 @@
+from connector_components.orderbook import OrderBook
 from datetime import datetime as dt
 from time import time
 import requests
-from common_components.orderbook import OrderBook
 import numpy as np
 
 
@@ -73,7 +73,7 @@ class CoinbaseOrderBook(OrderBook):
         elapsed = time() - start_time
         print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
 
-    def check_sequence(self, new_sequence, message_type):
+    def _check_sequence(self, new_sequence, message_type):
         """
         Check for gap in incoming tick sequence
         :param new_sequence: incoming tick
@@ -87,9 +87,11 @@ class CoinbaseOrderBook(OrderBook):
             return False
         elif message_type == 'preload':  # used for simulations
             self.sequence = new_sequence
+            return False
         else:
-            # print('sequence gap: %s missing %i messages.\n' % (self.sym, diff))
-            print('\nBad sequence')
+            print('sequence gap: %s missing %i messages. new_sequence: %i [%s]\n' %
+                  (self.sym, diff, new_sequence, message_type))
+            self.sequence = new_sequence
             return True
 
     def new_tick(self, msg):
@@ -105,14 +107,14 @@ class CoinbaseOrderBook(OrderBook):
                 self.load_book()
             return True
         elif np.isnan(msg['sequence']):
-            print('\nfound a nan in the sequence')
+            print('\n%s found a nan in the sequence' % self.sym)
             return True
 
         new_sequence = int(msg['sequence'])
-        if self.check_sequence(new_sequence, message_type):
+        if self._check_sequence(new_sequence, message_type):
             return False
 
-        self.db.new_tick(msg)
+        self.db.new_tick(msg)  # make sure CONFIGS.RECORDING is false when replaying data
 
         side = msg['side']
         if message_type == 'received':
@@ -163,5 +165,5 @@ class CoinbaseOrderBook(OrderBook):
             return True
 
         else:
-            print('\n\n\nunhandled message type\n\n\n')
+            print('\n\n\nunhandled message type\n%s\n\n' % str(msg))
             return False

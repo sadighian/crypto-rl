@@ -1,4 +1,5 @@
-from common_components.book import Book
+from connector_components.book import Book
+from configurations.configs import RECORD_DATA
 
 
 class CoinbaseBook(Book):
@@ -54,7 +55,7 @@ class CoinbaseBook(Book):
                 self.price_dict[old_order['price']]['size'] -= remove_size
             else:
                 print('\nmatch: price not in tree already [%s]\n' % msg)
-        else:
+        elif RECORD_DATA:
             print('\n%s match: order id cannot be found for %s\n' % (self.sym, msg))
 
     def change(self, msg):
@@ -72,7 +73,7 @@ class CoinbaseBook(Book):
                 old_order['size'] = new_size
                 self.order_map[old_order['order_id']] = old_order
                 self.price_dict[old_order['price']]['size'] -= diff
-            else:
+            elif RECORD_DATA:
                 print('\n%s change: missing order_ID [%s] from order_map\n' % (self.sym, msg))
 
     def remove_order(self, msg):
@@ -89,5 +90,5 @@ class CoinbaseBook(Book):
                 self.price_dict[old_order['price']]['count'] -= 1
                 if self.price_dict[old_order['price']]['count'] == 0:
                     self.remove_price(old_order['price'])
-            else:
+            elif RECORD_DATA:
                 print('%s remove_order: price not in price_map [%s]' % (msg['product_id'], str(old_order['price'])))

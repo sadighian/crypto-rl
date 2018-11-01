@@ -2,7 +2,7 @@ import asyncio
 from threading import Timer
 from bitfinex_connector.bitfinex_client import BitfinexClient
 from coinbase_connector.coinbase_client import CoinbaseClient
-from common_components import configs
+from configurations import configs
 from datetime import datetime as dt
 from multiprocessing import Process
 import time

@@ -1,4 +1,5 @@
-from common_components.book import Book
+from connector_components.book import Book
+from configurations.configs import RECORD_DATA
 
 
 class BitfinexBook(Book):
@@ -76,5 +77,5 @@ class BitfinexBook(Book):
 
             del self.order_map[old_order['order_id']]
 
-        else:
+        elif RECORD_DATA:
             print('remove_order: order_id not found %s\n' % msg)

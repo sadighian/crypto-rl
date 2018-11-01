@@ -1,4 +1,6 @@
-# ./main.py
+import pytz as tz
+
+# ./crypto.py
 SNAPSHOT_RATE = 1.0  # 0.25 = 4x second
 BASKET = [('BTC-USD', 'tBTCUSD')]#,
           # ('ETH-USD', 'tETHUSD'),
@@ -9,18 +11,21 @@ BASKET = [('BTC-USD', 'tBTCUSD')]#,
           # ('BTC-EUR', 'tBTCEUR')]
 
 
-# ./common_components/client.py
+# ./connector_components/client.py
 COINBASE_ENDPOINT = 'wss://ws-feed.pro.coinbase.com'
 BITFINEX_ENDPOINT = 'wss://api.bitfinex.com/ws/2'
 MAX_RECONNECTION_ATTEMPTS = 300
 
 
-# ./common_components/book.py
-MAX_BOOK_ROWS = 250
+# ./connector_components/book.py
+MAX_BOOK_ROWS = 15
 
 
-# ./common_components/database.py
+# ./connector_components/database.py
 BATCH_SIZE = 100000
 RECORD_DATA = False
 MONGO_ENDPOINT = 'localhost'
 ARCTIC_NAME = 'crypto.tickstore'
+
+# ./database/database.py
+TIMEZONE = tz.utc
