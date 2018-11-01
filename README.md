@@ -61,7 +61,7 @@ following reasons:
 
 The **arctic tick store** data model is essentially a `list` of `dict`s, where 
 each `dict` is an incoming **tick** from the exchanges.
-- Each `list` consists of `./common_components/configs.BATCH_SIZE` ticks (e.g., 100,000 ticks)
+- Each `list` consists of `./configurations/BATCH_SIZE` ticks (e.g., 100,000 ticks)
 - Per the Arctic Tick Store design, all currency pairs are stored in the **same** MongoDB collection
 
 ### 4.3 Limit Order Book
