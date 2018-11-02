@@ -32,13 +32,14 @@ into the `Arctic Tick Store`
 
 ### 2.8 RECORD_DATA 
 (`bool`) Flag for recording tick data (TRUE = Recording / FALSE = Not recording)
+
 **Note** For simulations, this flag must be set to FALSE.
 
 ### 2.9 MONGO_ENDPOINT 
 (`string`) Server address of the `Arctic Tick Store`
 
 ### 2.10 ARCTIC_NAME 
-(`string`) Collection name for the `Arctic Tick Store
+(`string`) Collection name for the `Arctic Tick Store`
 
 ### 2.11 TIMEZONE
-(`pytz.tz`) Timezone for making datetime.now() calls (e.g., UTC)
+(`pytz.tz`) Timezone for making `datetime.now()` calls (e.g., UTC)
