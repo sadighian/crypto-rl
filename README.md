@@ -21,7 +21,7 @@ There are multiple branches of this project, each with a different implementatio
  into an **Arctic tick store**
  - **MONGO INTEGRATION** branch is the same implementation as **ORDER BOOK SNAPSHOT**, with the difference being 
  a standard MongoDB is used, rather than Arctic. This branch was originally used to benchmark Arctic's 
- performance and might not be up to date with the **FULL** branch.
+ performance and is not up to date with the **FULL** branch.
 
 ## 2. Scope
 Application is intended to be used to record limit order book data for reinforcement learning modeling. 
@@ -34,6 +34,7 @@ Currently, there is no functionality developed to place order and actually trade
 - datetime
 - json
 - multiprocessing
+- numpy
 - os
 - pandas
 - pytz
@@ -65,11 +66,11 @@ each `dict` is an incoming **tick** from the exchanges.
 - Per the Arctic Tick Store design, all currency pairs are stored in the **same** MongoDB collection
 
 ### 4.3 Limit Order Book
-**SortedDict** python class is used for the limit order book
+**SortedDict** pure python class is used for the limit order book
 for the following reasons:
 - Sorted Price **Insertions** within the limit order book
  can be performed with **O(log n)**
-- Price **Deletions** within the limit order book can be performed with **O(1)**
+- Price **Deletions** within the limit order book can be performed with **O(log n)**
 - **Getting / setting** values are performed with **O(1)**
 - **SortedDict** interface is intuitive, thus making implementation easier
 
@@ -99,5 +100,6 @@ in your `Arctic Tick Store`.
 
 ### 6.2 To-dos:
 1. Create a back testing simulation environment using GYM
-2. Integrate Tensorflow into trading model
-3. Integrate FIX API to enable live trading
+2. Create agent architecture using Tensorflow
+3. Create DockerFile so that simulations can be rapidly deployed in the cloud (e.g., AWS Fargate)
+4. Integrate FIX API to enable live trading
