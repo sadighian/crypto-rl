@@ -20,16 +20,59 @@ class Simulator(object):
             self.arctic = Arctic(MONGO_ENDPOINT)
             self.arctic.initialize_library(ARCTIC_NAME, lib_type=TICK_STORE)
             self.library = self.arctic[ARCTIC_NAME]
-            self.queue, self.return_queue = Queue(maxsize=0), Queue(maxsize=0)
             self.number_of_workers = cpu_count()
+            self.queue = Queue(maxsize=self.number_of_workers)
+            self.return_queue = Queue(maxsize=self.number_of_workers)
             self.workers = [Process(name='Process-%i' % num,
-                                    args=(self.queue, self.return_queue,),
+                                    args=(self.queue, self.return_queue),
                                     target=self._do_work) for num in range(self.number_of_workers)]
             print('Connected to Arctic.')
         except Exception as ex:
             self.arctic, self.library, self.workers = None, None, None
             print('Unable to connect to Arctic database')
             print(ex)
+
+    def get_tick_history(self, query):
+        """
+        Function to query the Arctic Tick Store and...
+        1.  Return the specified historical data for a given set of securities
+            over a specified amount of time
+        2.  Convert the data returned from the query from a panda to a list of dicts
+            and while doing so, allocate the work across all available CPU cores
+
+        :param query: (dict) of the query parameters
+            - ccy: list of symbols
+            - startDate: int YYYYMMDD
+            - endDate: int YYYYMMDD
+        :return: list of dicts, where each dict is a tick that was recorded
+        """
+        start_time = dt.now(TIMEZONE)
+
+        assert RECORD_DATA is False
+
+        tick_history_dict = SortedDict()
+        counter = 0
+
+        self._start(query)
+
+        while True:
+            cpu, list_of_dicts = self.return_queue.get()
+            tick_history_dict[cpu] = list_of_dicts
+            counter += 1
+
+            if counter == self.number_of_workers:
+                tick_history_list = list(sum(tick_history_dict.values()[:], []))
+
+                del tick_history_dict
+
+                print('\n*****\nSuccessfully got data from the return queue\n*****\n')
+                break
+
+        self._stop()
+
+        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        print('Completed get_tick_history() in %i seconds' % elapsed)
+        return tick_history_list
 
     def _start(self, query):
         cursor = self._query_arctic(**query)
@@ -41,16 +84,11 @@ class Simulator(object):
 
         self._split_cursor_and_add_to_queue(cursor)
 
-        del cursor  # clear up resources
+        del cursor
 
         for worker in self.workers:
             worker.start()
             print('Started %s' % worker.name)
-
-    def _stop(self):
-        for worker in self.workers:
-            worker.join()
-            print('Stopped %s' % worker.name)
 
     def _query_arctic(self, ccy, start_date, end_date):
         print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
@@ -91,8 +129,19 @@ class Simulator(object):
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Complete splitting pandas into chunks in %i seconds.' % elapsed)
 
+    def _stop(self):
+        for worker in self.workers:
+            worker.join()
+            print('Stopped %s' % worker.name)
+
     @staticmethod
     def _do_work(queue, return_queue):
+        """
+        Function used for parallel processing
+        :param queue: queue for dequeing tasks
+        :param return_queue: queue for enqueing completed tasks
+        :return: void
+        """
         start_time = dt.now(TIMEZONE)
 
         cpu, panda = queue.get()
@@ -102,47 +151,19 @@ class Simulator(object):
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Completed. Process-%i dataframe.to_dict() in %i seconds' % (cpu, elapsed))
 
-    def get_tick_history(self, query):
-        start_time = dt.now(TIMEZONE)
-
-        assert RECORD_DATA is False
-
-        tick_history_dict = SortedDict()
-        counter = 0
-
-        self._start(query)
-
-        while True:
-            cpu, list_of_dicts = self.return_queue.get()
-            tick_history_dict[cpu] = list_of_dicts
-            counter += 1
-
-            if counter == self.number_of_workers:
-                tick_history_list = list(sum(tick_history_dict.values()[:], []))
-                del tick_history_dict  # free up ram
-                print('\n*****\nSuccessfully got data from the return queue\n*****\n')
-                break
-
-        self._stop()
-
-        elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Completed get_tick_history() in %i seconds' % elapsed)
-        return tick_history_list
-
     @staticmethod
     def get_orderbook_snapshot_history(coinbase_order_book, bitfinex_order_book, tick_history):
         start_time = dt.now(TIMEZONE)
 
-        print('Starting get_orderbook_snapshot_history() for %s and %s' %
-              (coinbase_order_book.sym, bitfinex_order_book.sym))
-
         coinbase_counter = 0
-        # bitfinex_counter = 0
         snapshot_list = list()
         last_snapshot_time = None
+        loop_length = len(tick_history)
 
-        for tick in tick_history:
+        print('Starting get_orderbook_snapshot_history() with %i ticks for %s and %s' %
+              (loop_length, coinbase_order_book.sym, bitfinex_order_book.sym))
 
+        for idx, tick in enumerate(tick_history):
             # determine if incoming tick is from coinbase or bitfinex
             coinbase = True if tick['product_id'] == coinbase_order_book.sym else False
 
@@ -184,56 +205,53 @@ class Simulator(object):
                     new_tick_time = parse(tick['time'])  # timestamp for incoming tick
                     coinbase_counter += 1
                     coinbase_order_book.new_tick(tick)
+
+                if coinbase_counter == 0:
+                    # filter out ticks that occur before Coinbase data is ready
+                    # skip to next loop
+                    continue
+                elif coinbase_counter == 1:
+                    # start tracking snapshot timestamps
+                    # and keep in mind that snapshots are tethered to coinbase timestamps
+                    last_snapshot_time = new_tick_time
+                    print('%s first tick: %s | Sequence: %i' %
+                          (coinbase_order_book.sym, str(new_tick_time), coinbase_order_book.sequence))
+                    # skip to next loop
+                    continue
+
+                diff = (new_tick_time - last_snapshot_time).microseconds
+                multiple = int(diff / 250000)  # 250000 is 250 milliseconds, or 4x a second
+
+                if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
+                    if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
+                        coinbase_order_book_snapshot = coinbase_order_book.render_book()
+                        bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
+                        for _ in range(multiple):
+                            snapshot_list.append(list(np.hstack((new_tick_time,
+                                                                 coinbase_order_book_snapshot,
+                                                                 bitfinex_order_book_snapshot))))
+                            last_snapshot_time += timedelta(milliseconds=250)
+                    else:
+                        last_snapshot_time += timedelta(milliseconds=250)
+
             elif bitfinex_order_book.done_warming_up():
-                # bitfinex_counter += 1
                 bitfinex_order_book.new_tick(tick)
 
-            if coinbase_counter == 0:
-                # filter out ticks that occur before Coinbase data is ready
-                # skip to next loop
-                continue
-            elif coinbase_counter == 1:
-                # start tracking snapshot timestamps
-                # and keep in mind that snapshots are tethered to coinbase timestamps
-                last_snapshot_time = new_tick_time
-                print('%s first tick: %s | Sequence: %i' %
-                      (coinbase_order_book.sym, str(new_tick_time), coinbase_order_book.sequence))
-                # skip to next loop
-                continue
 
-            diff = (new_tick_time - last_snapshot_time).microseconds
-            multiple = int(diff / 250000)  # 250000 is 250 milliseconds, or 4x a second
-
-            if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
-                if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
-                    coinbase_order_book_snapshot = coinbase_order_book.render_book()
-                    bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
-                    for _ in range(multiple):
-                        snapshot_list.append(list(np.hstack((new_tick_time,
-                                                             coinbase_order_book_snapshot,
-                                                             bitfinex_order_book_snapshot))))
-                        last_snapshot_time += timedelta(milliseconds=250)
-                else:
-                    last_snapshot_time += timedelta(milliseconds=250)
-
-            if coinbase_counter % 50000 == 0:
+            if idx % 100000 == 0:
                 elapsed = (dt.now(TIMEZONE) - start_time).seconds
-                print('Completed %i loops in %i seconds' % (coinbase_counter, elapsed))
-                if coinbase_counter % 250000 == 0:
-                    # TODO: Remove this snippet for PROD - only here now for testing purposes
-                    print('last tick: %s' % str(new_tick_time))
-                    print('Completed run_simulation() in %i seconds at %i ticks/second' %
-                          (elapsed, int(coinbase_counter/elapsed)))
-                    print('***Looped through %i rows***' % coinbase_counter)
-                    # end the loop
-                    break
+                print('...completed %i loops in %i seconds' % (idx, elapsed))
+
+        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        print('last tick: %s' % str(new_tick_time))
+        print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
+              (loop_length, elapsed, int(loop_length/elapsed)))
+        print('\n***Looped through %i ticks and %i coinbase ticks***' % (loop_length, coinbase_counter))
 
         return snapshot_list
 
     @staticmethod
-    def export_snapshots_to_csv(orderbook_snapshot_history):
-        filepath = './orderbook_snapshot_history.csv'
-
+    def get_feature_labels():
         columns = list()
         columns.append('system_time')
         for exchange in ['coinbase', 'bitfinex']:
@@ -242,14 +260,25 @@ class Simulator(object):
                     for level in range(MAX_BOOK_ROWS):
                         columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
 
+        return columns
+
+    @staticmethod
+    def export_snapshots_to_csv(columns, orderbook_snapshot_history):
+        start_time = dt.now(TIMEZONE)
+
+        filepath = './orderbook_snapshot_history.csv'
         panda_orderbook_snapshot_history = pd.DataFrame(orderbook_snapshot_history, columns=columns)
         panda_orderbook_snapshot_history = panda_orderbook_snapshot_history.dropna(axis=0, inplace=False)
         panda_orderbook_snapshot_history.to_csv(filepath)
-        print('Exported order book snapshots to csv.')
+
+        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        print('Exported order book snapshots to csv in %i seconds' % elapsed)
 
 
 if __name__ == '__main__':
-    print('Testing is commencing...')
+    """
+    Entry point of simulation application
+    """
 
     query = {
         'ccy': ['LTC-USD', 'tLTCUSD'],
@@ -267,6 +296,6 @@ if __name__ == '__main__':
     # export to CSV to verify if order book reconstruction is accurate/good
     # Note: this is only to show that the functionality works and
     #       should be fed into an Environment for reinforcement learning.
-    sim.export_snapshots_to_csv(orderbook_snapshot_history)
+    sim.export_snapshots_to_csv(sim.get_feature_labels(), orderbook_snapshot_history)
 
     print('DONE. EXITING %s' % __name__)
