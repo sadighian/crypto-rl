@@ -1,14 +1,13 @@
 import pytz as tz
 
+
 # ./crypto.py
-SNAPSHOT_RATE = 1.0  # 0.25 = 4x second
+SNAPSHOT_RATE = 15.0  # 0.25 = 4x second
 BASKET = [('BTC-USD', 'tBTCUSD')]#,
           # ('ETH-USD', 'tETHUSD'),
           # ('LTC-USD', 'tLTCUSD'),
           # ('BCH-USD', 'tBCHUSD'),
-          # ('ETC-USD', 'tETCUSD'),
-          # ('BTC-GBP', 'tBTCGBP'),
-          # ('BTC-EUR', 'tBTCEUR')]
+          # ('ETC-USD', 'tETCUSD')]
 
 
 # ./connector_components/client.py
@@ -26,6 +25,7 @@ BATCH_SIZE = 100000
 RECORD_DATA = False
 MONGO_ENDPOINT = 'localhost'
 ARCTIC_NAME = 'crypto.tickstore'
+
 
 # ./database/database.py
 TIMEZONE = tz.utc

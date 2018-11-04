@@ -27,6 +27,7 @@ class OrderBook(ABC):
         """
         self.bids.clear()
         self.asks.clear()
+        print('--Cleared %s order book--' % self.sym)
 
     # def render_book(self):
     #     """

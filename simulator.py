@@ -153,9 +153,17 @@ class Simulator(object):
 
     @staticmethod
     def get_orderbook_snapshot_history(coinbase_order_book, bitfinex_order_book, tick_history):
+        """
+        Function to replay historical market data and generate
+        the features used for reinforcement learning & training
+        :param coinbase_order_book: Coinbase Orderbook class
+        :param bitfinex_order_book: Bitfinex Orderbook class
+        :param tick_history: (list of dicts) historical tick data
+        :return: (list of arrays) snapshots of limit order books using a stationary feature set
+        """
         start_time = dt.now(TIMEZONE)
 
-        coinbase_counter = 0
+        coinbase_tick_counter = 0
         snapshot_list = list()
         last_snapshot_time = None
         loop_length = len(tick_history)
@@ -171,7 +179,7 @@ class Simulator(object):
                 # filter out bad ticks
                 continue
 
-            if tick['type'] == 'load_book':
+            if tick['type'] in ['load_book', 'book_loaded', 'preload']:
                 # flag for a order book reset
                 if coinbase:
                     coinbase_order_book.new_tick(tick)
@@ -180,37 +188,13 @@ class Simulator(object):
                 # skip to next loop
                 continue
 
-            if tick['type'] == 'preload':
-                # flag for order book downloads after a reset
-                if coinbase:
-                    coinbase_order_book.new_tick(tick)
-                    if not coinbase_order_book.done_warming_up():
-                        # coinbase tick & order book was just reset
-                        # note: logic is slightly different here for simulations
-                        coinbase_order_book.bids.warming_up = False
-                        coinbase_order_book.asks.warming_up = False
-
-                else:  # bitfinex
-                    bitfinex_order_book.new_tick(tick)
-                    if not bitfinex_order_book.done_warming_up():
-                        # bitfinex tick & order book was just reset
-                        # note: logic is slightly different here for simulations
-                        bitfinex_order_book.bids.warming_up = False
-                        bitfinex_order_book.asks.warming_up = False
-                # skip to next loop
-                continue
-
             if coinbase:
                 if coinbase_order_book.done_warming_up():
                     new_tick_time = parse(tick['time'])  # timestamp for incoming tick
-                    coinbase_counter += 1
+                    coinbase_tick_counter += 1
                     coinbase_order_book.new_tick(tick)
 
-                if coinbase_counter == 0:
-                    # filter out ticks that occur before Coinbase data is ready
-                    # skip to next loop
-                    continue
-                elif coinbase_counter == 1:
+                if coinbase_tick_counter == 1:
                     # start tracking snapshot timestamps
                     # and keep in mind that snapshots are tethered to coinbase timestamps
                     last_snapshot_time = new_tick_time
@@ -237,16 +221,16 @@ class Simulator(object):
             elif bitfinex_order_book.done_warming_up():
                 bitfinex_order_book.new_tick(tick)
 
-
-            if idx % 100000 == 0:
+            if idx % 150000 == 0:
                 elapsed = (dt.now(TIMEZONE) - start_time).seconds
                 print('...completed %i loops in %i seconds' % (idx, elapsed))
+
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('last tick: %s' % str(new_tick_time))
         print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
               (loop_length, elapsed, int(loop_length/elapsed)))
-        print('\n***Looped through %i ticks and %i coinbase ticks***' % (loop_length, coinbase_counter))
+        print('\n***Looped through %i ticks and %i coinbase ticks***' % (loop_length, coinbase_tick_counter))
 
         return snapshot_list
 
@@ -281,9 +265,9 @@ if __name__ == '__main__':
     """
 
     query = {
-        'ccy': ['LTC-USD', 'tLTCUSD'],
-        'start_date': 20180926,
-        'end_date': 20180927
+        'ccy': ['BTC-USD', 'tBTCUSD'],
+        'start_date': 20181103,
+        'end_date': 20181105
     }
 
     coinbaseOrderBook = CoinbaseOrderBook(query['ccy'][0])

@@ -18,9 +18,11 @@ class CoinbaseOrderBook(OrderBook):
         """
         print('%s get_book request made.' % self.sym)
         start_time = time()
+
         self.clear_book()
         path = ('https://api.pro.coinbase.com/products/%s/book' % self.sym)
         book = requests.get(path, params={'level': 3}).json()
+
         elapsed = time() - start_time
         print('%s get_book request completed in %f seconds.' % (self.sym, elapsed))
         return book
@@ -30,13 +32,17 @@ class CoinbaseOrderBook(OrderBook):
         Load initial limit order book snapshot
         :return: void
         """
-        self.bids.warming_up = True
-        self.asks.warming_up = True
         book = self._get_book()
+
         start_time = time()
+
         self.sequence = book['sequence']
         load_time = str(dt.now(tz=self.db.tz))
-        self.db.new_tick({'type': 'load_book', 'product_id': self.sym})
+
+        self.db.new_tick({'type': 'load_book',
+                          'product_id': self.sym,
+                          'sequence': self.sequence})
+
         for bid in book['bids']:
             msg = {
                 'price': float(bid[0]),
@@ -65,8 +71,10 @@ class CoinbaseOrderBook(OrderBook):
             self.db.new_tick(msg)
             self.asks.insert_order(msg)
 
+        self.db.new_tick({'type': 'book_loaded',
+                          'product_id': self.sym,
+                          'sequence': self.sequence})
         del book
-
         self.bids.warming_up = False
         self.asks.warming_up = False
 
@@ -112,6 +120,8 @@ class CoinbaseOrderBook(OrderBook):
 
         new_sequence = int(msg['sequence'])
         if self._check_sequence(new_sequence, message_type):
+            if message_type == 'load_book':
+                self.clear_book()
             return False
 
         self.db.new_tick(msg)  # make sure CONFIGS.RECORDING is false when replaying data
@@ -162,6 +172,11 @@ class CoinbaseOrderBook(OrderBook):
 
         elif message_type == 'load_book':
             self.clear_book()
+            return True
+
+        elif message_type == 'book_loaded':
+            self.bids.warming_up = False
+            self.asks.warming_up = False
             return True
 
         else:

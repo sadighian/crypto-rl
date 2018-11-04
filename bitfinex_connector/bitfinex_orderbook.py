@@ -19,7 +19,10 @@ class BitfinexOrderBook(OrderBook):
         :return: void
         """
         start_time = time()
-        self.db.new_tick({'type': 'load_book', 'product_id': self.sym})
+
+        self.db.new_tick({'type': 'load_book',
+                          'product_id': self.sym})
+
         for row in book[1]:
             msg = {
                 "order_id": int(row[0]),
@@ -30,10 +33,14 @@ class BitfinexOrderBook(OrderBook):
                 "type": 'preload'
             }
             self.db.new_tick(msg)
+
             if msg['side'] == 'buy':
                 self.bids.insert_order(msg)
             else:
                 self.asks.insert_order(msg)
+
+        self.db.new_tick({'type': 'book_loaded',
+                          'product_id': self.sym})
 
         self.bids.warming_up = False
         self.asks.warming_up = False
@@ -61,11 +68,14 @@ class BitfinexOrderBook(OrderBook):
             elif msg['type'] == 'te':
                 # trades are not currently supported for data replays
                 return True
-            elif msg['type'] == 'update':
-                return self._process_book_replay(msg)
-            elif msg['type'] == 'preload':
+            elif msg['type'] in ['update', 'preload']:
                 return self._process_book_replay(msg)
             elif msg['type'] == 'load_book':
+                self.clear_book()
+                return True
+            elif msg['type'] == 'book_loaded':
+                self.bids.warming_up = False
+                self.asks.warming_up = False
                 return True
             else:
                 print('new_tick() message does not know how to be processed = %s' % str(msg))
@@ -142,28 +152,35 @@ class BitfinexOrderBook(OrderBook):
         order['price'] = float(order['price'])
         order['size'] = float(order['size'])
 
-        # order should be removed from the book
-        if order['price'] == float(0):
-            if order['side'] == 'buy':
-                self.bids.remove_order(order)
+        if order['type'] == 'update':
+            # order should be removed from the book
+            if order['price'] == float(0):
+                if order['side'] == 'buy':
+                    self.bids.remove_order(order)
+                elif order['side'] == 'sell':
+                    self.asks.remove_order(order)
+            # order is a new order or size update for bids
+            elif order['side'] == 'buy':
+                if order['order_id'] in self.bids.order_map:
+                    self.bids.change(order)
+                else:
+                    self.bids.insert_order(order)
+            # order is a new order or size update for asks
             elif order['side'] == 'sell':
-                self.asks.remove_order(order)
-
-        # order is a new order or size update for bids
-        elif order['side'] == 'buy':
-            if order['order_id'] in self.bids.order_map:
-                self.bids.change(order)
+                if order['order_id'] in self.asks.order_map:
+                    self.asks.change(order)
+                else:
+                    self.asks.insert_order(order)
+            # unhandled tick message
             else:
-                self.bids.insert_order(order)
+                print('_process_book_replay: unhandled message\n%s' % str(order))
 
-        # order is a new order or size update for asks
-        elif order['side'] == 'sell':
-            if order['order_id'] in self.asks.order_map:
-                self.asks.change(order)
+        elif order['type'] == 'preload':
+            if order['side'] == 'buy':
+                self.bids.insert_order(order)
             else:
                 self.asks.insert_order(order)
 
-        # unhandled msg
         else:
             print('\n_process_book_replay() Unhandled list msg %s' % order)
 

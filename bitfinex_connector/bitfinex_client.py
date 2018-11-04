@@ -31,7 +31,7 @@ class BitfinexClient(Client):
 # BitfinexClient class in isolation.
 # """
 # if __name__ == "__main__":
-#     symbols = ['tETHEUR']  #, 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
+#     symbols = ['tBTCUSD']  #, 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
 #     print('Initializing...%s' % symbols)
 #     loop = asyncio.get_event_loop()
 #     p = dict()
