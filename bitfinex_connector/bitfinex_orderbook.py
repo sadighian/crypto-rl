@@ -181,6 +181,13 @@ class BitfinexOrderBook(OrderBook):
             else:
                 self.asks.insert_order(order)
 
+        elif order['type'] == 'te':
+            trade_notional = order['price'] * order['size']
+            if order['side'] == 'upticks':
+                self.trade_tracker['buys'] += trade_notional
+            else:
+                self.trade_tracker['sells'] += trade_notional
+
         else:
             print('\n_process_book_replay() Unhandled list msg %s' % order)
 
@@ -216,6 +223,12 @@ class BitfinexOrderBook(OrderBook):
             }
             self.db.new_tick(trade)
             # print('%s %f' % (side, msg[2][3]))
+
+            trade_notional = trade['price'] * trade['size']
+            if side == 'upticks':
+                self.trade_tracker['buys'] += trade_notional
+            else:
+                self.trade_tracker['sells'] += trade_notional
 
         # elif msg_type == 'tu':
         #     self.trades[side]['size'] += abs(msg[2][3] * msg[2][2])

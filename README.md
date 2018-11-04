@@ -1,4 +1,4 @@
-# Multiprocessing Crypto Recorder (streaming ticks - full)
+# Multiprocessing Crypto Recorder & Data Replay
 As of November 1st, 2018.
 
 ## 1. Purpose
@@ -24,8 +24,9 @@ There are multiple branches of this project, each with a different implementatio
  performance and is not up to date with the **FULL** branch.
 
 ## 2. Scope
-Application is intended to be used to record limit order book data for reinforcement learning modeling. 
-Currently, there is no functionality developed to place order and actually trade.
+Application is intended to be used to record and simulate limit order book data 
+for reinforcement learning modeling. Currently, there is no functionality 
+developed to place order and actually trade.
 
 ## 3. Dependencies
 - abc
@@ -85,8 +86,9 @@ for the purpose of data replays.
 
 To run the simulation, type `python simulator.py` into your command prompt.
 
-**Note** you will need insert your own logic in this class for your 
-own research/simulation purposes.
+**Note** at the moment, there is only the functionality to create the dataset for
+reinforcement learning. The Markov Decision Process environment is still work in progress
+and will be published after thorough testing.
 
 **Also**, make sure to adjust the `query` parameters within the `simulator.py` file
 before running the script, to make sure you're retrieving data you have aggregated

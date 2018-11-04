@@ -147,10 +147,13 @@ class CoinbaseOrderBook(OrderBook):
                 return True
 
         elif message_type == 'match':
+            trade_notional = float(msg['price']) * float(msg['size'])
             if side == 'buy':
+                self.trade_tracker['buys'] += trade_notional
                 self.bids.match(msg)
                 return True
             else:
+                self.trade_tracker['sells'] += trade_notional
                 self.asks.match(msg)
                 return True
 

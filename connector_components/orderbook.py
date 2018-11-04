@@ -12,6 +12,9 @@ class OrderBook(ABC):
         self.db = Database(ccy, exchange)
         self.bids = CoinbaseBook(ccy, 'bids') if exchange == 'coinbase' else BitfinexBook(ccy, 'bids')
         self.asks = CoinbaseBook(ccy, 'asks') if exchange == 'coinbase' else BitfinexBook(ccy, 'asks')
+        self.midpoint = float()
+        self.trade_tracker = dict({'buys': float(0),
+                                   'sells': float(0)})
 
     def __str__(self):
         return '%s  |  %s' % (self.bids, self.asks)
@@ -19,6 +22,10 @@ class OrderBook(ABC):
     @abstractmethod
     def new_tick(self, msg):
         pass
+
+    def clear_trades_tracker(self):
+        self.trade_tracker['buys'] = float(0)
+        self.trade_tracker['sells'] = float(0)
 
     def clear_book(self):
         """
@@ -50,12 +57,17 @@ class OrderBook(ABC):
         """
         best_bid, bid_value = self.bids.get_bid()
         best_ask, ask_value = self.asks.get_ask()
-        midpoint = (best_bid + best_ask) / 2.0
+        self.midpoint = (best_bid + best_ask) / 2.0
 
-        bids = self.bids._get_bids_to_list(midpoint)
-        asks = self.asks._get_asks_to_list(midpoint)
+        bids = self.bids._get_bids_to_list(self.midpoint)
+        asks = self.asks._get_asks_to_list(self.midpoint)
 
-        return np.hstack((bids, asks))
+        buy_trades = np.array(self.trade_tracker['buys'])
+        sell_trades = np.array(self.trade_tracker['sells'])
+
+        self.clear_trades_tracker()
+
+        return np.hstack((bids, asks, buy_trades, sell_trades))
 
     @property
     def best_bid(self):

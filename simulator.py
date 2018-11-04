@@ -210,8 +210,11 @@ class Simulator(object):
                     if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
                         coinbase_order_book_snapshot = coinbase_order_book.render_book()
                         bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
+                        midpoint_delta = coinbase_order_book.midpoint - bitfinex_order_book.midpoint
                         for _ in range(multiple):
-                            snapshot_list.append(list(np.hstack((new_tick_time,
+                            snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
+                                                                 coinbase_order_book.midpoint,  # midpoint price
+                                                                 midpoint_delta,  # price delta between exchanges
                                                                  coinbase_order_book_snapshot,
                                                                  bitfinex_order_book_snapshot))))
                             last_snapshot_time += timedelta(milliseconds=250)
@@ -238,11 +241,15 @@ class Simulator(object):
     def get_feature_labels():
         columns = list()
         columns.append('system_time')
+        columns.append('coinbase_midpoint')
+        columns.append('midpoint_delta')
         for exchange in ['coinbase', 'bitfinex']:
             for side in ['bid', 'ask']:
                 for feature in ['notional', 'distance']:
                     for level in range(MAX_BOOK_ROWS):
                         columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
+            for trade_side in ['buys', 'sells']:
+                columns.append('%s-%s' % (exchange, trade_side))
 
         return columns
 
