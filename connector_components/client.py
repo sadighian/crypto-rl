@@ -89,8 +89,8 @@ class Client(Thread):
             self.retry_counter += 1
             elapsed = (dt.now() - self.last_subscribe_time).seconds
 
-            if elapsed < 5:
-                sleep_time = max(5 - elapsed, 1)
+            if elapsed < 10:
+                sleep_time = max(10 - elapsed, 1)
                 time.sleep(sleep_time)
                 print('%s - %s is sleeping %i seconds...' % (self.exchange, self.sym, sleep_time))
 
