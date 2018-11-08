@@ -26,7 +26,7 @@ There are multiple branches of this project, each with a different implementatio
 ## 2. Scope
 Application is intended to be used to record and simulate limit order book data 
 for reinforcement learning modeling. Currently, there is no functionality 
-developed to place order and actually trade.
+developed to place an order or automate trading.
 
 ## 3. Dependencies
 - abc

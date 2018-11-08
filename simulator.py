@@ -1,6 +1,6 @@
 from datetime import datetime as dt
 from datetime import timedelta
-from multiprocessing import cpu_count, Process, Queue
+from multiprocessing import cpu_count, Process, Queue, Pool
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
 from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
@@ -51,9 +51,19 @@ class Simulator(object):
         assert RECORD_DATA is False
 
         tick_history_dict = SortedDict()
+
+        cursor = self._query_arctic(**query)
+
+        if cursor is None:
+            print('\nNothing returned from Arctic for the query: %s\n...Exiting...' % str(query))
+            return
+
+        self._split_cursor_and_add_to_queue(cursor)
+
+        del cursor
         counter = 0
 
-        self._start(query)
+        [worker.start() for worker in self.workers]
 
         while True:
             cpu, list_of_dicts = self.return_queue.get()
@@ -62,43 +72,26 @@ class Simulator(object):
 
             if counter == self.number_of_workers:
                 tick_history_list = list(sum(tick_history_dict.values()[:], []))
-
                 del tick_history_dict
-
-                print('\n*****\nSuccessfully got data from the return queue\n*****\n')
                 break
 
-        self._stop()
+        [worker.join() for worker in self.workers]
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Completed get_tick_history() in %i seconds' % elapsed)
+        print('***\nCompleted get_tick_history() in %i seconds\n***' % elapsed)
         return tick_history_list
 
-    def _start(self, query):
-        cursor = self._query_arctic(**query)
-
-        if cursor is None:
-            print('\nNothing returned from Arctic for the query: %s' % str(query))
-            print('...Exiting.')
-            return
-
-        self._split_cursor_and_add_to_queue(cursor)
-
-        del cursor
-
-        for worker in self.workers:
-            worker.start()
-            print('Started %s' % worker.name)
-
     def _query_arctic(self, ccy, start_date, end_date):
-        print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
+        start_time = dt.now(TIMEZONE)
+
         if self.library is None:
             print('exiting from Simulator... no database to query')
             return None
 
-        start_time = dt.now(TIMEZONE)
-
+        print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
         cursor = self.library.read(symbol=ccy, date_range=DateRange(start_date, end_date))
+
+        # filter ticks for the first LOAD_BOOK message (starting point for order book reconstruction)
         min_datetime = cursor.loc[cursor.type == 'load_book'].index[0]
         cursor = cursor.loc[cursor.index >= min_datetime].copy()
 
@@ -129,10 +122,12 @@ class Simulator(object):
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Complete splitting pandas into chunks in %i seconds.' % elapsed)
 
-    def _stop(self):
-        for worker in self.workers:
-            worker.join()
-            print('Stopped %s' % worker.name)
+    # def _start(self):
+    #     [worker.start() for worker in self.workers]
+
+    # def _stop(self):
+    #     [worker.join() for worker in self.workers]
+
 
     @staticmethod
     def _do_work(queue, return_queue):
@@ -233,7 +228,7 @@ class Simulator(object):
         print('last tick: %s' % str(new_tick_time))
         print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
               (loop_length, elapsed, int(loop_length/elapsed)))
-        print('\n***Looped through %i ticks and %i coinbase ticks***' % (loop_length, coinbase_tick_counter))
+        print('***\nLooped through %i ticks and %i coinbase ticks\n***' % (loop_length, coinbase_tick_counter))
 
         return snapshot_list
 
@@ -272,9 +267,9 @@ if __name__ == '__main__':
     """
 
     query = {
-        'ccy': ['BTC-USD', 'tBTCUSD'],
-        'start_date': 20181103,
-        'end_date': 20181105
+        'ccy': ['BCH-USD', 'tBCHUSD'],
+        'start_date': 20181105,
+        'end_date': 20181106
     }
 
     coinbaseOrderBook = CoinbaseOrderBook(query['ccy'][0])
