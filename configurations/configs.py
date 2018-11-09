@@ -1,8 +1,8 @@
 import pytz as tz
 
 
-# ./crypto.py
-SNAPSHOT_RATE = 15.0  # 0.25 = 4x second
+# ./recorder.py
+SNAPSHOT_RATE = float(15)  # 0.25 = 4x second
 BASKET = [('BTC-USD', 'tBTCUSD')]#,
           # ('ETH-USD', 'tETHUSD'),
           # ('LTC-USD', 'tLTCUSD'),
@@ -17,7 +17,7 @@ MAX_RECONNECTION_ATTEMPTS = 300
 
 
 # ./connector_components/book.py
-MAX_BOOK_ROWS = 15
+MAX_BOOK_ROWS = 5
 
 
 # ./connector_components/database.py

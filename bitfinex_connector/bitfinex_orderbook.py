@@ -245,7 +245,7 @@ class BitfinexOrderBook(OrderBook):
         """
         if msg['event'] == 'subscribed':
             self.channel_id[msg['channel']] = msg['chanId']
-            print('%s Added channel_id: %i for %s\n' % (self.sym, msg['chanId'], msg['channel']))
+            print('%s Added channel_id: %i for %s' % (self.sym, msg['chanId'], msg['channel']))
             return True
 
         elif msg['event'] == 'info':
