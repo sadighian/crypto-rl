@@ -17,7 +17,7 @@ MAX_RECONNECTION_ATTEMPTS = 300
 
 
 # ./connector_components/book.py
-MAX_BOOK_ROWS = 5
+MAX_BOOK_ROWS = 15
 
 
 # ./connector_components/database.py

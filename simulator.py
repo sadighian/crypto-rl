@@ -79,6 +79,7 @@ class Simulator(object):
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('***\nCompleted get_tick_history() in %i seconds\n***' % elapsed)
+
         return tick_history_list
 
     def _query_arctic(self, ccy, start_date, end_date):
@@ -97,6 +98,7 @@ class Simulator(object):
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Completed querying %i %s records in %i seconds' % (cursor.shape[0], ccy, elapsed))
+
         return cursor
 
     def _split_cursor_and_add_to_queue(self, cursor):
@@ -121,13 +123,6 @@ class Simulator(object):
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Complete splitting pandas into chunks in %i seconds.' % elapsed)
-
-    # def _start(self):
-    #     [worker.start() for worker in self.workers]
-
-    # def _stop(self):
-    #     [worker.join() for worker in self.workers]
-
 
     @staticmethod
     def _do_work(queue, return_queue):
@@ -223,7 +218,6 @@ class Simulator(object):
                 elapsed = (dt.now(TIMEZONE) - start_time).seconds
                 print('...completed %i loops in %i seconds' % (idx, elapsed))
 
-
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('last tick: %s' % str(new_tick_time))
         print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
@@ -252,19 +246,16 @@ class Simulator(object):
     def export_snapshots_to_csv(columns, orderbook_snapshot_history):
         start_time = dt.now(TIMEZONE)
 
-        filepath = './orderbook_snapshot_history.csv'
         panda_orderbook_snapshot_history = pd.DataFrame(orderbook_snapshot_history, columns=columns)
         panda_orderbook_snapshot_history = panda_orderbook_snapshot_history.dropna(axis=0, inplace=False)
-        panda_orderbook_snapshot_history.to_csv(filepath)
+        panda_orderbook_snapshot_history.to_csv('./orderbook_snapshot_history.csv')
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Exported order book snapshots to csv in %i seconds' % elapsed)
 
 
-if __name__ == '__main__':
-    """
-    Entry point of simulation application
-    """
+def main():
+    start_time = dt.now(TIMEZONE)
 
     query = {
         'ccy': ['BCH-USD', 'tBCHUSD'],
@@ -279,9 +270,18 @@ if __name__ == '__main__':
     tick_history = sim.get_tick_history(query)
     orderbook_snapshot_history = sim.get_orderbook_snapshot_history(coinbaseOrderBook, bitfinexOrderBook, tick_history)
 
-    # export to CSV to verify if order book reconstruction is accurate/good
-    # Note: this is only to show that the functionality works and
+    # Export to CSV to verify if order book reconstruction is accurate/good
+    # NOTE: this is only to show that the functionality works and
     #       should be fed into an Environment for reinforcement learning.
     sim.export_snapshots_to_csv(sim.get_feature_labels(), orderbook_snapshot_history)
 
+    elapsed = (dt.now(TIMEZONE) - start_time).seconds
+    print('Completed %s in %i seconds' % (__name__, elapsed))
     print('DONE. EXITING %s' % __name__)
+
+
+if __name__ == '__main__':
+    """
+    Entry point of simulation application
+    """
+    main()
