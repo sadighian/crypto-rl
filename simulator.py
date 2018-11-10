@@ -10,6 +10,7 @@ from sortedcontainers import SortedDict
 from dateutil.parser import parse
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 
 class Simulator(object):
@@ -17,6 +18,7 @@ class Simulator(object):
     def __init__(self):
         try:
             print('Attempting to connect to Arctic...')
+            self.scaler = StandardScaler()
             self.arctic = Arctic(MONGO_ENDPOINT)
             self.arctic.initialize_library(ARCTIC_NAME, lib_type=TICK_STORE)
             self.library = self.arctic[ARCTIC_NAME]
@@ -227,18 +229,33 @@ class Simulator(object):
         return snapshot_list
 
     @staticmethod
-    def get_feature_labels():
+    def get_feature_labels(include_system_time=True, lags=0):
         columns = list()
-        columns.append('system_time')
-        columns.append('coinbase_midpoint')
-        columns.append('midpoint_delta')
-        for exchange in ['coinbase', 'bitfinex']:
-            for side in ['bid', 'ask']:
-                for feature in ['notional', 'distance']:
-                    for level in range(MAX_BOOK_ROWS):
-                        columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
-            for trade_side in ['buys', 'sells']:
-                columns.append('%s-%s' % (exchange, trade_side))
+
+        if include_system_time:
+            columns.append('system_time')
+
+        if lags > 0:
+            for lag in range(lags+1):
+                columns.append('coinbase_midpoint---%i' % lag)
+                columns.append('midpoint_delta---%i' % lag)
+                for exchange in ['coinbase', 'bitfinex']:
+                    for side in ['bid', 'ask']:
+                        for feature in ['notional', 'distance']:
+                            for level in range(MAX_BOOK_ROWS):
+                                columns.append(('%s-%s-%s-%i---%i' % (exchange, side, feature, level, lag)))
+                    for trade_side in ['buys', 'sells']:
+                        columns.append('%s-%s---%i' % (exchange, trade_side, lag))
+        else:
+            columns.append('coinbase_midpoint')
+            columns.append('midpoint_delta')
+            for exchange in ['coinbase', 'bitfinex']:
+                for side in ['bid', 'ask']:
+                    for feature in ['notional', 'distance']:
+                        for level in range(MAX_BOOK_ROWS):
+                            columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
+                for trade_side in ['buys', 'sells']:
+                    columns.append('%s-%s' % (exchange, trade_side))
 
         return columns
 
@@ -253,8 +270,67 @@ class Simulator(object):
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Exported order book snapshots to csv in %i seconds' % elapsed)
 
+    def get_orderbook_snapshot_history_normalized(self, query, lags):
+        start_time = dt.now(tz=TIMEZONE)
 
-def main():
+        data = self.get_orderbook_snapshot_history(CoinbaseOrderBook(query['ccy'][0]),  # order book
+                                                   BitfinexOrderBook(query['ccy'][1]),  # order book
+                                                   self.get_tick_history(query))  # historical data
+
+        data = pd.DataFrame(data, columns=self.get_feature_labels(True))
+        data = data.dropna(axis=0)
+
+        data['day'] = data['system_time'].apply(lambda x: x.day)
+        dates = data['day'].unique()
+
+        assert len(dates) > 1  # make sure at least 2 days of data was loaded
+
+        data_to_fit = data.loc[data.day == dates[0], :].copy()
+        data_to_fit = data_to_fit.drop(['system_time', 'day'], axis=1)
+        self.scaler.fit(data_to_fit)
+
+        if lags > 0:
+            data = data.loc[data.day.shift(-lags) == dates[1], :]  # include lags in dataset
+        else:
+            data = data.loc[data.day == dates[1], :]  # do not include lags in dataset
+
+        data = data.drop(['system_time', 'day'], axis=1)
+
+        data_transformed = self.scaler.transform(data)
+
+        elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
+        print('***\nSimulator.get_orderbook_snapshot_history_normalized() executed in %i seconds\n***' % elapsed)
+
+        return data_transformed
+
+    def get_env_data(self, query, lags=0):
+        normalized_data = self.get_orderbook_snapshot_history_normalized(query=query, lags=lags)
+        data = pd.DataFrame(normalized_data, columns=self.get_feature_labels(False))
+
+        # add lags to feature set
+        if lags > 0:
+            _columns = data.columns.tolist()
+            for lag in range(1, lags+1):
+                for col in _columns:
+                    data[('%s-%i' % (col, lag))] = data[col].shift(lag)
+
+        data.columns = self.get_feature_labels(False, lags=lags)
+        data = data.dropna(axis=0)
+
+        # self.export_env_data_to_csv(data_transformed=data)
+        return data
+
+    @staticmethod
+    def export_env_data_to_csv(env_data):
+        start_time = dt.now(TIMEZONE)
+
+        env_data.to_csv('./env_data_history.csv')
+
+        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        print('Exported env_data to csv in %i seconds' % elapsed)
+
+
+def test_get_orderbook_snapshot_history():
     start_time = dt.now(TIMEZONE)
 
     query = {
@@ -273,7 +349,28 @@ def main():
     # Export to CSV to verify if order book reconstruction is accurate/good
     # NOTE: this is only to show that the functionality works and
     #       should be fed into an Environment for reinforcement learning.
-    sim.export_snapshots_to_csv(sim.get_feature_labels(), orderbook_snapshot_history)
+    sim.export_snapshots_to_csv(sim.get_feature_labels(True), orderbook_snapshot_history)
+
+    elapsed = (dt.now(TIMEZONE) - start_time).seconds
+    print('Completed %s in %i seconds' % (__name__, elapsed))
+    print('DONE. EXITING %s' % __name__)
+
+
+def test_get_env_data():
+    start_time = dt.now(TIMEZONE)
+
+    query = {
+        'ccy': ['BCH-USD', 'tBCHUSD'],
+        'start_date': 20181104,
+        'end_date': 20181106
+    }
+
+    lags = 4*60
+
+    sim = Simulator()
+    env_data = sim.get_env_data(query=query, lags=lags)
+
+    sim.export_env_data_to_csv(env_data)
 
     elapsed = (dt.now(TIMEZONE) - start_time).seconds
     print('Completed %s in %i seconds' % (__name__, elapsed))
@@ -284,4 +381,5 @@ if __name__ == '__main__':
     """
     Entry point of simulation application
     """
-    main()
+    test_get_orderbook_snapshot_history()
+    # test_get_env_data()
