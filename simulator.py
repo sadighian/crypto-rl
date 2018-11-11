@@ -1,6 +1,6 @@
 from datetime import datetime as dt
 from datetime import timedelta
-from multiprocessing import cpu_count, Process, Queue, Pool
+from multiprocessing import cpu_count, Process, Queue
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
 from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
@@ -91,15 +91,20 @@ class Simulator(object):
             print('exiting from Simulator... no database to query')
             return None
 
-        print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
-        cursor = self.library.read(symbol=ccy, date_range=DateRange(start_date, end_date))
+        try:
+            print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
+            cursor = self.library.read(symbol=ccy, date_range=DateRange(start_date, end_date))
 
-        # filter ticks for the first LOAD_BOOK message (starting point for order book reconstruction)
-        min_datetime = cursor.loc[cursor.type == 'load_book'].index[0]
-        cursor = cursor.loc[cursor.index >= min_datetime].copy()
+            # filter ticks for the first LOAD_BOOK message (starting point for order book reconstruction)
+            min_datetime = cursor.loc[cursor.type == 'load_book'].index[0]
+            cursor = cursor.loc[cursor.index >= min_datetime].copy()
 
-        elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Completed querying %i %s records in %i seconds' % (cursor.shape[0], ccy, elapsed))
+            elapsed = (dt.now(TIMEZONE) - start_time).seconds
+            print('Completed querying %i %s records in %i seconds' % (cursor.shape[0], ccy, elapsed))
+
+        except Exception as ex:
+            cursor = None
+            print('Simulator._query_arctic() thew an exception: \n%s' % str(ex))
 
         return cursor
 
@@ -335,8 +340,8 @@ def test_get_orderbook_snapshot_history():
 
     query = {
         'ccy': ['BCH-USD', 'tBCHUSD'],
-        'start_date': 20181105,
-        'end_date': 20181106
+        'start_date': 20181110,
+        'end_date': 20181112
     }
 
     coinbaseOrderBook = CoinbaseOrderBook(query['ccy'][0])
@@ -344,6 +349,11 @@ def test_get_orderbook_snapshot_history():
 
     sim = Simulator()
     tick_history = sim.get_tick_history(query)
+
+    if tick_history is None:
+        print('Exiting due to no data being available.')
+        return
+
     orderbook_snapshot_history = sim.get_orderbook_snapshot_history(coinbaseOrderBook, bitfinexOrderBook, tick_history)
 
     # Export to CSV to verify if order book reconstruction is accurate/good
@@ -361,8 +371,8 @@ def test_get_env_data():
 
     query = {
         'ccy': ['BCH-USD', 'tBCHUSD'],
-        'start_date': 20181104,
-        'end_date': 20181106
+        'start_date': 20181110,
+        'end_date': 20181112
     }
 
     lags = 4*60

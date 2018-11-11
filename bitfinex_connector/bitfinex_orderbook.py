@@ -66,8 +66,7 @@ class BitfinexOrderBook(OrderBook):
             if 'event' in msg:
                 return self._process_events(msg)
             elif msg['type'] == 'te':
-                # trades are not currently supported for data replays
-                return True
+                return self._process_trades_replay(msg)
             elif msg['type'] in ['update', 'preload']:
                 return self._process_book_replay(msg)
             elif msg['type'] == 'load_book':
@@ -224,16 +223,20 @@ class BitfinexOrderBook(OrderBook):
             self.db.new_tick(trade)
             # print('%s %f' % (side, msg[2][3]))
 
-            trade_notional = trade['price'] * trade['size']
-            if side == 'upticks':
-                self.trade_tracker['buys'] += trade_notional
-            else:
-                self.trade_tracker['sells'] += trade_notional
-
         # elif msg_type == 'tu':
         #     self.trades[side]['size'] += abs(msg[2][3] * msg[2][2])
         #     self.trades[side]['count'] += 1
         #     print('tu message %s' % msg)
+
+        return True
+
+    def _process_trades_replay(self, msg):
+        trade_notional = abs(msg['price'] * msg['size'])
+
+        if msg['side'] == 'upticks':
+            self.trade_tracker['buys'] += trade_notional
+        else:
+            self.trade_tracker['sells'] += trade_notional
 
         return True
 
