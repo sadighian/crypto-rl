@@ -168,9 +168,6 @@ class Simulator(object):
                                 columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
                     for trade_side in ['buys', 'sells']:
                         columns.append('%s-%s' % (exchange, trade_side))
-
-                # columns.append('longs')
-                # columns.append('shorts')
             else:
                 print('lag: %i' % lag)
                 columns.append('coinbase_midpoint_%i' % lag)
@@ -182,8 +179,6 @@ class Simulator(object):
                                 columns.append(('%s-%s-%s-%i_%i' % (exchange, side, feature, level, lag)))
                     for trade_side in ['buys', 'sells']:
                         columns.append('%s-%s_%i' % (exchange, trade_side, lag))
-                # columns.append('longs---%i' % lag)
-                # columns.append('shorts---%i' % lag)
 
         return columns
 
