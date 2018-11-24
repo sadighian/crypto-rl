@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder & Data Replay
-As of November 1st, 2018.
+As of November 24th, 2018.
 
 ## 1. Purpose
 The purpose of this application is to record full limit order book and trade tick data 
@@ -80,29 +80,8 @@ for the following reasons:
 This class is the entry point for recording tick data. 
 To start the application, type `python recorder.py` into your command prompt.
 
-### 5.2 Simulator.py
-This class is used for retrieving historical tick data which was stored in the `Arctic Tick Store`
-for the purpose of data replays. 
-
-To run the simulation, type `python simulator.py` into your command prompt.
-
-**Note** at the moment, there is only the functionality to create the dataset for
-reinforcement learning. The OpenAI.Gym styled environment is still work in progress
-and will be pushed after completion and thorough testing.
-
-**Also**, make sure to adjust the query parameters within the `simulator.py` file
-before running the script, to make sure you're retrieving data you have aggregated
-in your `Arctic Tick Store`. 
-```
-    // simulator.py
-    
-    query = {
-        'ccy': ['BCH-USD', 'tBCHUSD'],
-        'start_date': 20181105,
-        'end_date': 20181106
-    }
-```
-
+### 5.2 Trading Simulator
+Work in progress...
 
 ## 6. Appendix
 ### 6.1 Assumptions

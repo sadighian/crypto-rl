@@ -1,15 +1,14 @@
 from datetime import datetime as dt
 from datetime import timedelta
-from multiprocessing import cpu_count, Process, Queue, Pool
+from multiprocessing import cpu_count, Process, Queue
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
-from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
-from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, RECORD_DATA, MAX_BOOK_ROWS
 from sortedcontainers import SortedDict
 from dateutil.parser import parse
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 
 class Simulator(object):
@@ -17,9 +16,12 @@ class Simulator(object):
     def __init__(self):
         try:
             print('Attempting to connect to Arctic...')
+            self.scaler = StandardScaler()
             self.arctic = Arctic(MONGO_ENDPOINT)
             self.arctic.initialize_library(ARCTIC_NAME, lib_type=TICK_STORE)
             self.library = self.arctic[ARCTIC_NAME]
+            self.reference_data_old_names = ['system_time', 'day', 'coinbase_midpoint']
+            self.reference_data_new_names = ['t', 'd', 'm']
             self.number_of_workers = cpu_count()
             self.queue = Queue(maxsize=self.number_of_workers)
             self.return_queue = Queue(maxsize=self.number_of_workers)
@@ -60,10 +62,9 @@ class Simulator(object):
 
         self._split_cursor_and_add_to_queue(cursor)
 
-        del cursor
-        counter = 0
-
         [worker.start() for worker in self.workers]
+
+        counter = 0
 
         while True:
             cpu, list_of_dicts = self.return_queue.get()
@@ -76,6 +77,7 @@ class Simulator(object):
                 break
 
         [worker.join() for worker in self.workers]
+        del cursor
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('***\nCompleted get_tick_history() in %i seconds\n***' % elapsed)
@@ -89,15 +91,20 @@ class Simulator(object):
             print('exiting from Simulator... no database to query')
             return None
 
-        print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
-        cursor = self.library.read(symbol=ccy, date_range=DateRange(start_date, end_date))
+        try:
+            print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
+            cursor = self.library.read(symbol=ccy, date_range=DateRange(start_date, end_date))
 
-        # filter ticks for the first LOAD_BOOK message (starting point for order book reconstruction)
-        min_datetime = cursor.loc[cursor.type == 'load_book'].index[0]
-        cursor = cursor.loc[cursor.index >= min_datetime].copy()
+            # filter ticks for the first LOAD_BOOK message (starting point for order book reconstruction)
+            min_datetime = cursor.loc[cursor.type == 'load_book'].index[0]
+            cursor = cursor.loc[cursor.index >= min_datetime].copy()
 
-        elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Completed querying %i %s records in %i seconds' % (cursor.shape[0], ccy, elapsed))
+            elapsed = (dt.now(TIMEZONE) - start_time).seconds
+            print('Completed querying %i %s records in %i seconds' % (cursor.shape[0], ccy, elapsed))
+
+        except Exception as ex:
+            cursor = None
+            print('Simulator._query_arctic() thew an exception: \n%s' % str(ex))
 
         return cursor
 
@@ -142,7 +149,38 @@ class Simulator(object):
         print('Completed. Process-%i dataframe.to_dict() in %i seconds' % (cpu, elapsed))
 
     @staticmethod
-    def get_orderbook_snapshot_history(coinbase_order_book, bitfinex_order_book, tick_history):
+    def get_feature_labels(include_system_time=True, lags=0):
+        columns = list()
+
+        if include_system_time:
+            columns.append('system_time')
+
+        for lag in range(lags + 1):
+            if lag == 0:
+                columns.append('coinbase_midpoint')
+                columns.append('midpoint_delta')
+                for exchange in ['coinbase', 'bitfinex']:
+                    for side in ['bid', 'ask']:
+                        for feature in ['notional', 'distance']:
+                            for level in range(MAX_BOOK_ROWS):
+                                columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
+                    for trade_side in ['buys', 'sells']:
+                        columns.append('%s-%s' % (exchange, trade_side))
+            else:
+                print('lag: %i' % lag)
+                columns.append('coinbase_midpoint_%i' % lag)
+                columns.append('midpoint_delta_%i' % lag)
+                for exchange in ['coinbase', 'bitfinex']:
+                    for side in ['bid', 'ask']:
+                        for feature in ['notional', 'distance']:
+                            for level in range(MAX_BOOK_ROWS):
+                                columns.append(('%s-%s-%s-%i_%i' % (exchange, side, feature, level, lag)))
+                    for trade_side in ['buys', 'sells']:
+                        columns.append('%s-%s_%i' % (exchange, trade_side, lag))
+
+        return columns
+
+    def get_orderbook_snapshot_history(self, coinbase_order_book, bitfinex_order_book, tick_history):
         """
         Function to replay historical market data and generate
         the features used for reinforcement learning & training
@@ -194,53 +232,104 @@ class Simulator(object):
                     continue
 
                 diff = (new_tick_time - last_snapshot_time).microseconds
-                multiple = int(diff / 250000)  # 250000 is 250 milliseconds, or 4x a second
+                multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
 
                 if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
-                    if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
-                        coinbase_order_book_snapshot = coinbase_order_book.render_book()
-                        bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
-                        midpoint_delta = coinbase_order_book.midpoint - bitfinex_order_book.midpoint
-                        for _ in range(multiple):
+                    for _ in range(multiple):
+                        if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
+                            coinbase_order_book_snapshot = coinbase_order_book.render_book()
+                            bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
+                            midpoint_delta = coinbase_order_book.midpoint - bitfinex_order_book.midpoint
                             snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
                                                                  coinbase_order_book.midpoint,  # midpoint price
                                                                  midpoint_delta,  # price delta between exchanges
                                                                  coinbase_order_book_snapshot,
-                                                                 bitfinex_order_book_snapshot))))
+                                                                 bitfinex_order_book_snapshot))))  # longs/shorts
                             last_snapshot_time += timedelta(milliseconds=250)
-                    else:
-                        last_snapshot_time += timedelta(milliseconds=250)
+
+                        else:
+                            last_snapshot_time += timedelta(milliseconds=250)
 
             elif bitfinex_order_book.done_warming_up():
                 bitfinex_order_book.new_tick(tick)
 
-            if idx % 150000 == 0:
+            if idx % 250000 == 0:
                 elapsed = (dt.now(TIMEZONE) - start_time).seconds
                 print('...completed %i loops in %i seconds' % (idx, elapsed))
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('last tick: %s' % str(new_tick_time))
         print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
-              (loop_length, elapsed, int(loop_length/elapsed)))
-        print('***\nLooped through %i ticks and %i coinbase ticks\n***' % (loop_length, coinbase_tick_counter))
+              (loop_length, elapsed, loop_length//elapsed))
 
-        return snapshot_list
+        orderbook_snapshot_history = pd.DataFrame(snapshot_list, columns=self.get_feature_labels())
+        orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
+        return orderbook_snapshot_history
 
-    @staticmethod
-    def get_feature_labels():
-        columns = list()
-        columns.append('system_time')
-        columns.append('coinbase_midpoint')
-        columns.append('midpoint_delta')
-        for exchange in ['coinbase', 'bitfinex']:
-            for side in ['bid', 'ask']:
-                for feature in ['notional', 'distance']:
-                    for level in range(MAX_BOOK_ROWS):
-                        columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
-            for trade_side in ['buys', 'sells']:
-                columns.append('%s-%s' % (exchange, trade_side))
+    def normalize_orderbook_snapshot_history(self, orderbook_snapshot_history):
+        start_time = dt.now(tz=TIMEZONE)
 
-        return columns
+        data = orderbook_snapshot_history.copy()
+
+        data['day'] = data['system_time'].apply(lambda x: x.day)
+        dates = data['day'].unique()
+        assert len(dates) > 1  # make sure at least 2 days of data was loaded
+
+        data_to_fit = data.loc[data.day == dates[0], :].copy()
+        data_to_fit = data_to_fit.drop(['system_time', 'day'], axis=1)
+        self.scaler.fit(data_to_fit)
+
+        # data = data.drop(['system_time', 'day'], axis=1)
+
+        column_names = self.get_feature_labels(False)
+
+        normalized_data = pd.DataFrame(self.scaler.transform(data[column_names]),
+                                       index=data.index,
+                                       columns=column_names)
+
+        reference_data = data[self.reference_data_old_names]
+        reference_data.columns = self.reference_data_new_names
+
+        normalized_data = pd.concat((normalized_data, reference_data), axis=1)
+
+        elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
+        print('***\nSimulator.get_orderbook_snapshot_history_normalized() executed in %i seconds\n***' % elapsed)
+
+        return normalized_data
+
+    def append_lags(self, data, lags=0):
+        start_time = dt.now()
+
+        temp = data.copy()
+
+        # add lags to feature set
+        if lags > 0:
+            columns = self.get_feature_labels(False)
+            for lag in range(1, lags + 1):
+                for col in columns:
+                    temp[('%s_%i' % (col, lag))] = temp[col].shift(lag)
+
+        temp = temp.dropna(axis=0)
+
+        elapsed = (dt.now() - start_time).seconds
+        print('***\nSimulator.append_lags() executed in %i seconds\n***' % elapsed)
+
+        return temp
+
+    def get_env_data(self, query, coinbaseOrderBook, bitfinexOrderBook, lags=0):
+        start_time = dt.now(TIMEZONE)
+
+        tick_history = self.get_tick_history(query)
+        orderbook_snapshot_history = self.get_orderbook_snapshot_history(coinbaseOrderBook,
+                                                                         bitfinexOrderBook,
+                                                                         tick_history)
+        normalized_data = self.normalize_orderbook_snapshot_history(orderbook_snapshot_history)
+
+        env_data = self.append_lags(normalized_data, lags=lags)
+
+        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        print('Sim.get_env_data() executed in %i seconds' % elapsed)
+
+        return env_data
 
     @staticmethod
     def export_snapshots_to_csv(columns, orderbook_snapshot_history):
@@ -253,35 +342,11 @@ class Simulator(object):
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Exported order book snapshots to csv in %i seconds' % elapsed)
 
+    @staticmethod
+    def export_env_data_to_csv(env_data):
+        start_time = dt.now(TIMEZONE)
 
-def main():
-    start_time = dt.now(TIMEZONE)
+        env_data.to_csv('./env_data_history.csv')
 
-    query = {
-        'ccy': ['BCH-USD', 'tBCHUSD'],
-        'start_date': 20181105,
-        'end_date': 20181106
-    }
-
-    coinbaseOrderBook = CoinbaseOrderBook(query['ccy'][0])
-    bitfinexOrderBook = BitfinexOrderBook(query['ccy'][1])
-
-    sim = Simulator()
-    tick_history = sim.get_tick_history(query)
-    orderbook_snapshot_history = sim.get_orderbook_snapshot_history(coinbaseOrderBook, bitfinexOrderBook, tick_history)
-
-    # Export to CSV to verify if order book reconstruction is accurate/good
-    # NOTE: this is only to show that the functionality works and
-    #       should be fed into an Environment for reinforcement learning.
-    sim.export_snapshots_to_csv(sim.get_feature_labels(), orderbook_snapshot_history)
-
-    elapsed = (dt.now(TIMEZONE) - start_time).seconds
-    print('Completed %s in %i seconds' % (__name__, elapsed))
-    print('DONE. EXITING %s' % __name__)
-
-
-if __name__ == '__main__':
-    """
-    Entry point of simulation application
-    """
-    main()
+        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        print('Exported env_data to csv in %i seconds' % elapsed)

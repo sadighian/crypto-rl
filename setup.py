@@ -22,5 +22,5 @@ setup(
                         'arctic',
                         'pytz',
                         'pandas',
-                        'datetime']
+                        'datetime', 'gym', 'scikit-learn']
 )

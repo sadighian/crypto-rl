@@ -1,6 +1,6 @@
 from bitfinex_connector.bitfinex_client import BitfinexClient
 from coinbase_connector.coinbase_client import CoinbaseClient
-from configurations import configs
+from configurations.configs import SNAPSHOT_RATE, BASKET
 from threading import Timer
 from datetime import datetime as dt
 from multiprocessing import Process
@@ -11,9 +11,13 @@ import asyncio
 class Recorder(Process):
 
     def __init__(self, symbols):
+        """
+        Example: symbols = [('BTC-USD, 'tBTCUSD')]
+        :param symbols: basket of securities to record
+        """
         super(Recorder, self).__init__()
         self.symbols = symbols
-        self.timer_frequency = configs.SNAPSHOT_RATE
+        self.timer_frequency = SNAPSHOT_RATE
         self.workers = dict()
         self.current_time = dt.now()
         self.daemon = False
@@ -21,7 +25,9 @@ class Recorder(Process):
     # noinspection PyTypeChecker
     def run(self):
         """
-        Processes market data subscription per crypto pair (e.g., BTC-USD)
+        New process created to instantiate limit order books for (1) Coinbase Pro, and (2) Bitfinex.
+        Connections made to each exchange are made asynchronously thanks to asyncio.
+
         :return: void
         """
         coinbase, bitfinex = self.symbols
@@ -32,23 +38,23 @@ class Recorder(Process):
 
         tasks = asyncio.gather(*[self.workers[sym].subscribe() for sym in self.workers.keys()])
         loop = asyncio.get_event_loop()
-        print('Crypto Gathered %i tasks' % len(self.workers.keys()))
+        print('Recorder: Gathered %i tasks' % len(self.workers.keys()))
 
         try:
             loop.run_until_complete(tasks)
             loop.close()
             [self.workers[sym].join() for sym in self.workers.keys()]
-            print('Crypto: loop closed for %s and %s.' % (coinbase, bitfinex))
+            print('Recorder: loop closed for %s and %s.' % (coinbase, bitfinex))
 
         except KeyboardInterrupt as e:
-            print("Crypto: Caught keyboard interrupt. \n%s" % e)
+            print("Recorder: Caught keyboard interrupt. \n%s" % e)
             tasks.cancel()
             loop.close()
             [self.workers[sym].join() for sym in self.workers.keys()]
 
         finally:
             loop.close()
-            print('\nCrypto: Finally done for %s and %s.' % (coinbase, bitfinex))
+            print('\nRecorder: Finally done for %s and %s.' % (coinbase, bitfinex))
 
     # noinspection PyTypeChecker
     def timer_worker(self, coinbaseClient, bitfinexClient):
@@ -69,7 +75,7 @@ class Recorder(Process):
 
 
 def main():
-    for coinbase, bitfinex in configs.BASKET:
+    for coinbase, bitfinex in BASKET:
         Recorder((coinbase, bitfinex)).start()
         print('\nProcess started up for %s' % coinbase)
         time.sleep(9)
