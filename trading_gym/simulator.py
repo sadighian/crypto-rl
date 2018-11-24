@@ -3,8 +3,6 @@ from datetime import timedelta
 from multiprocessing import cpu_count, Process, Queue
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
-from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
-from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, RECORD_DATA, MAX_BOOK_ROWS
 from sortedcontainers import SortedDict
 from dateutil.parser import parse
@@ -352,64 +350,3 @@ class Simulator(object):
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Exported env_data to csv in %i seconds' % elapsed)
-
-
-def test_get_orderbook_snapshot_history():
-    start_time = dt.now(TIMEZONE)
-
-    query = {
-        'ccy': ['BCH-USD', 'tBCHUSD'],
-        'start_date': 20181110,
-        'end_date': 20181112
-    }
-
-    coinbaseOrderBook = CoinbaseOrderBook(query['ccy'][0])
-    bitfinexOrderBook = BitfinexOrderBook(query['ccy'][1])
-
-    sim = Simulator()
-    tick_history = sim.get_tick_history(query)
-
-    if tick_history is None:
-        print('Exiting due to no data being available.')
-        return
-
-    orderbook_snapshot_history = sim.get_orderbook_snapshot_history(coinbaseOrderBook, bitfinexOrderBook, tick_history)
-
-    # Export to CSV to verify if order book reconstruction is accurate/good
-    # NOTE: this is only to show that the functionality works and
-    #       should be fed into an Environment for reinforcement learning.
-    sim.export_snapshots_to_csv(sim.get_feature_labels(True), orderbook_snapshot_history)
-
-    elapsed = (dt.now(TIMEZONE) - start_time).seconds
-    print('Completed %s in %i seconds' % (__name__, elapsed))
-    print('DONE. EXITING %s' % __name__)
-
-
-def test_get_env_data():
-    start_time = dt.now(TIMEZONE)
-
-    query = {
-        'ccy': ['BCH-USD', 'tBCHUSD'],
-        'start_date': 20181110,
-        'end_date': 20181113
-    }
-
-    lags = 0
-
-    sim = Simulator()
-    env_data = sim.get_env_data(query=query, lags=lags)
-
-    sim.export_env_data_to_csv(env_data)
-
-    elapsed = (dt.now(TIMEZONE) - start_time).seconds
-    print('Completed %s in %i seconds' % (__name__, elapsed))
-    print('DONE. EXITING %s' % __name__)
-
-
-if __name__ == '__main__':
-    """
-    Entry point of simulation application
-    """
-    # test_get_orderbook_snapshot_history()
-    # test_get_env_data()
-    pass

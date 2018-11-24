@@ -1,11 +1,10 @@
 from gym import Env, spaces
 from gym.utils import seeding
 import random
-from simulator import Simulator as sim
+from simulator import Simulator as Sim
+from broker import Broker
 from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
-from configurations.configs import TIMEZONE
-from environment.broker import Broker
 import logging
 import numpy as np
 
@@ -31,7 +30,8 @@ EXTRA_FEATURES = ['long_inventory', 'short_inventory']
 
 class TradingEnv(Env):
 
-    def __init__(self, training=True, env_id='coinbasepro-bitfinex-v0', step_size=1, fee=0.003, max_position=5):
+    def __init__(self, query, lags, training=True, env_id='coinbasepro-bitfinex-v0', step_size=1,
+                 fee=0.003, max_position=1):
         # properties required for instantiation
         self.training = training
         self.env_id = env_id
@@ -43,33 +43,26 @@ class TradingEnv(Env):
         self.reward = None
         self.done = False
         self.local_step_number = 0
-        self.observation = self.data[self.local_step_number]
-
-        # TODO make these parameters
-        lags = 0
-        query = {
-            'ccy': ['BCH-USD', 'tBCHUSD'],
-            'start_date': 20181110,
-            'end_date': 20181113
-        }
 
         # get historical data for simulations
         self.broker = Broker(ccy=query['ccy'][0], max_position=max_position)
-        self.sim = sim()
+        self.sim = Sim()
         self.features = self.sim.get_feature_labels(include_system_time=False, lags=lags)
-        self.midpoint_index = self.sim.get_feature_labels(include_system_time=False) + 2
+        self.midpoint_index = len(self.sim.get_feature_labels(include_system_time=False)) + 2
+        print('midpoint index is %i' % self.midpoint_index)
         self.data = self.sim.get_env_data(query=query,
                                           coinbaseOrderBook=CoinbaseOrderBook(query['ccy'][0]),
                                           bitfinexOrderBook=BitfinexOrderBook(query['ccy'][1]),
                                           lags=lags)
         self.data = self.data.values
+        self.observation = self.reset()
 
         # derive gym.env properties
         self.actions = DEFAULT_ACTION_SET
         self.action_space = spaces.Discrete(len(self.actions))
         self.observation_space = spaces.Box(low=-np.inf,
                                             high=np.inf,
-                                            shape=(1, len(self.data[self.features].columns.tolist()) + len(EXTRA_FEATURES)),
+                                            shape=(1, len(self.features) + len(EXTRA_FEATURES)),
                                             dtype=np.float32)
         self.env_id = env_id
 
@@ -83,10 +76,11 @@ class TradingEnv(Env):
             self.reset()
             return self.observation, self.reward, self.done, {'isDone': self.done}
 
-        self.observation = np.concatenate((self.data[self.local_step_number], self.create_position_features()))
+        self.observation = self.data[self.local_step_number]
         self.reward = self.get_reward(action, self.observation)
-        self.local_step_number += self.step_size
+        self.observation = np.concatenate((self.observation, self.create_position_features()))
 
+        self.local_step_number += self.step_size
         if self.local_step_number > self.data.shape[0] - 2:
             self.done = True
 
@@ -95,9 +89,11 @@ class TradingEnv(Env):
     def reset(self):
         self.reward = None
         self.done = False
-        self.local_step_number = random.randint(0, self.data.shape[0] - int(self.data.shape[0]*.2)) \
+        self.broker.reset()
+        self.local_step_number = random.randint(0, self.data.shape[0] - int(self.data.shape[0] * .2)) \
             if self.training else 0
         self.observation = np.concatenate((self.data[self.local_step_number], self.create_position_features()))
+        self.local_step_number += 1
         return self.observation
 
     def render(self, mode='human'):
@@ -115,7 +111,7 @@ class TradingEnv(Env):
 
         if action == 0:  # buy
             order = {
-                'price': midpoint + (midpoint*self.fee),
+                'price': midpoint + (midpoint * self.fee),
                 'size': 10000.0,
                 'side': 'long'
             }
@@ -129,7 +125,7 @@ class TradingEnv(Env):
             self.broker.remove(order=order)
         elif action == 2:  # short
             order = {
-                'price': midpoint - (midpoint*self.fee),
+                'price': midpoint - (midpoint * self.fee),
                 'size': 10000.0,
                 'side': 'short'
             }
@@ -152,4 +148,5 @@ class TradingEnv(Env):
         return unrealized_pnl + realized_pnl
 
     def create_position_features(self):
-        return self.broker.long_inventory / self.max_position, self.broker.short_inventory / self.max_position
+        return self.broker.long_inventory.position_count / self.max_position, \
+               self.broker.short_inventory.position_count / self.max_position

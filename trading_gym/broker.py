@@ -22,8 +22,8 @@ class PositionI(object):
         if self.position_count > 0:
             first_order = self.positions.pop()  # FIFO order inventory
             self._update(first_order_price=first_order['price'], order=order)
-        else:
-            print('PositionI.remove() no position to remove')
+        # else:
+        #     print('PositionI.remove() no position to remove')
 
     def reset(self):
         self.positions.clear()
