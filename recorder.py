@@ -12,8 +12,10 @@ class Recorder(Process):
 
     def __init__(self, symbols):
         """
-        Example: symbols = [('BTC-USD, 'tBTCUSD')]
-        :param symbols: basket of securities to record
+        Constructor of Recorder.
+
+        :param symbols: basket of securities to record...
+                        Example: symbols = [('BTC-USD, 'tBTCUSD')]
         """
         super(Recorder, self).__init__()
         self.symbols = symbols
@@ -60,6 +62,9 @@ class Recorder(Process):
     def timer_worker(self, coinbaseClient, bitfinexClient):
         """
         Thread worker to be invoked every N seconds (e.g., configs.SNAPSHOT_RATE)
+
+        :param coinbaseClient: from coinbase_connector.coinbase_client import CoinbaseClient
+        :param bitfinexClient: from bitfinex_connector.bitfinex_client import BitfinexClient
         :return: void
         """
         Timer(self.timer_frequency, self.timer_worker, args=(coinbaseClient, bitfinexClient,)).start()

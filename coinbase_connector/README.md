@@ -1,5 +1,5 @@
 # Coinbase Pro Connector
-As of November 1st, 2018.
+As of November 25th, 2018.
 
 ## 1. Overview
 The Coinbase connector consists of three classes:

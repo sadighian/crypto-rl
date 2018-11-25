@@ -1,5 +1,5 @@
 # Multiprocessing Crypto Recorder & Data Replay
-As of November 24th, 2018.
+As of November 25th, 2018.
 
 ## 1. Purpose
 The purpose of this application is to record full limit order book and trade tick data 
@@ -77,8 +77,26 @@ for the following reasons:
 
 ## 5. Examples and Usage
 ### 5.1 Recorder.py
-This class is the entry point for recording tick data. 
-To start the application, type `python recorder.py` into your command prompt.
+Class for recording limit order and trade data. 
+
+**Step 1:**
+Go to the configurations.configs.py and define the crypto currencies
+you would like to subscribe and record. Note: the first column of CCYs are 
+Coinbase Pro currency names, and the second column of CCYs are Bitfinex's.
+```
+SNAPSHOT_RATE = 15.  # 0.25 = 4x second
+BASKET = [('BTC-USD', 'tBTCUSD'),
+         ('ETH-USD', 'tETHUSD'),
+         ('LTC-USD', 'tLTCUSD'),
+         ('BCH-USD', 'tBCHUSD'),
+         ('ETC-USD', 'tETCUSD')]
+```
+
+**Step 2:**
+Open a CLI and start recording full limit order book and trade data.
+ ```
+ python recorder.py
+ ```
 
 ### 5.2 Trading Simulator
 Work in progress...

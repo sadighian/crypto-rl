@@ -1,5 +1,5 @@
 # Database
-As of November 1st, 2018.
+As of November 25th, 2018.
 
 ## 1. Overview
 The `database` module contains the wrapper class for storing tick data from the `Arctic Tick Store`.
