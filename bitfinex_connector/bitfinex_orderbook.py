@@ -81,7 +81,7 @@ class BitfinexOrderBook(OrderBook):
 
         # unhandled exception
         else:
-            print('WTF\n%s\n' % msg)
+            print('unhandled exception\n%s\n' % msg)
             return True
 
     def _process_book(self, msg):

@@ -33,6 +33,7 @@ developed to place an order or automate trading.
 - [arctic](https://github.com/manahl/arctic)
 - asyncio
 - datetime
+- gym
 - json
 - multiprocessing
 - numpy
@@ -45,9 +46,11 @@ developed to place an order or automate trading.
 - time
 - websockets
 
-## 4. Design Pattern
-The design pattern is intended to serve as a foundation for implementing a trading strategy.
-### 4.1 Architecture
+## 4. Design Patterns
+
+### 4.1 Data Recorder
+The design pattern is intended to serve as a foundation for implementing a trading strategy. (recorder.py)
+#### 4.1.1 Application Architecture
 - Each crypto pair (e.g., Bitcoin-USD) runs on its own `Process`
   - Each exchange data feed is processed in its own `Thread` within the parent crypto pair `Process`
   - A timer for periodic polling (or order book snapshots--see `mongo-integration` or `arctic-book-snapshot` 
@@ -55,7 +58,7 @@ The design pattern is intended to serve as a foundation for implementing a tradi
 
 ![Design Pattern](images/design-pattern.png)
 
-### 4.2 Arctic Schema
+#### 4.1.2 Arctic Schema
 **Arctic tick store** is the database implementation of choice for this project for the 
 following reasons:
  - Open sourced reliability
@@ -66,7 +69,7 @@ each `dict` is an incoming **tick** from the exchanges.
 - Each `list` consists of `./configurations/BATCH_SIZE` ticks (e.g., 100,000 ticks)
 - Per the Arctic Tick Store design, all currency pairs are stored in the **same** MongoDB collection
 
-### 4.3 Limit Order Book
+### 4.2 Limit Order Book
 **SortedDict** pure python class is used for the limit order book
 for the following reasons:
 - Sorted Price **Insertions** within the limit order book
@@ -74,6 +77,9 @@ for the following reasons:
 - Price **Deletions** within the limit order book can be performed with **O(log n)**
 - **Getting / setting** values are performed with **O(1)**
 - **SortedDict** interface is intuitive, thus making implementation easier
+
+### 4.3 Reinforcement Learning Environment
+WORK IN PROGRESS
 
 ## 5. Examples and Usage
 ### 5.1 Recorder.py
@@ -90,6 +96,7 @@ BASKET = [('BTC-USD', 'tBTCUSD'),
          ('LTC-USD', 'tLTCUSD'),
          ('BCH-USD', 'tBCHUSD'),
          ('ETC-USD', 'tETCUSD')]
+RECORD_DATA = True
 ```
 
 **Step 2:**
@@ -99,7 +106,7 @@ Open a CLI and start recording full limit order book and trade data.
  ```
 
 ### 5.2 Trading Simulator
-Work in progress...
+WORK IN PROGRESS
 
 ## 6. Appendix
 ### 6.1 Assumptions

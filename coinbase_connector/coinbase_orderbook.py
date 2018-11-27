@@ -83,27 +83,6 @@ class CoinbaseOrderBook(OrderBook):
         elapsed = time() - start_time
         print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
 
-    def _check_sequence(self, new_sequence, message_type):
-        """
-        Check for gap in incoming tick sequence
-        :param new_sequence: incoming tick
-        :return: True = reset order book / False = no sequence gap
-        """
-        self.diff = new_sequence - self.sequence
-        if self.diff == 1:
-            self.sequence = new_sequence
-            return False
-        elif self.diff <= 0:
-            return False
-        elif message_type == 'preload':  # used for simulations
-            self.sequence = new_sequence
-            return False
-        else:
-            print('sequence gap: %s missing %i messages. new_sequence: %i [%s]\n' %
-                  (self.sym, self.diff, new_sequence, message_type))
-            self.sequence = new_sequence
-            return True
-
     def new_tick(self, msg):
         """
         Method to process incoming ticks.
@@ -113,27 +92,43 @@ class CoinbaseOrderBook(OrderBook):
         message_type = msg['type']
         if 'sequence' not in msg:
             if message_type == 'subscriptions':
+                # request an order book snapshot after the websocket feed is established
                 print('Coinbase Subscriptions successful for : %s' % self.sym)
                 self.load_book()
             return True
         elif np.isnan(msg['sequence']):
+            # this situation appears during data replays (and not in live data feeds)
             print('\n%s found a nan in the sequence' % self.sym)
             return True
 
-        # get a new copy of the limit order book if we miss a msg
+        # check the incoming message sequence to verify if there
+        # is a dropped/missed message.
+        # If so, request a new orderbook snapshot from Coinbase Pro.
         new_sequence = int(msg['sequence'])
-        if self._check_sequence(new_sequence, message_type):
-            if message_type == 'load_book':
-                self.clear_book()
-            return False
+        self.diff = new_sequence - self.sequence
 
-        # filter out stale ticks
-        if self.diff < 1:
+        if self.diff == 1:
+            # tick sequences increase by an increment of one
+            self.sequence = new_sequence
+        elif message_type in ['load_book', 'book_loaded', 'preload']:
+            # message types used for data replays
+            self.sequence = new_sequence
+        elif self.diff <= 0:
             if message_type in ['received', 'open', 'done', 'match', 'change']:
-                print('%s %s has a stale tick: current %i | incoming %i' % (
+                print('%s [%s] has a stale tick: current %i | incoming %i' % (
                     self.sym, message_type, self.sequence, new_sequence))
                 return True
+            else:
+                print('UNKNOWN-%s %s has a stale tick: current %i | incoming %i' % (
+                    self.sym, message_type, self.sequence, new_sequence))
+                return True
+        else:  # when the tick sequence difference is greater than 1
+            print('sequence gap: %s missing %i messages. new_sequence: %i [%s]\n' %
+                  (self.sym, self.diff, new_sequence, message_type))
+            self.sequence = new_sequence
+            return False
 
+        # persist data to Arctic Tick Store
         self.db.new_tick(msg)  # make sure CONFIGS.RECORDING is false when replaying data
 
         side = msg['side']
