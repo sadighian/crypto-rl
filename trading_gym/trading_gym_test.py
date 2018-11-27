@@ -1,6 +1,6 @@
 import numpy as np
 from datetime import datetime as dt
-from trading_env import TradingEnv
+from trading_gym import TradingGym
 
 
 if __name__ == '__main__':
@@ -13,7 +13,7 @@ if __name__ == '__main__':
         'end_date': 20181122
     }
     reward = 0.
-    _env = TradingEnv(query=query, lags=lags)
+    _env = TradingGym(query=query, lags=lags)
 
     for i in range(500):
         state, reward, done, info = _env.step(np.random.randint(5))

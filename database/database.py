@@ -15,10 +15,11 @@ class Database(object):
             self.db = Arctic(MONGO_ENDPOINT)
             self.db.initialize_library(ARCTIC_NAME, lib_type=TICK_STORE)
             self.collection = self.db[ARCTIC_NAME]
-            print('%s is recording %s\n' % (self.exchange, self.sym))
+            print('\n%s is recording %s\n' % (self.exchange, self.sym))
         else:
             self.db = None
             self.collection = None
+            print('%s failed to connect to Arctic Tick Store' % self.sym)
 
     def new_tick(self, msg):
         """

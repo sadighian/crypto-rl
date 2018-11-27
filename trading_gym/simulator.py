@@ -156,27 +156,16 @@ class Simulator(object):
             columns.append('system_time')
 
         for lag in range(lags + 1):
-            if lag == 0:
-                columns.append('coinbase_midpoint')
-                columns.append('midpoint_delta')
-                for exchange in ['coinbase', 'bitfinex']:
-                    for side in ['bid', 'ask']:
-                        for feature in ['notional', 'distance']:
-                            for level in range(MAX_BOOK_ROWS):
-                                columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
-                    for trade_side in ['buys', 'sells']:
-                        columns.append('%s-%s' % (exchange, trade_side))
-            else:
-                print('lag: %i' % lag)
-                columns.append('coinbase_midpoint_%i' % lag)
-                columns.append('midpoint_delta_%i' % lag)
-                for exchange in ['coinbase', 'bitfinex']:
-                    for side in ['bid', 'ask']:
-                        for feature in ['notional', 'distance']:
-                            for level in range(MAX_BOOK_ROWS):
-                                columns.append(('%s-%s-%s-%i_%i' % (exchange, side, feature, level, lag)))
-                    for trade_side in ['buys', 'sells']:
-                        columns.append('%s-%s_%i' % (exchange, trade_side, lag))
+            suffix = '' if lag == 0 else '_%i' % lag
+            columns.append('coinbase_midpoint%s' % suffix)
+            columns.append('midpoint_delta%s' % suffix)
+            for exchange in ['coinbase', 'bitfinex']:
+                for side in ['bid', 'ask']:
+                    for feature in ['notional', 'distance']:
+                        for level in range(MAX_BOOK_ROWS):
+                            columns.append(('%s-%s-%s-%i%s' % (exchange, side, feature, level, suffix)))
+                for trade_side in ['buys', 'sells']:
+                    columns.append('%s-%s%s' % (exchange, trade_side, suffix))
 
         return columns
 

@@ -22,5 +22,5 @@ setup(
                         'arctic',
                         'pytz',
                         'pandas',
-                        'datetime', 'gym', 'scikit-learn']
+                        'datetime', 'gym', 'scikit-learn', 'tensorforce']
 )

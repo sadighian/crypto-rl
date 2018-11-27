@@ -98,6 +98,7 @@ class BitfinexOrderBook(OrderBook):
         # order book message (initial snapshot)
         elif np.shape(msg[1])[0] > 3:
             print('%s loading book...' % self.sym)
+            self.clear_book()
             self._load_book(msg)
             return True
 

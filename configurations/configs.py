@@ -2,7 +2,7 @@ import pytz as tz
 
 
 # ./recorder.py
-SNAPSHOT_RATE = 15.  # 0.25 = 4x second
+SNAPSHOT_RATE = 5.  # 0.25 = 4x second
 BASKET = [('BTC-USD', 'tBTCUSD')]#,
           # ('ETH-USD', 'tETHUSD'),
           # ('LTC-USD', 'tLTCUSD'),
@@ -22,7 +22,7 @@ MAX_BOOK_ROWS = 5
 
 # ./connector_components/database.py
 BATCH_SIZE = 100000
-RECORD_DATA = False
+RECORD_DATA = True
 MONGO_ENDPOINT = 'localhost'
 ARCTIC_NAME = 'crypto.tickstore'
 

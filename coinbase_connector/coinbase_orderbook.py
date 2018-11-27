@@ -3,6 +3,7 @@ from datetime import datetime as dt
 from time import time
 import requests
 import numpy as np
+from configurations.configs import RECORD_DATA
 
 
 class CoinbaseOrderBook(OrderBook):
@@ -10,6 +11,7 @@ class CoinbaseOrderBook(OrderBook):
     def __init__(self, sym):
         super(CoinbaseOrderBook, self).__init__(sym, 'coinbase')
         self.sequence = 0
+        self.diff = 0
 
     def _get_book(self):
         """
@@ -87,18 +89,18 @@ class CoinbaseOrderBook(OrderBook):
         :param new_sequence: incoming tick
         :return: True = reset order book / False = no sequence gap
         """
-        diff = new_sequence - self.sequence
-        if diff == 1:
+        self.diff = new_sequence - self.sequence
+        if self.diff == 1:
             self.sequence = new_sequence
             return False
-        elif diff <= 0:
+        elif self.diff <= 0:
             return False
         elif message_type == 'preload':  # used for simulations
             self.sequence = new_sequence
             return False
         else:
             print('sequence gap: %s missing %i messages. new_sequence: %i [%s]\n' %
-                  (self.sym, diff, new_sequence, message_type))
+                  (self.sym, self.diff, new_sequence, message_type))
             self.sequence = new_sequence
             return True
 
@@ -148,12 +150,12 @@ class CoinbaseOrderBook(OrderBook):
 
         elif message_type == 'match':
             trade_notional = float(msg['price']) * float(msg['size'])
-            if side == 'sell':  # trades matched on the asks book are considered buys
-                self.trade_tracker['buys'] += trade_notional
+            if side == 'buy':  # trades matched on the bids book are considered sells
+                self.trade_tracker['sells'] += trade_notional
                 self.bids.match(msg)
                 return True
-            else:  # trades matched on the bids book are considered sells
-                self.trade_tracker['sells'] += trade_notional
+            else:  # trades matched on the asks book are considered buys
+                self.trade_tracker['buys'] += trade_notional
                 self.asks.match(msg)
                 return True
 

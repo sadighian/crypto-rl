@@ -31,7 +31,7 @@ class CoinbaseClient(Client):
 # if __name__ == "__main__":
 #
 #     loop = asyncio.get_event_loop()
-#     symbols = ['BCH-USD', 'LTC-USD', 'BTC-USD']
+#     symbols = ['BTC-USD']#, 'BCH-USD', 'LTC-USD', 'ETH-USD']
 #     p = dict()
 #
 #     print('Initializing...%s' % symbols)
@@ -44,12 +44,17 @@ class CoinbaseClient(Client):
 #
 #     try:
 #         loop.run_until_complete(tasks)
+#         print('TASK are complete for {}'.format(symbols))
 #         loop.close()
+#         for sym in symbols:
+#             p[sym].join()
+#             print('Closing [%s]' % p[sym].name)
 #         print('loop closed.')
 #
 #     except KeyboardInterrupt as e:
 #         print("Caught keyboard interrupt. Canceling tasks...")
 #         tasks.cancel()
+#         loop.close()
 #         for sym in symbols:
 #             p[sym].join()
 #             print('Closing [%s]' % p[sym].name)

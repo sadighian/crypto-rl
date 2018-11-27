@@ -10,7 +10,7 @@ query = {
     'start_date': 20181120,
     'end_date': 20181122
 }
-lags = 1
+lags = 0
 
 
 def test_get_orderbook_snapshot_history(query):
@@ -56,6 +56,6 @@ if __name__ == '__main__':
     """
     Entry point of simulation application
     """
-    test_get_orderbook_snapshot_history(query)
-    # test_get_env_data(query, lags)
+    # test_get_orderbook_snapshot_history(query)
+    test_get_env_data(query, lags)
     pass
