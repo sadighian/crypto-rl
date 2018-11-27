@@ -120,11 +120,19 @@ class CoinbaseOrderBook(OrderBook):
             print('\n%s found a nan in the sequence' % self.sym)
             return True
 
+        # get a new copy of the limit order book if we miss a msg
         new_sequence = int(msg['sequence'])
         if self._check_sequence(new_sequence, message_type):
             if message_type == 'load_book':
                 self.clear_book()
             return False
+
+        # filter out stale ticks
+        if self.diff < 1:
+            if message_type in ['received', 'open', 'done', 'match', 'change']:
+                print('%s %s has a stale tick: current %i | incoming %i' % (
+                    self.sym, message_type, self.sequence, new_sequence))
+                return True
 
         self.db.new_tick(msg)  # make sure CONFIGS.RECORDING is false when replaying data
 
