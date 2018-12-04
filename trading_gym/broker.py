@@ -10,13 +10,14 @@ class PositionI(object):
         self.position_exposure = 0.
         self.position_avg_price = 0.
         self.realized_pnl = 0.
+        self._inventory_full = False
 
     def add(self, order):
         if self.position_count < self.max_position_count:
             self.positions.append(order)
             self._update(first_order_price=order['price'])
-        else:
-            print('PositionI.add() have %i of %i positions open' % (self.position_count, self.max_position_count))
+        # else:
+        #     print('PositionI.add() have %i of %i positions open' % (self.position_count, self.max_position_count))
 
     def remove(self, order):
         if self.position_count > 0:
@@ -28,14 +29,13 @@ class PositionI(object):
     def reset(self):
         self.positions.clear()
         self.position_count = 0
-        print('PositionI.reset() completed')
 
     def _update(self, first_order_price, order=None):
         if order is not None:
             if order['side'] == 'long':
-                realized_pnl = (order['price'] / first_order_price - 1.) * 100.
+                realized_pnl = (order['price'] / first_order_price - 1.) #* 100.
             elif order['side'] == 'short':
-                realized_pnl = (first_order_price / order['price'] - 1.) * 100.
+                realized_pnl = (first_order_price / order['price'] - 1.) #* 100.
             else:
                 realized_pnl = 0.
                 print('PositionI._update() Uknown order side for %s' % order)
@@ -46,17 +46,23 @@ class PositionI(object):
         self.position_count = len(self.positions)
         self.position_avg_price = self.position_exposure / self.position_count if self.position_count > 0 else None
 
+        self._inventory_full = True if self.position_count == self.max_position_count else False
+
     def get_unrealized_long_pnl(self, midpoint=100.):
         pnl = 0.
         for order in self.positions:
-            pnl += (midpoint / order['price'] - 1.) * 100.
+            pnl += (midpoint / order['price'] - 1.) #* 100.
         return pnl
 
     def get_unrealized_short_pnl(self, midpoint=100.):
         pnl = 0.
         for order in self.positions:
-            pnl += (order['price'] / midpoint - 1.) * 100.
+            pnl += (order['price'] / midpoint - 1.) #* 100.
         return pnl
+
+    @property
+    def full_inventory(self):
+        return self._inventory_full
 
 
 class Broker(object):

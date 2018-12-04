@@ -56,6 +56,6 @@ if __name__ == '__main__':
     """
     Entry point of simulation application
     """
-    # test_get_orderbook_snapshot_history(query)
-    test_get_env_data(query, lags)
+    test_get_orderbook_snapshot_history(query)
+    # test_get_env_data(query, lags)
     pass
