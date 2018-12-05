@@ -3,6 +3,8 @@ from datetime import timedelta
 from multiprocessing import cpu_count, Process, Queue
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
+from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
+from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, RECORD_DATA, MAX_BOOK_ROWS
 from sortedcontainers import SortedDict
 from dateutil.parser import parse
@@ -304,10 +306,14 @@ class Simulator(object):
 
         return temp
 
-    def get_env_data(self, query, coinbaseOrderBook, bitfinexOrderBook, lags=0):
+    def get_env_data(self, query, lags=0):
         start_time = dt.now(TIMEZONE)
 
         tick_history = self.get_tick_history(query)
+
+        coinbaseOrderBook = CoinbaseOrderBook(query['ccy'][0])
+        bitfinexOrderBook = BitfinexOrderBook(query['ccy'][1])
+
         orderbook_snapshot_history = self.get_orderbook_snapshot_history(coinbaseOrderBook,
                                                                          bitfinexOrderBook,
                                                                          tick_history)

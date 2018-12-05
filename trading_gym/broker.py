@@ -3,10 +3,10 @@ import pandas as pd
 
 class PositionI(object):
 
-    def __init__(self, side='buy', max_position=1):
+    def __init__(self, side='long', max_position=1):
         self.max_position_count = max_position
-        self.positions = []
-        self.realized_pnl = 0.0
+        self._positions = []
+        self._realized_pnl = []
         self.unrealized_pnl = 0.0
         self.full_inventory = False
         self.position_count = 0
@@ -14,34 +14,45 @@ class PositionI(object):
         self.side = side
 
     def add(self, order):
-        if self.position_count < self.max_position_count:
-            self.positions.append(order)
+        if not self.full_inventory:
+            self._positions.append(order)
             self.position_count += 1
             self.total_exposure += order['price']
+            self.full_inventory = self.position_count >= self.max_position_count
         # else:
         #     print('PositionI.add() have %i of %i positions open' % (self.position_count, self.max_position_count))
 
     def remove(self, order):
         if self.position_count > 0:
-            opening_order = self.positions.pop()  # FIFO order inventory
+            opening_order = self._positions.pop()  # FIFO order inventory
             self.position_count -= 1
             self.total_exposure -= opening_order['price']
-            if self.side == 'buy':
-                self.realized_pnl += (order['price'] - opening_order['price']) / opening_order['price']
-            elif self.side == 'sell':
-                self.realized_pnl += (opening_order['price'] - order['price']) / opening_order['price']
+            self.full_inventory = self.position_count >= self.max_position_count
+
+            if self.side == 'long':
+                self._realized_pnl.append((order['price'] - opening_order['price']) / opening_order['price'])
+            elif self.side == 'short':
+                self._realized_pnl.append((opening_order['price'] - order['price']) / opening_order['price'])
             else:
                 print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
         # else:
         #     print('PositionI.remove() no position in inventory to remove')
 
     def reset(self):
-        self.positions.clear()
-        self.realized_pnl = 0.0
+        self._positions.clear()
+        self._realized_pnl = []
         self.unrealized_pnl = 0.0
         self.full_inventory = False
         self.position_count = 0
         self.total_exposure = 0.0
+
+    @property
+    def positions(self):
+        return self._positions
+
+    @property
+    def realized_pnl(self):
+        return self._realized_pnl
 
     def get_unrealized_pnl(self, midpoint=100.):
         if self.position_count == 0:
@@ -49,21 +60,24 @@ class PositionI(object):
 
         average_price = self.total_exposure / self.position_count
         pnl = 0.0
-        if self.side == 'buy':
+        if self.side == 'long':
             pnl = (midpoint / average_price) - 1.0
-        elif self.side == 'sell':
+        elif self.side == 'short':
             pnl = (average_price / midpoint) - 1.0
         else:
             print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
 
         return pnl
 
+    def get_realized_pnl(self):
+        return sum(self._realized_pnl)
+
 
 class Broker(object):
 
     def __init__(self, max_position=1):
-        self.long_inventory = PositionI(side='buy', max_position=max_position)
-        self.short_inventory = PositionI(side='sell', max_position=max_position)
+        self.long_inventory = PositionI(side='long', max_position=max_position)
+        self.short_inventory = PositionI(side='short', max_position=max_position)
         self.net_exposure = 0.0
 
     def add(self, order):
@@ -98,4 +112,13 @@ class Broker(object):
         return long_pnl + short_pnl
 
     def get_realized_pnl(self):
-        return self.short_inventory.realized_pnl + self.long_inventory.realized_pnl
+        return self.short_inventory.get_realized_pnl() + self.long_inventory.get_realized_pnl()
+
+    @property
+    def long_inventory_count(self):
+        return self.long_inventory.position_count
+
+    @property
+    def short_inventory_count(self):
+        return self.short_inventory.position_count
+
