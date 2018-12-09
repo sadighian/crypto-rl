@@ -4,13 +4,12 @@ from simulator import Simulator as Sim
 from broker import Broker
 import logging
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+import os
 
 
 class TradingGym(Env):
 
-    def __init__(self, data,
-                 scaler,
+    def __init__(self,
                  training=True,
                  env_id='coinbase-bitfinex-v0',
                  step_size=1,
@@ -24,7 +23,6 @@ class TradingGym(Env):
         self.fee = fee
         self.max_position = max_position
         self.inventory_features = ['long_inventory', 'short_inventory']
-        self.scaler = scaler
 
         # properties that get reset()
         self._reward = None
@@ -48,11 +46,19 @@ class TradingGym(Env):
         self.features = self.sim.get_feature_labels(include_system_time=False, lags=0)
 
         # load the data
-        self.data = data.values
+        cwd = os.path.dirname(os.path.realpath(__file__))
+        self.data = self.sim.load_env_states(fitting_filepath=cwd + '/fitting_data.csv',
+                                             env_filepath=cwd + '/env_data.csv')
+        # self.data = self.sim.query_env_states(query={
+        #     'ccy': ['ETC-USD', 'tETCUSD'],
+        #     'start_date': 20181121,
+        #     'end_date': 20181122
+        # })
+        self.data = self.data.values
         self.observation = self.reset()
 
         self.action_space = spaces.Discrete(len(self._actions))
-        observations_concatenated = len(self.features) + len(self.inventory_features) + len(self._actions)
+        observations_concatenated = len(self.features) + len(self.inventory_features) + len(self._actions)-1
         self.observation_space = spaces.Box(low=-np.inf,
                                             high=np.inf,
                                             shape=(1, observations_concatenated),
@@ -71,7 +77,7 @@ class TradingGym(Env):
 
         self._next_state = np.concatenate((self.process_data(self.data[self._local_step_number]),
                                            self.create_position_features(),
-                                           self.create_action_features(action=self._action)))
+                                           self.create_action_features(action=action)))
         self.observation = (self._state, self._next_state)
         self._state = self._next_state
 
@@ -177,19 +183,21 @@ class TradingGym(Env):
         elif pnl_multiple < 1.0:
             reward = 0.0
         elif pnl_multiple < 2.0:
-            reward = 0.5
+            reward = 0.4
+        elif pnl_multiple < 3.0:
+            reward = 0.8
         else:
             reward = 1.0
 
-        print('got reward: {}'.format(reward))
+        # print('got reward: {}'.format(reward))
         return reward
 
     def create_action_features(self, action):
-        return np.array(self._actions[action])
+        return np.array(self._actions[action])[1:]
 
     def create_position_features(self):
         return np.array((self.broker.long_inventory.position_count / self.max_position,
                          self.broker.short_inventory.position_count / self.max_position))
 
     def process_data(self, _next_state):
-        return self.scaler.transform(_next_state.reshape(1, -1)).reshape(_next_state.shape)
+        return self.sim.scale_state(_next_state)
