@@ -10,11 +10,8 @@ import os
 class TradingGym(Env):
 
     def __init__(self,
-                 training=True,
-                 env_id='coinbase-bitfinex-v0',
-                 step_size=1,
-                 fee=0.006,
-                 max_position=1):
+                 training=True, env_id='coinbasepro-bitfinex-v0',
+                 step_size=1, fee=0.003, max_position=1):
 
         # properties required for instantiation
         self.training = training
@@ -25,27 +22,27 @@ class TradingGym(Env):
         self.inventory_features = ['long_inventory', 'short_inventory']
 
         # properties that get reset()
-        self._reward = None
-        self._done = False
-        self._local_step_number = 0
+        self.reward = 0.0
+        self.prev_total_pnl = 0.0
+        self.done = False
+        self.local_step_number = 0
         self._state = None
-        self._next_state = None
+        self._midpoint = 0.0
+
         self._action = 0
         # derive gym.env properties
-        self._actions = {
+        self.actions = {
             0: (1, 0, 0),  # 0. do nothing
             1: (0, 1, 0),  # 1. buy
-            2: (0, 0, 1)   # 2. sell
+            2: (0, 0, 1)  # 2. sell
         }
 
-        self._midpoint = None
-
         # get historical data for simulations
-        self.broker = Broker()
+        self.broker = Broker(max_position=max_position)
         self.sim = Sim()
         self.features = self.sim.get_feature_labels(include_system_time=False, lags=0)
 
-        # load the data
+        # cwd = os.getcwd()
         cwd = os.path.dirname(os.path.realpath(__file__))
         self.data = self.sim.load_env_states(fitting_filepath=cwd + '/fitting_data.csv',
                                              env_filepath=cwd + '/env_data.csv')
@@ -57,12 +54,14 @@ class TradingGym(Env):
         self.data = self.data.values
         self.observation = self.reset()
 
-        self.action_space = spaces.Discrete(len(self._actions))
-        observations_concatenated = len(self.features) + len(self.inventory_features) + len(self._actions)-1
+        self.action_space = spaces.Discrete(len(self.actions))
         self.observation_space = spaces.Box(low=-np.inf,
                                             high=np.inf,
-                                            shape=(1, observations_concatenated),
+                                            shape=(1, len(self.features) +
+                                                   len(self.inventory_features) +
+                                                   len(self.actions) - 1),
                                             dtype=np.float32)
+        self.env_id = env_id
 
         # logging
         logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
@@ -70,43 +69,46 @@ class TradingGym(Env):
         self.logger.info('Making new env: {}'.format(env_id))
 
     def step(self, action):
-        if self._done:
+        if self.done:
             self.logger.info('{} is done.'.format(self.env_id))
             self.observation = self.reset()
-            return self.observation[1], self._reward, self._done, {}
+            return self.observation, self.reward, self.done, {}
 
-        self._next_state = np.concatenate((self.process_data(self.data[self._local_step_number]),
-                                           self.create_position_features(),
-                                           self.create_action_features(action=action)))
-        self.observation = (self._state, self._next_state)
-        self._state = self._next_state
+        _next_state = np.concatenate((self.process_data(self.data[self.local_step_number]),
+                                      self.create_position_features(),
+                                      self.create_action_features(action=action)))
+        self.observation = (self._state, _next_state)
+        self._state = _next_state
 
-        self._midpoint = self.data[self._local_step_number][0]
-        self._reward = self.send_to_broker_and_get_reward(action)
+        self._midpoint = self.data[self.local_step_number][0]
+        self.reward = self.send_to_broker_and_get_reward(action)
 
-        self._action = action
-        self._local_step_number += self.step_size
-        if self._local_step_number > self.data.shape[0] - 2:
-            self._done = True
+        self.local_step_number += self.step_size
+        if self.local_step_number > self.data.shape[0] - 2:
+            self.done = True
 
-        return self.observation[1], self._reward, self._done, {}
+        return self.observation[1], self.reward, self.done, {}
 
     def reset(self):
-        print('{} has reset'.format(self.env_id))
-        self._reward = None
-        self._done = False
+        self.reward = 0.0
+        self.done = False
         self.broker.reset()
-        self._local_step_number = 0
-        self._state = np.concatenate((self.process_data(self.data[self._local_step_number]),
+        self.local_step_number = 0
+
+        _prev_state = np.concatenate((self.process_data(self.data[self.local_step_number]),
                                       self.create_position_features(),
                                       self.create_action_features(0)))
-        self._local_step_number += 1
-        self._next_state = np.concatenate((self.process_data(self.data[self._local_step_number]),
-                                           self.create_position_features(),
-                                           self.create_action_features(0)))
-        self._local_step_number += 1
-        self.observation = (self._state, self._next_state)
-        return self.observation
+        self.local_step_number += 1
+        _next_state = np.concatenate((self.process_data(self.data[self.local_step_number]),
+                                      self.create_position_features(),
+                                      self.create_action_features(0)))
+        self.local_step_number += self.step_size
+
+        self._state = _prev_state
+
+        print('{} has reset'.format(self.env_id))
+        _pair_state = (_prev_state, _next_state)
+        return _pair_state[1]
 
     def render(self, mode='human'):
         return None
@@ -181,19 +183,18 @@ class TradingGym(Env):
         if pnl_multiple < 0.0:
             reward = -1.0
         elif pnl_multiple < 1.0:
-            reward = 0.0
+            reward = 0.01
         elif pnl_multiple < 2.0:
             reward = 0.4
+            print('ok reward: {}'.format(reward))
         elif pnl_multiple < 3.0:
             reward = 0.8
+            print('Good reward: {}'.format(reward))
         else:
             reward = 1.0
+            print('Fantastic reward: {}'.format(reward))
 
-        # print('got reward: {}'.format(reward))
         return reward
-
-    def create_action_features(self, action):
-        return np.array(self._actions[action])[1:]
 
     def create_position_features(self):
         return np.array((self.broker.long_inventory.position_count / self.max_position,
@@ -201,3 +202,6 @@ class TradingGym(Env):
 
     def process_data(self, _next_state):
         return self.sim.scale_state(_next_state)
+
+    def create_action_features(self, action):
+        return np.array(self.actions[action][1:])
