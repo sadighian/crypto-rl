@@ -6,9 +6,9 @@ from datetime import datetime as dt
 
 
 query = {
-    'ccy': ['LTC-USD', 'tLTCUSD'],
+    'ccy': ['ETC-USD', 'tETCUSD'],
     'start_date': 20181120,
-    'end_date': 20181122
+    'end_date': 20181121
 }
 lags = 0
 
@@ -25,27 +25,42 @@ def test_get_orderbook_snapshot_history(query):
         print('Exiting due to no data being available.')
         return
 
-    orderbook_snapshot_history = sim.get_orderbook_snapshot_history(coinbaseOrderBook, bitfinexOrderBook, tick_history)
+    orderbook_snapshot_history = sim.get_orderbook_snapshot_history(coinbaseOrderBook,
+                                                                    bitfinexOrderBook,
+                                                                    tick_history)
 
     # Export to CSV to verify if order book reconstruction is accurate/good
     # NOTE: this is only to show that the functionality works and
     #       should be fed into an Environment for reinforcement learning.
-    sim.export_snapshots_to_csv(sim.get_feature_labels(True), orderbook_snapshot_history)
+    sim.export_to_csv(data=orderbook_snapshot_history, filename='./orderbook_snapshot_history.csv')
 
     elapsed = (dt.now(TIMEZONE) - start_time).seconds
     print('Completed %s in %i seconds' % (__name__, elapsed))
     print('DONE. EXITING %s' % __name__)
 
 
-def test_get_env_data(query, lags):
+def test_query_env_states(query):
     start_time = dt.now(TIMEZONE)
 
     sim = Simulator()
-    env_data = sim.get_env_data(query,
-                                CoinbaseOrderBook(query['ccy'][0]),
-                                BitfinexOrderBook(query['ccy'][1]),
-                                lags=lags)
-    sim.export_env_data_to_csv(env_data)
+    env_states = sim.query_env_states(query)
+
+    sim.export_to_csv(data=env_states, filename='./env_states.csv')
+
+    elapsed = (dt.now(TIMEZONE) - start_time).seconds
+    print('Completed %s in %i seconds' % (__name__, elapsed))
+    print('DONE. EXITING %s' % __name__)
+
+
+def test_load_env_states():
+    start_time = dt.now(TIMEZONE)
+
+    sim = Simulator()
+    fitting_filepath = './fitting_data.csv'
+    env_filepath = './env_data.csv'
+    env_states = sim.load_env_states(fitting_filepath=fitting_filepath, env_filepath=env_filepath)
+
+    sim.export_to_csv(data=env_states, filename='./env_states.csv')
 
     elapsed = (dt.now(TIMEZONE) - start_time).seconds
     print('Completed %s in %i seconds' % (__name__, elapsed))
@@ -56,6 +71,7 @@ if __name__ == '__main__':
     """
     Entry point of simulation application
     """
-    # test_get_orderbook_snapshot_history(query)
-    test_get_env_data(query, lags)
+    test_get_orderbook_snapshot_history(query)
+    test_query_env_states(query)
+    test_load_env_states()
     pass

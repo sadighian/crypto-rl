@@ -3,75 +3,84 @@ import pandas as pd
 
 class PositionI(object):
 
-    def __init__(self, max_position=1):
+    def __init__(self, side='long', max_position=1):
         self.max_position_count = max_position
-        self.positions = []
+        self._positions = []
+        self._realized_pnl = []
+        self.unrealized_pnl = 0.0
+        self.full_inventory = False
         self.position_count = 0
-        self.position_exposure = 0.
-        self.position_avg_price = 0.
-        self.realized_pnl = 0.
+        self.total_exposure = 0.0
+        self.side = side
 
     def add(self, order):
-        if self.position_count < self.max_position_count:
-            self.positions.append(order)
-            self._update(first_order_price=order['price'])
-        else:
-            print('PositionI.add() have %i of %i positions open' % (self.position_count, self.max_position_count))
+        if not self.full_inventory:
+            self._positions.append(order)
+            self.position_count += 1
+            self.total_exposure += order['price']
+            self.full_inventory = self.position_count >= self.max_position_count
+        # else:
+        #     print('PositionI.add() have %i of %i positions open' % (self.position_count, self.max_position_count))
 
     def remove(self, order):
         if self.position_count > 0:
-            first_order = self.positions.pop()  # FIFO order inventory
-            self._update(first_order_price=first_order['price'], order=order)
+            opening_order = self._positions.pop()  # FIFO order inventory
+            self.position_count -= 1
+            self.total_exposure -= opening_order['price']
+            self.full_inventory = self.position_count >= self.max_position_count
+
+            if self.side == 'long':
+                self._realized_pnl.append((order['price'] - opening_order['price']) / opening_order['price'])
+            elif self.side == 'short':
+                self._realized_pnl.append((opening_order['price'] - order['price']) / opening_order['price'])
+            else:
+                print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
         # else:
-        #     print('PositionI.remove() no position to remove')
+        #     print('PositionI.remove() no position in inventory to remove')
 
     def reset(self):
-        self.positions.clear()
+        self._positions.clear()
+        self._realized_pnl = []
+        self.unrealized_pnl = 0.0
+        self.full_inventory = False
         self.position_count = 0
-        print('PositionI.reset() completed')
+        self.total_exposure = 0.0
 
-    def _update(self, first_order_price, order=None):
-        if order is not None:
-            if order['side'] == 'long':
-                realized_pnl = (order['price'] / first_order_price - 1.) * 100.
-            elif order['side'] == 'short':
-                realized_pnl = (first_order_price / order['price'] - 1.) * 100.
-            else:
-                realized_pnl = 0.
-                print('PositionI._update() Uknown order side for %s' % order)
+    @property
+    def positions(self):
+        return self._positions
 
-            self.realized_pnl += realized_pnl
+    @property
+    def realized_pnl(self):
+        return self._realized_pnl
 
-        self.position_exposure += first_order_price
-        self.position_count = len(self.positions)
-        self.position_avg_price = self.position_exposure / self.position_count if self.position_count > 0 else None
+    def get_unrealized_pnl(self, midpoint=100.):
+        if self.position_count == 0:
+            return 0.0
 
-    def get_unrealized_long_pnl(self, midpoint=100.):
-        pnl = 0.
-        for order in self.positions:
-            pnl += (midpoint / order['price'] - 1.) * 100.
+        average_price = self.total_exposure / self.position_count
+        pnl = 0.0
+        if self.side == 'long':
+            pnl = (midpoint / average_price) - 1.0
+        elif self.side == 'short':
+            pnl = (average_price / midpoint) - 1.0
+        else:
+            print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
+
         return pnl
 
-    def get_unrealized_short_pnl(self, midpoint=100.):
-        pnl = 0.
-        for order in self.positions:
-            pnl += (order['price'] / midpoint - 1.) * 100.
-        return pnl
+    def get_realized_pnl(self):
+        return sum(self._realized_pnl)
 
 
 class Broker(object):
 
-    def __init__(self, ccy='BTC-USD', max_position=1):
-        self.long_inventory = PositionI(max_position=max_position)
-        self.short_inventory = PositionI(max_position=max_position)
-        self.sym = ccy
-        self.net_position_exposure = 0.0
-        self.deal_number = 0
-        self.transaction_details_columns = ['symbol', 'side', 'type', 'price', 'pnl', 'time', 'deal_number']
-        self.transaction_details = pd.DataFrame(columns=self.transaction_details_columns)
+    def __init__(self, max_position=1):
+        self.long_inventory = PositionI(side='long', max_position=max_position)
+        self.short_inventory = PositionI(side='short', max_position=max_position)
+        self.net_exposure = 0.0
 
     def add(self, order):
-        order['type'] = 'add'
         if order['side'] == 'long':
             self.long_inventory.add(order=order)
         elif order['side'] == 'short':
@@ -80,11 +89,9 @@ class Broker(object):
             print('Broker.add() unknown order.side = %s' % order)
             return
 
-        self.net_position_exposure = self.long_inventory.position_exposure - self.short_inventory.position_exposure
-        self._update_transaction_details(order=order)
+        self.net_exposure = self.long_inventory.total_exposure - self.short_inventory.total_exposure
 
     def remove(self, order):
-        order['type'] = 'remove'
         if order['side'] == 'long':
             self.long_inventory.remove(order=order)
         elif order['side'] == 'short':
@@ -93,26 +100,25 @@ class Broker(object):
             print('Broker.remove() unknown order.side = %s' % order['side'])
             return
 
-        self.net_position_exposure = self.long_inventory.position_exposure - self.short_inventory.position_exposure
-        self._update_transaction_details(order=order)
+        self.net_exposure = self.long_inventory.total_exposure - self.short_inventory.total_exposure
 
     def reset(self):
         self.long_inventory.reset()
         self.short_inventory.reset()
-        self.net_position_exposure = 0.
-        self.deal_number = 0
-        self.transaction_details = pd.DataFrame(columns=self.transaction_details_columns)
 
     def get_unrealized_pnl(self, midpoint=100.):
-        long_pnl = self.long_inventory.get_unrealized_long_pnl(midpoint=midpoint)
-        short_pnl = self.short_inventory.get_unrealized_short_pnl(midpoint=midpoint)
+        long_pnl = self.long_inventory.get_unrealized_pnl(midpoint=midpoint)
+        short_pnl = self.short_inventory.get_unrealized_pnl(midpoint=midpoint)
         return long_pnl + short_pnl
 
     def get_realized_pnl(self):
-        return self.short_inventory.realized_pnl + self.long_inventory.realized_pnl
+        return self.short_inventory.get_realized_pnl() + self.long_inventory.get_realized_pnl()
 
-    def _update_transaction_details(self, order):
-        order['deal_number'] = self.deal_number
-        order['symbol'] = self.sym
-        self.transaction_details.append(order, ignore_index=True)
-        self.deal_number += 1
+    @property
+    def long_inventory_count(self):
+        return self.long_inventory.position_count
+
+    @property
+    def short_inventory_count(self):
+        return self.short_inventory.position_count
+

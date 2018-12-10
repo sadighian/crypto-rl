@@ -3,12 +3,14 @@ from datetime import timedelta
 from multiprocessing import cpu_count, Process, Queue
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
+from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
+from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, RECORD_DATA, MAX_BOOK_ROWS
 from sortedcontainers import SortedDict
 from dateutil.parser import parse
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 
 class Simulator(object):
@@ -16,7 +18,7 @@ class Simulator(object):
     def __init__(self):
         try:
             print('Attempting to connect to Arctic...')
-            self.scaler = StandardScaler()
+            self.scaler = MinMaxScaler()
             self.arctic = Arctic(MONGO_ENDPOINT)
             self.arctic.initialize_library(ARCTIC_NAME, lib_type=TICK_STORE)
             self.library = self.arctic[ARCTIC_NAME]
@@ -33,6 +35,14 @@ class Simulator(object):
             self.arctic, self.library, self.workers = None, None, None
             print('Unable to connect to Arctic database')
             print(ex)
+
+    def reset_processes(self):
+        self.queue = Queue(maxsize=self.number_of_workers)
+        self.return_queue = Queue(maxsize=self.number_of_workers)
+        self.workers = [Process(name='Process-%i' % num,
+                                args=(self.queue, self.return_queue),
+                                target=self._do_work) for num in range(self.number_of_workers)]
+        print('Simulator.reset_processes()')
 
     def get_tick_history(self, query):
         """
@@ -150,6 +160,12 @@ class Simulator(object):
 
     @staticmethod
     def get_feature_labels(include_system_time=True, lags=0):
+        """
+        Function to create the features' labels
+        :param include_system_time: True/False (False removes the system_time column)
+        :param lags: Number of lags to include
+        :return:
+        """
         columns = list()
 
         if include_system_time:
@@ -205,7 +221,7 @@ class Simulator(object):
                 # skip to next loop
                 continue
 
-            if coinbase:
+            if coinbase:  # incoming tick is from Coinbase exchange
                 if coinbase_order_book.done_warming_up():
                     new_tick_time = parse(tick['time'])  # timestamp for incoming tick
                     coinbase_tick_counter += 1
@@ -220,6 +236,7 @@ class Simulator(object):
                     # skip to next loop
                     continue
 
+                # calculate the amount of time between the incoming tick and tick received before that
                 diff = (new_tick_time - last_snapshot_time).microseconds
                 multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
 
@@ -239,9 +256,11 @@ class Simulator(object):
                         else:
                             last_snapshot_time += timedelta(milliseconds=250)
 
+            # incoming tick is from Bitfinex exchange
             elif bitfinex_order_book.done_warming_up():
                 bitfinex_order_book.new_tick(tick)
 
+            # periodically print number of steps completed
             if idx % 250000 == 0:
                 elapsed = (dt.now(TIMEZONE) - start_time).seconds
                 print('...completed %i loops in %i seconds' % (idx, elapsed))
@@ -252,90 +271,134 @@ class Simulator(object):
 
         orderbook_snapshot_history = pd.DataFrame(snapshot_list, columns=self.get_feature_labels())
         orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
+
         return orderbook_snapshot_history
 
-    def normalize_orderbook_snapshot_history(self, orderbook_snapshot_history):
+    # def normalize_orderbook_snapshot_history(self, orderbook_snapshot_history):
+    #     start_time = dt.now(tz=TIMEZONE)
+    #
+    #     data = orderbook_snapshot_history.copy()
+    #
+    #     data['day'] = data['system_time'].apply(lambda x: x.day)
+    #     dates = data['day'].unique()
+    #     assert len(dates) > 1  # make sure at least 2 days of data was loaded
+    #
+    #     data_to_fit = data.loc[data.day == dates[0], :].copy()
+    #     data_to_fit = data_to_fit.drop(['system_time', 'day'], axis=1)
+    #     self.scaler.fit(data_to_fit)
+    #
+    #     # data = data.drop(['system_time', 'day'], axis=1)
+    #
+    #     column_names = self.get_feature_labels(False)
+    #
+    #     normalized_data = pd.DataFrame(self.scaler.transform(data[column_names]),
+    #                                    index=data.index,
+    #                                    columns=column_names)
+    #
+    #     reference_data = data[self.reference_data_old_names]
+    #     reference_data.columns = self.reference_data_new_names
+    #
+    #     normalized_data = pd.concat((normalized_data, reference_data), axis=1)
+    #
+    #     elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
+    #     print('***\nSimulator.get_orderbook_snapshot_history_normalized() executed in %i seconds\n***' % elapsed)
+    #
+    #     return normalized_data
+
+    # def append_lags(self, data, lags=0):
+    #     start_time = dt.now()
+    #
+    #     temp = data.copy()
+    #
+    #     # add lags to feature set
+    #     if lags > 0:
+    #         columns = self.get_feature_labels(False)
+    #         for lag in range(1, lags + 1):
+    #             for col in columns:
+    #                 temp[('%s_%i' % (col, lag))] = temp[col].shift(lag)
+    #
+    #     temp = temp.dropna(axis=0)
+    #
+    #     elapsed = (dt.now() - start_time).seconds
+    #     print('***\nSimulator.append_lags() executed in %i seconds\n***' % elapsed)
+    #     return temp
+
+    def fit_scaler(self, orderbook_snapshot_history):
         start_time = dt.now(tz=TIMEZONE)
 
-        data = orderbook_snapshot_history.copy()
-
-        data['day'] = data['system_time'].apply(lambda x: x.day)
-        dates = data['day'].unique()
-        assert len(dates) > 1  # make sure at least 2 days of data was loaded
-
-        data_to_fit = data.loc[data.day == dates[0], :].copy()
-        data_to_fit = data_to_fit.drop(['system_time', 'day'], axis=1)
-        self.scaler.fit(data_to_fit)
-
-        # data = data.drop(['system_time', 'day'], axis=1)
-
-        column_names = self.get_feature_labels(False)
-
-        normalized_data = pd.DataFrame(self.scaler.transform(data[column_names]),
-                                       index=data.index,
-                                       columns=column_names)
-
-        reference_data = data[self.reference_data_old_names]
-        reference_data.columns = self.reference_data_new_names
-
-        normalized_data = pd.concat((normalized_data, reference_data), axis=1)
+        self.scaler.fit(orderbook_snapshot_history)
 
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
-        print('***\nSimulator.get_orderbook_snapshot_history_normalized() executed in %i seconds\n***' % elapsed)
+        print('***\nSimulator._fit_scaler() executed in %i seconds\n***' % elapsed)
 
-        return normalized_data
+    def scale_state(self, _next_state):
+        return self.scaler.transform(_next_state.reshape(1, -1)).reshape(_next_state.shape)
+              #self.scaler.transform(_next_state.reshape(1, -1)).reshape(_next_state.shape)
 
-    def append_lags(self, data, lags=0):
-        start_time = dt.now()
+    def get_scaler(self):
+        return self.scaler
 
-        temp = data.copy()
-
-        # add lags to feature set
-        if lags > 0:
-            columns = self.get_feature_labels(False)
-            for lag in range(1, lags + 1):
-                for col in columns:
-                    temp[('%s_%i' % (col, lag))] = temp[col].shift(lag)
-
-        temp = temp.dropna(axis=0)
-
-        elapsed = (dt.now() - start_time).seconds
-        print('***\nSimulator.append_lags() executed in %i seconds\n***' % elapsed)
-
-        return temp
-
-    def get_env_data(self, query, coinbaseOrderBook, bitfinexOrderBook, lags=0):
+    def _get_env_states(self, query):
         start_time = dt.now(TIMEZONE)
 
         tick_history = self.get_tick_history(query)
+
+        coinbaseOrderBook = CoinbaseOrderBook(query['ccy'][0])
+        bitfinexOrderBook = BitfinexOrderBook(query['ccy'][1])
+
         orderbook_snapshot_history = self.get_orderbook_snapshot_history(coinbaseOrderBook,
                                                                          bitfinexOrderBook,
                                                                          tick_history)
-        normalized_data = self.normalize_orderbook_snapshot_history(orderbook_snapshot_history)
-
-        env_data = self.append_lags(normalized_data, lags=lags)
-
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Sim.get_env_data() executed in %i seconds' % elapsed)
+        print('Sim.get_env_states() executed in %i seconds' % elapsed)
+        return orderbook_snapshot_history
 
-        return env_data
-
-    @staticmethod
-    def export_snapshots_to_csv(columns, orderbook_snapshot_history):
+    def query_env_states(self, query):
         start_time = dt.now(TIMEZONE)
 
-        panda_orderbook_snapshot_history = pd.DataFrame(orderbook_snapshot_history, columns=columns)
-        panda_orderbook_snapshot_history = panda_orderbook_snapshot_history.dropna(axis=0, inplace=False)
-        panda_orderbook_snapshot_history.to_csv('./orderbook_snapshot_history.csv')
+        # fetch the previous day's data to use for normalizing the data above
+        query['start_date'] -= 1
+        query['end_date'] -= 1
+        history_for_fitting = self._get_env_states(query=query)
+        self.fit_scaler(orderbook_snapshot_history=history_for_fitting.drop(['system_time'], axis=1))
+        del history_for_fitting
+        self.reset_processes()
+
+        # fetch data for the environment (needs to be normalized within trading_gym)
+        query['start_date'] += 1
+        query['end_date'] += 1
+        history = self._get_env_states(query=query)
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Exported order book snapshots to csv in %i seconds' % elapsed)
+        print('Sim.load_env_states() executed in %i seconds' % elapsed)
+        return history
+
+    def load_env_states(self, fitting_filepath, env_filepath):
+        try:
+            orderbook_data = pd.read_csv(fitting_filepath)
+            del orderbook_data[orderbook_data.columns[0]]
+            del orderbook_data['system_time']
+
+            self.fit_scaler(orderbook_snapshot_history=orderbook_data)
+
+            orderbook_data = pd.read_csv(env_filepath)
+            del orderbook_data[orderbook_data.columns[0]]
+            del orderbook_data['system_time']
+
+            # orderbook_data['system_time'] = orderbook_data['system_time'].apply(lambda x: pd.to_datetime(x))
+            print('Simulator.load_env_states() env data loaded')
+
+            return orderbook_data
+        except Exception as e:
+            print('Simulator.load_env_states() unable to load data')
+            print(e)
+            return None
 
     @staticmethod
-    def export_env_data_to_csv(env_data):
+    def export_to_csv(data, filename):
         start_time = dt.now(TIMEZONE)
 
-        env_data.to_csv('./env_data_history.csv')
+        data.to_csv(filename)
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Exported env_data to csv in %i seconds' % elapsed)
+        print('Exported data to csv in %i seconds' % elapsed)
