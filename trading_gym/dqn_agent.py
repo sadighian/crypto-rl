@@ -12,8 +12,8 @@ from trading_gym import TradingGym
 class DqnAgent(TradingGym):
 
     def __init__(self):
-        super(DqnAgent, self).__init__(step_size=4)
-        self.window_length = 8
+        super(DqnAgent, self).__init__(step_size=12)
+        self.window_length = 4
         self.model = self.create_model3()
         self.memory = SequentialMemory(limit=20000, window_length=self.window_length)
         self.args = {

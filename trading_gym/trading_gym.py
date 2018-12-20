@@ -19,7 +19,7 @@ class TradingGym(Env):
         self.step_size = step_size
         self.fee = fee
         self.max_position = max_position
-        self.inventory_features = ['long_inventory', 'short_inventory']
+        self.inventory_features = ['long_inventory', 'short_inventory', 'long_unrealized_pnl', 'short_unrealized_pnl']
 
         # properties that get reset()
         self.reward = 0.0
@@ -198,7 +198,9 @@ class TradingGym(Env):
 
     def create_position_features(self):
         return np.array((self.broker.long_inventory.position_count / self.max_position,
-                         self.broker.short_inventory.position_count / self.max_position))
+                         self.broker.short_inventory.position_count / self.max_position,
+                         self.broker.long_inventory.get_unrealized_pnl(self._midpoint),
+                         self.broker.short_inventory.get_unrealized_pnl(self._midpoint)))
 
     def process_data(self, _next_state):
         return self.sim.scale_state(_next_state)
