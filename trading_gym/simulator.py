@@ -333,7 +333,6 @@ class Simulator(object):
 
     def scale_state(self, _next_state):
         return self.scaler.transform(_next_state.reshape(1, -1)).reshape(_next_state.shape)
-              #self.scaler.transform(_next_state.reshape(1, -1)).reshape(_next_state.shape)
 
     def get_scaler(self):
         return self.scaler

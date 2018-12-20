@@ -1,7 +1,9 @@
-import pandas as pd
-
 
 class PositionI(object):
+    '''
+    Position class keeps track the agent's trades
+    and provides stats (e.g., pnl) on all trades
+    '''
 
     def __init__(self, side='long', max_position=1):
         self.max_position_count = max_position
@@ -74,7 +76,10 @@ class PositionI(object):
 
 
 class Broker(object):
-
+    '''
+    Broker class is a wrapper for the PositionI class
+    and is implemented in `trading_gym.py`
+    '''
     def __init__(self, max_position=1):
         self.long_inventory = PositionI(side='long', max_position=max_position)
         self.short_inventory = PositionI(side='short', max_position=max_position)

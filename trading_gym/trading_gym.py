@@ -181,7 +181,7 @@ class TradingGym(Env):
             pnl_from_trade = -1.0
         pnl_multiple = pnl_from_trade / self.fee
         if pnl_multiple < 0.0:
-            reward = -1.0
+            reward = max(-1.0, pnl_multiple)
         elif pnl_multiple < 1.0:
             reward = 0.01
         elif pnl_multiple < 2.0:
