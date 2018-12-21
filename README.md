@@ -1,4 +1,4 @@
-# Deep Reinforcement Learning toolkit for Cryptocurrencies
+# Deep Reinforcement Learning Toolkit for Cryptocurrencies
 As of December 21, 2018.
 
 ## 1. Purpose
