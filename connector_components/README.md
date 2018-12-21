@@ -1,5 +1,5 @@
 # Connector Components
-As of November 25th, 2018.
+As of December 21, 2018.
 
 ## 1. Overview
 The `connector_components` module contains the base classes for connecting to crypto exchanges. 

@@ -1,7 +1,7 @@
 from gym import Env, spaces
 from gym.utils import seeding
-from simulator import Simulator as Sim
-from broker import Broker
+from .simulator import Simulator as Sim
+from .broker import Broker
 import logging
 import numpy as np
 import os
@@ -42,10 +42,19 @@ class TradingGym(Env):
         self.sim = Sim()
         self.features = self.sim.get_feature_labels(include_system_time=False, lags=0)
 
+        # For when you want to write the environment data to the disk, rather than generate
+        # it everytime a simulation is run.
+
         # cwd = os.getcwd()
         cwd = os.path.dirname(os.path.realpath(__file__))
         self.data = self.sim.load_env_states(fitting_filepath=cwd + '/fitting_data.csv',
                                              env_filepath=cwd + '/env_data.csv')
+
+        # The code below creates the environment data through querying the
+        # Arctic Tick Store, replaying tick data to reconstruct the limit
+        # order book, and extract its stationary features. This entire process
+        # generally takes between 4-8 minutes (depending on the date queried).
+
         # self.data = self.sim.query_env_states(query={
         #     'ccy': ['ETC-USD', 'tETCUSD'],
         #     'start_date': 20181121,
