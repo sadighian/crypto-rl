@@ -2,12 +2,13 @@ from setuptools import setup
 
 setup(
     name='crypto',
-    version='4',
+    version='5',
     packages=['coinbase_connector',
               'connector_components',
               'bitfinex_connector',
               'configurations',
               'database',
+              'trading_gym',
               'images'],
     url='https://github.com/RedBanies3ofThem/crypto',
     license='To be confirmed',
@@ -22,5 +23,6 @@ setup(
                         'arctic',
                         'pytz',
                         'pandas',
-                        'datetime', 'gym', 'scikit-learn', 'tensorforce']
+                        'datetime',
+                        'gym', 'scikit-learn', 'keras', 'tensorflow-gpu']
 )
