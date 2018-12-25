@@ -1,4 +1,35 @@
 
+
+class Order:
+
+    def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1):
+        self.ccy = ccy
+        self.side = side
+        self.price = price
+        self.step = step
+        self.drawdown_max = 0.0
+        self.upside_max = 0.0
+
+    def __str__(self):
+        return ' %s | %s | %.3f | %i | %.3f | %.3f' % \
+               (self.ccy, self.side, self.price, self.step, self.drawdown_max, self.upside_max)
+
+    def step(self, midpoint=100.0):
+        if self.side == 'long':
+            unrealized_pnl = (midpoint / self.price) / self.price
+        elif self.side == 'short':
+            unrealized_pnl = (self.price / midpoint) / self.price
+        else:
+            unrealized_pnl = 0.0
+            print('alert: uknown order.step() side %s' % self.side)
+
+        if unrealized_pnl < self.drawdown_max:
+            self.drawdown_max = unrealized_pnl
+
+        if unrealized_pnl > self.upside_max:
+            self.upside_max = unrealized_pnl
+
+
 class PositionI(object):
     '''
     Position class keeps track the agent's trades
@@ -7,20 +38,41 @@ class PositionI(object):
 
     def __init__(self, side='long', max_position=1):
         self.max_position_count = max_position
-        self._positions = []
-        self._realized_pnl = []
-        self._steps_in_position = []
+        self.positions = []
+        self.realized_pnl = 0.0
         self.unrealized_pnl = 0.0
         self.full_inventory = False
         self.position_count = 0
         self.total_exposure = 0.0
         self.side = side
+        self.average_price = 0.0
+        self.last_trade = {
+            'steps_in_position': 0,
+            'pnl_curve': 0.0,
+            'realized_pnl': 0.0
+        }
+
+    def reset(self):
+        self.positions.clear()
+        self.realized_pnl = 0.0
+        self.unrealized_pnl = 0.0
+        self.full_inventory = False
+        self.position_count = 0
+        self.total_exposure = 0.0
+        self.average_price = 0.0
+        # self.last_trade = {}
+
+    def step(self, midpoint=100.0):
+        def step_update(pos, mid):
+            pos.step(mid)
+        [step_update(position, midpoint) for position in self.positions]
 
     def add(self, order):
         if not self.full_inventory:
-            self._positions.append(order)
+            self.positions.append(order)
             self.position_count += 1
-            self.total_exposure += order['price']
+            self.total_exposure += order.price
+            self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
             # print('  %s @ %.2f | step %i' % (order['side'], order['price'], order['step']))
             return True
@@ -30,69 +82,53 @@ class PositionI(object):
 
     def remove(self, order):
         if self.position_count > 0:
-            opening_order = self._positions.pop()  # FIFO order inventory
+            opening_order = self.positions.pop()  # FIFO order inventory
             self.position_count -= 1
-            self.total_exposure -= opening_order['price']
+            self.total_exposure -= opening_order.price
+            self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
-            self._steps_in_position.append(order['step'] - opening_order['step'])
+            self.last_trade['steps_in_position'] = order.step - opening_order.step
+            self.last_trade['pnl_curve'] = opening_order.upside_max / opening_order.drawdown_max
 
             if self.side == 'long':
-                self._realized_pnl.append((order['price'] - opening_order['price']) / opening_order['price'])
+                realized_trade_pnl = (order.price - opening_order.price) / opening_order.price
+                self.realized_pnl += realized_trade_pnl
             elif self.side == 'short':
-                self._realized_pnl.append((opening_order['price'] - order['price']) / opening_order['price'])
+                realized_trade_pnl = (opening_order.price - order.price) / opening_order.price
+                self.realized_pnl += realized_trade_pnl
             else:
+                realized_trade_pnl = 0.0
                 print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
 
+            self.last_trade['realized_pnl'] = realized_trade_pnl
+
+            if realized_trade_pnl > 0.02:
+                print(' %s PNL %.3f x %.3f | steps: %i' % (self.side, realized_trade_pnl,
+                                                           self.last_trade['pnl_curve'],
+                                                           self.last_trade['steps_in_position']))
             return True
         else:
             return False
-
-    def reset(self):
-        self._positions.clear()
-        self._steps_in_position.clear()
-        self._realized_pnl = []
-        self.unrealized_pnl = 0.0
-        self.full_inventory = False
-        self.position_count = 0
-        self.total_exposure = 0.0
-
-    @property
-    def positions(self):
-        return self._positions
-
-    @property
-    def realized_pnl(self):
-        return self._realized_pnl
-
-    @property
-    def steps_in_position(self):
-        return self._steps_in_position
 
     def get_unrealized_pnl(self, midpoint=100.):
         if self.position_count == 0:
             return 0.0
 
-        average_price = self.total_exposure / self.position_count
-        pnl = 0.0
         if self.side == 'long':
-            pnl = (midpoint / average_price) - 1.0
-            # pnl *= self.position_count
+            unrealized_pnl = (midpoint / self.average_price) - 1.0
         elif self.side == 'short':
-            pnl = (average_price / midpoint) - 1.0
-            # pnl *= self.position_count
+            unrealized_pnl = (self.average_price / midpoint) - 1.0
         else:
+            unrealized_pnl = 0.0
             print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
 
-        return pnl
-
-    def get_realized_pnl(self):  # TODO make sum() update within .remove() function call
-        return sum(self._realized_pnl)
+        return unrealized_pnl
 
     def flatten_inventory(self, order):
         # print(' Flattening {} inventory: {} positions'.format(self.side, self.position_count))
-        before_pnl = self.get_realized_pnl()
+        before_pnl = self.realized_pnl
         [self.remove(order=order) for _ in range(self.position_count)]
-        after_pnl = self.get_realized_pnl()
+        after_pnl = self.realized_pnl
         return after_pnl - before_pnl
 
 
@@ -104,35 +140,30 @@ class Broker(object):
     def __init__(self, max_position=1):
         self.long_inventory = PositionI(side='long', max_position=max_position)
         self.short_inventory = PositionI(side='short', max_position=max_position)
-        self.net_exposure = 0.0
-
-    def add(self, order):
-        ret = False
-        if order['side'] == 'long':
-            ret = self.long_inventory.add(order=order)
-        elif order['side'] == 'short':
-            ret = self.short_inventory.add(order=order)
-        else:
-            print('Broker.add() unknown order.side = %s' % order)
-
-        self.net_exposure = self.long_inventory.total_exposure - self.short_inventory.total_exposure
-        return ret
-
-    def remove(self, order):
-        ret = False
-        if order['side'] == 'long':
-            ret = self.long_inventory.remove(order=order)
-        elif order['side'] == 'short':
-            ret = self.short_inventory.remove(order=order)
-        else:
-            print('Broker.remove() unknown order.side = %s' % order['side'])
-
-        self.net_exposure = self.long_inventory.total_exposure - self.short_inventory.total_exposure
-        return ret
 
     def reset(self):
         self.long_inventory.reset()
         self.short_inventory.reset()
+
+    def add(self, order):
+        if order['side'] == 'long':
+            is_added = self.long_inventory.add(order=order)
+        elif order['side'] == 'short':
+            is_added = self.short_inventory.add(order=order)
+        else:
+            is_added = False
+            print('Broker.add() unknown order.side = %s' % order)
+        return is_added
+
+    def remove(self, order):
+        if order['side'] == 'long':
+            is_removed = self.long_inventory.remove(order=order)
+        elif order['side'] == 'short':
+            is_removed = self.short_inventory.remove(order=order)
+        else:
+            is_removed = False
+            print('Broker.remove() unknown order.side = %s' % order['side'])
+        return is_removed
 
     def get_unrealized_pnl(self, midpoint=100.):
         long_pnl = self.long_inventory.get_unrealized_pnl(midpoint=midpoint)
@@ -140,12 +171,11 @@ class Broker(object):
         return long_pnl + short_pnl
 
     def get_realized_pnl(self):
-        return self.short_inventory.get_realized_pnl() + self.long_inventory.get_realized_pnl()
+        return self.short_inventory.realized_pnl + self.long_inventory.realized_pnl
 
     def get_total_pnl(self, midpoint):
         total_pnl = self.get_unrealized_pnl(midpoint=midpoint)
-        total_pnl += self.short_inventory.get_realized_pnl()
-        total_pnl += self.long_inventory.get_realized_pnl()
+        total_pnl += self.get_realized_pnl()
         return total_pnl
 
     @property
