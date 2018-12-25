@@ -238,7 +238,8 @@ class Simulator(object):
 
                 # calculate the amount of time between the incoming tick and tick received before that
                 diff = (new_tick_time - last_snapshot_time).microseconds
-                multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
+                # multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
+                multiple = diff // 500000  # 250000 is 250 milliseconds, or 4x a second
 
                 if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
                     for _ in range(multiple):
@@ -251,10 +252,10 @@ class Simulator(object):
                                                                  midpoint_delta,  # price delta between exchanges
                                                                  coinbase_order_book_snapshot,
                                                                  bitfinex_order_book_snapshot))))  # longs/shorts
-                            last_snapshot_time += timedelta(milliseconds=250)
+                            last_snapshot_time += timedelta(milliseconds=500)  # 250)
 
                         else:
-                            last_snapshot_time += timedelta(milliseconds=250)
+                            last_snapshot_time += timedelta(milliseconds=500)  # 250)
 
             # incoming tick is from Bitfinex exchange
             elif bitfinex_order_book.done_warming_up():

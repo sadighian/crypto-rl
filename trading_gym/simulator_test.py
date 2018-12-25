@@ -6,11 +6,10 @@ from datetime import datetime as dt
 
 
 query = {
-    'ccy': ['ETC-USD', 'tETCUSD'],
+    'ccy': ['BTC-USD', 'tBTCUSD'],
     'start_date': 20181120,
     'end_date': 20181121
 }
-lags = 0
 
 
 def test_get_orderbook_snapshot_history(query):
@@ -32,7 +31,8 @@ def test_get_orderbook_snapshot_history(query):
     # Export to CSV to verify if order book reconstruction is accurate/good
     # NOTE: this is only to show that the functionality works and
     #       should be fed into an Environment for reinforcement learning.
-    sim.export_to_csv(data=orderbook_snapshot_history, filename='./orderbook_snapshot_history.csv')
+    filename = './data_exports/{}_{}.csv'.format(query['ccy'][0], query['start_date'])
+    sim.export_to_csv(data=orderbook_snapshot_history, filename=filename)
 
     elapsed = (dt.now(TIMEZONE) - start_time).seconds
     print('Completed %s in %i seconds' % (__name__, elapsed))
@@ -71,7 +71,10 @@ if __name__ == '__main__':
     """
     Entry point of simulation application
     """
+    # test_get_orderbook_snapshot_history(query)
+    query['start_date'] += 1
+    query['end_date'] += 1
     test_get_orderbook_snapshot_history(query)
-    test_query_env_states(query)
-    test_load_env_states()
-    pass
+    # test_query_env_states(query)
+    # test_load_env_states()
+    # pass

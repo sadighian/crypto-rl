@@ -9,6 +9,7 @@ class PositionI(object):
         self.max_position_count = max_position
         self._positions = []
         self._realized_pnl = []
+        self._steps_in_position = []
         self.unrealized_pnl = 0.0
         self.full_inventory = False
         self.position_count = 0
@@ -21,8 +22,11 @@ class PositionI(object):
             self.position_count += 1
             self.total_exposure += order['price']
             self.full_inventory = self.position_count >= self.max_position_count
-        # else:
-        #     print('PositionI.add() have %i of %i positions open' % (self.position_count, self.max_position_count))
+            # print('  %s @ %.2f | step %i' % (order['side'], order['price'], order['step']))
+            return True
+        else:
+            # print('  %s inventory max' % order['side'])
+            return False
 
     def remove(self, order):
         if self.position_count > 0:
@@ -30,6 +34,7 @@ class PositionI(object):
             self.position_count -= 1
             self.total_exposure -= opening_order['price']
             self.full_inventory = self.position_count >= self.max_position_count
+            self._steps_in_position.append(order['step'] - opening_order['step'])
 
             if self.side == 'long':
                 self._realized_pnl.append((order['price'] - opening_order['price']) / opening_order['price'])
@@ -37,11 +42,14 @@ class PositionI(object):
                 self._realized_pnl.append((opening_order['price'] - order['price']) / opening_order['price'])
             else:
                 print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
-        # else:
-        #     print('PositionI.remove() no position in inventory to remove')
+
+            return True
+        else:
+            return False
 
     def reset(self):
         self._positions.clear()
+        self._steps_in_position.clear()
         self._realized_pnl = []
         self.unrealized_pnl = 0.0
         self.full_inventory = False
@@ -56,6 +64,10 @@ class PositionI(object):
     def realized_pnl(self):
         return self._realized_pnl
 
+    @property
+    def steps_in_position(self):
+        return self._steps_in_position
+
     def get_unrealized_pnl(self, midpoint=100.):
         if self.position_count == 0:
             return 0.0
@@ -64,15 +76,24 @@ class PositionI(object):
         pnl = 0.0
         if self.side == 'long':
             pnl = (midpoint / average_price) - 1.0
+            # pnl *= self.position_count
         elif self.side == 'short':
             pnl = (average_price / midpoint) - 1.0
+            # pnl *= self.position_count
         else:
             print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
 
         return pnl
 
-    def get_realized_pnl(self):
+    def get_realized_pnl(self):  # TODO make sum() update within .remove() function call
         return sum(self._realized_pnl)
+
+    def flatten_inventory(self, order):
+        # print(' Flattening {} inventory: {} positions'.format(self.side, self.position_count))
+        before_pnl = self.get_realized_pnl()
+        [self.remove(order=order) for _ in range(self.position_count)]
+        after_pnl = self.get_realized_pnl()
+        return after_pnl - before_pnl
 
 
 class Broker(object):
@@ -86,26 +107,28 @@ class Broker(object):
         self.net_exposure = 0.0
 
     def add(self, order):
+        ret = False
         if order['side'] == 'long':
-            self.long_inventory.add(order=order)
+            ret = self.long_inventory.add(order=order)
         elif order['side'] == 'short':
-            self.short_inventory.add(order=order)
+            ret = self.short_inventory.add(order=order)
         else:
             print('Broker.add() unknown order.side = %s' % order)
-            return
 
         self.net_exposure = self.long_inventory.total_exposure - self.short_inventory.total_exposure
+        return ret
 
     def remove(self, order):
+        ret = False
         if order['side'] == 'long':
-            self.long_inventory.remove(order=order)
+            ret = self.long_inventory.remove(order=order)
         elif order['side'] == 'short':
-            self.short_inventory.remove(order=order)
+            ret = self.short_inventory.remove(order=order)
         else:
             print('Broker.remove() unknown order.side = %s' % order['side'])
-            return
 
         self.net_exposure = self.long_inventory.total_exposure - self.short_inventory.total_exposure
+        return ret
 
     def reset(self):
         self.long_inventory.reset()
@@ -119,6 +142,12 @@ class Broker(object):
     def get_realized_pnl(self):
         return self.short_inventory.get_realized_pnl() + self.long_inventory.get_realized_pnl()
 
+    def get_total_pnl(self, midpoint):
+        total_pnl = self.get_unrealized_pnl(midpoint=midpoint)
+        total_pnl += self.short_inventory.get_realized_pnl()
+        total_pnl += self.long_inventory.get_realized_pnl()
+        return total_pnl
+
     @property
     def long_inventory_count(self):
         return self.long_inventory.position_count
@@ -126,4 +155,9 @@ class Broker(object):
     @property
     def short_inventory_count(self):
         return self.short_inventory.position_count
+
+    def flatten_inventory(self, order):
+        long_pnl = self.long_inventory.flatten_inventory(order=order)
+        short_pnl = self.short_inventory.flatten_inventory(order=order)
+        return long_pnl + short_pnl
 
