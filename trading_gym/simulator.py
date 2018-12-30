@@ -14,18 +14,20 @@ from sklearn.preprocessing import MinMaxScaler
 
 class Simulator(object):
 
-    def __init__(self):
+    def __init__(self, use_arctic=True):
         try:
-            print('Attempting to connect to Arctic...')
             self.scaler = MinMaxScaler()
-            self.arctic = Arctic(MONGO_ENDPOINT)
-            self.arctic.initialize_library(ARCTIC_NAME, lib_type=TICK_STORE)
-            self.library = self.arctic[ARCTIC_NAME]
-            self.reference_data_old_names = ['system_time', 'day', 'coinbase_midpoint']
-            self.reference_data_new_names = ['t', 'd', 'm']
+            if use_arctic:
+                print('Attempting to connect to Arctic...')
+                self.arctic = Arctic(MONGO_ENDPOINT)
+                self.arctic.initialize_library(ARCTIC_NAME, lib_type=TICK_STORE)
+                self.library = self.arctic[ARCTIC_NAME]
+                print('Connected to Arctic.')
+            else:
+                print('Not connecting to Arctic')
+                self.arctic, self.library = None, None
             self.number_of_workers = cpu_count()
             self.pool = Pool(self.number_of_workers)
-            print('Connected to Arctic.')
         except Exception as ex:
             self.arctic, self.library = None, None
             print('Unable to connect to Arctic database')
@@ -98,7 +100,7 @@ class Simulator(object):
     def _split_cursor_to_list(self, cursor):
         start_time = dt.now(TIMEZONE)
 
-        interval_length = int(cursor.shape[0]/self.number_of_workers)
+        interval_length = cursor.shape[0] // self.number_of_workers
         starting_index = 0
         ending_index = interval_length
         print('\nSplitting %i records into %i chunks... %i records/cpu' %
@@ -237,7 +239,7 @@ class Simulator(object):
 
     @staticmethod
     def export_to_csv(data, filename='data', compress=True):
-        start_time = dt.now(TIMEZONE)
+        start_time = dt.now(tz=TIMEZONE)
 
         if compress:
             subfolder = './data_exports/{}.xz'.format(filename)
@@ -246,32 +248,28 @@ class Simulator(object):
             subfolder = './data_exports/{}.csv'.format(filename)
             data.to_csv(path_or_buf=subfolder, index=False)
 
-        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
         print('Exported data to csv in %i seconds' % elapsed)
 
     @staticmethod
     def import_csv(filename='data.xz'):
-        start_time = dt.now()
+        start_time = dt.now(tz=TIMEZONE)
 
         if 'xz' in filename:
-            subfolder = './data_exports/{}'.format(filename)
-            data = pd.read_csv(filepath_or_buffer=subfolder, index_col=0, compression='xz', engine='c')
+            data = pd.read_csv(filepath_or_buffer=filename, index_col=0, compression='xz', engine='c')
         elif 'csv' in filename:
-            subfolder = './data_exports/{}'.format(filename)
-            data = pd.read_csv(filepath_or_buffer=subfolder, index_col=0, engine='c')
+            data = pd.read_csv(filepath_or_buffer=filename, index_col=0, engine='c')
         else:
             print('Error: file must be a csv or xz')
             data = None
 
-        elapsed = (dt.now() - start_time).seconds
-        print('Exported data to csv in %i seconds' % elapsed)
+        elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
+        print('Imported data from a csv in %i seconds' % elapsed)
         return data
 
     def fit_scaler(self, orderbook_snapshot_history):
         start_time = dt.now(tz=TIMEZONE)
-
         self.scaler.fit(orderbook_snapshot_history)
-
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
         print('***\nSimulator._fit_scaler() executed in %i seconds\n***' % elapsed)
 

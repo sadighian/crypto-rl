@@ -14,11 +14,12 @@ class Order:
         return ' %s | %s | %.3f | %i | %.3f | %.3f' % \
                (self.ccy, self.side, self.price, self.step, self.drawdown_max, self.upside_max)
 
-    def step(self, midpoint=100.0):
+    def update(self, midpoint=100.0):
+
         if self.side == 'long':
-            unrealized_pnl = (midpoint / self.price) / self.price
+            unrealized_pnl = (midpoint - self.price) / self.price
         elif self.side == 'short':
-            unrealized_pnl = (self.price / midpoint) / self.price
+            unrealized_pnl = (self.price - midpoint) / self.price
         else:
             unrealized_pnl = 0.0
             print('alert: uknown order.step() side %s' % self.side)
@@ -33,7 +34,7 @@ class Order:
 class PositionI(object):
     '''
     Position class keeps track the agent's trades
-    and provides stats (e.g., pnl) on all trades
+    and provides stats (e.g., pnl) on all tradself.average_price = es
     '''
 
     def __init__(self, side='long', max_position=1):
@@ -48,24 +49,25 @@ class PositionI(object):
         self.average_price = 0.0
         self.last_trade = {
             'steps_in_position': 0,
-            'pnl_curve': 0.0,
+            'upside_max': 0.0,
+            'drawdown_max': 0.0,
             'realized_pnl': 0.0
         }
 
     def reset(self):
         self.positions.clear()
+        self.position_count = 0
         self.realized_pnl = 0.0
         self.unrealized_pnl = 0.0
         self.full_inventory = False
-        self.position_count = 0
         self.total_exposure = 0.0
         self.average_price = 0.0
         # self.last_trade = {}
 
     def step(self, midpoint=100.0):
-        def step_update(pos, mid):
-            pos.step(mid)
-        [step_update(position, midpoint) for position in self.positions]
+        if self.position_count > 0:
+            for position in self.positions:
+                position.update(midpoint=midpoint)
 
     def add(self, order):
         if not self.full_inventory:
@@ -74,7 +76,7 @@ class PositionI(object):
             self.total_exposure += order.price
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
-            # print('  %s @ %.2f | step %i' % (order['side'], order['price'], order['step']))
+            # print('  %s @ %.2f | step %i' % (order.side, order.price, order.step))
             return True
         else:
             # print('  %s inventory max' % order['side'])
@@ -85,10 +87,16 @@ class PositionI(object):
             opening_order = self.positions.pop()  # FIFO order inventory
             self.position_count -= 1
             self.total_exposure -= opening_order.price
-            self.average_price = self.total_exposure / self.position_count
+
+            if self.position_count == 0:
+                self.average_price = 0.0
+            else:
+                self.average_price = self.total_exposure / self.position_count
+
             self.full_inventory = self.position_count >= self.max_position_count
             self.last_trade['steps_in_position'] = order.step - opening_order.step
-            self.last_trade['pnl_curve'] = opening_order.upside_max / opening_order.drawdown_max
+            self.last_trade['upside_max'] = opening_order.upside_max
+            self.last_trade['drawdown_max'] = opening_order.drawdown_max
 
             if self.side == 'long':
                 realized_trade_pnl = (order.price - opening_order.price) / opening_order.price
@@ -102,10 +110,11 @@ class PositionI(object):
 
             self.last_trade['realized_pnl'] = realized_trade_pnl
 
-            if realized_trade_pnl > 0.02:
-                print(' %s PNL %.3f x %.3f | steps: %i' % (self.side, realized_trade_pnl,
-                                                           self.last_trade['pnl_curve'],
-                                                           self.last_trade['steps_in_position']))
+            # if realized_trade_pnl > 0.0:
+            #     print(' %s PNL %.3f | upside %.3f / downside %.3f | steps: %i' % (self.side, realized_trade_pnl,
+            #                                                self.last_trade['upside_max'],
+            #                                                self.last_trade['drawdown_max'],
+            #                                                self.last_trade['steps_in_position']))
             return True
         else:
             return False
@@ -115,9 +124,9 @@ class PositionI(object):
             return 0.0
 
         if self.side == 'long':
-            unrealized_pnl = (midpoint / self.average_price) - 1.0
+            unrealized_pnl = (midpoint - self.average_price) / self.average_price
         elif self.side == 'short':
-            unrealized_pnl = (self.average_price / midpoint) - 1.0
+            unrealized_pnl = (self.average_price - midpoint) / self.average_price
         else:
             unrealized_pnl = 0.0
             print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
@@ -146,9 +155,9 @@ class Broker(object):
         self.short_inventory.reset()
 
     def add(self, order):
-        if order['side'] == 'long':
+        if order.side == 'long':
             is_added = self.long_inventory.add(order=order)
-        elif order['side'] == 'short':
+        elif order.side == 'short':
             is_added = self.short_inventory.add(order=order)
         else:
             is_added = False
@@ -156,9 +165,9 @@ class Broker(object):
         return is_added
 
     def remove(self, order):
-        if order['side'] == 'long':
+        if order.side == 'long':
             is_removed = self.long_inventory.remove(order=order)
-        elif order['side'] == 'short':
+        elif order.side == 'short':
             is_removed = self.short_inventory.remove(order=order)
         else:
             is_removed = False
@@ -190,4 +199,51 @@ class Broker(object):
         long_pnl = self.long_inventory.flatten_inventory(order=order)
         short_pnl = self.short_inventory.flatten_inventory(order=order)
         return long_pnl + short_pnl
+
+    def step(self, midpoint=100.0):
+        self.long_inventory.step(midpoint=midpoint)
+        self.short_inventory.step(midpoint=midpoint)
+
+    def get_reward(self, side='long'):
+        if side == 'long':
+            realized_pnl = self.long_inventory.last_trade['realized_pnl']
+            steps_in_position = self.long_inventory.last_trade['steps_in_position']
+            drawdown_max = self.long_inventory.last_trade['drawdown_max']
+            upside_max = self.long_inventory.last_trade['upside_max']
+        elif side == 'short':
+            realized_pnl = self.short_inventory.last_trade['realized_pnl']
+            steps_in_position = self.short_inventory.last_trade['steps_in_position']
+            drawdown_max = self.short_inventory.last_trade['drawdown_max']
+            upside_max = self.short_inventory.last_trade['upside_max']
+        else:
+            realized_pnl = 0.0
+            steps_in_position = 0
+            drawdown_max = 0.0
+            upside_max = 0.0
+            print('*trading_gym._get_reward: Unknown order side: {}'.format(side))
+
+        # print('    %.4f | %i | %.4f | %.4f' % (realized_pnl, steps_in_position, upside_max, drawdown_max))
+
+        reward = realized_pnl
+
+        if reward > 0.0:
+            inventory_holding_time_penalty = pow(0.9999, steps_in_position)  # pentalty for holding inventory
+            upside_pct = realized_pnl / upside_max  # discount by the amount left on the table
+            # assert upside_max != 0.0
+            # assert drawdown_max != 0.0
+            dd_multiple = min(max(upside_max, 0.0001) / max(abs(drawdown_max), 0.003), 10.0)  # encourage positions with little drawdown
+        else:
+            inventory_holding_time_penalty = pow(1.0001, steps_in_position)  # pentalty for holding inventory
+            upside_pct = 1.0
+            dd_multiple = 1.0
+
+        reward *= upside_pct
+        reward *= dd_multiple
+        reward *= inventory_holding_time_penalty
+
+        if realized_pnl > 0.0:
+            print('   pnl %.3f | reward %.3f | upside %.3f | dd %.3f | steps: %i'
+                % (realized_pnl, reward, upside_pct, dd_multiple, steps_in_position))
+
+        return reward
 
