@@ -69,10 +69,10 @@ for the following reasons:
 - **SortedDict** interface is intuitive, thus making implementation easier
 
 ### 4.3 Reinforcement Learning Environment
-(`.trading_gym/trading_gym.py`) Implementation of the `gym` signatures for a 
+(`./trading_gym/trading_gym.py`) Implementation of the `gym` signatures for a 
 markov decision process (although our environment is POMDP).
 
-(`trading_gym/dqn_agent.py`) Implementation of a double-deuling q-network using a 
+(`./trading_gym/dqn_agent.py`) Implementation of a double-deuling q-network using a 
 shallow network model. This class is where you can modify the network architecture when
 performing network architecture research.
 
@@ -100,28 +100,21 @@ RECORD_DATA = True
 **Step 2:**
 Open a CLI and start recording full limit order book and trade data.
  ```
- python recorder.py
+ python3 recorder.py
  ```
 
 ### 5.2 Experiment.py
 Class for running experiments. To run an experiment:
 
 ```
-python experiment.py
+python3 experiment.py
 ```
 
-Note: the branch is currently configured to load the historical data from a 
-csv (opposed to generating data on-demand using the Arctic Tick Store to save time).
-To use the Tick Store as a data source, uncomment the following lines:
-```
-# file location = .trading_gym/trading_gym.py
-
-self.data = self.sim.query_env_states(query={
-        'ccy': ['ETC-USD', 'tETCUSD'],
-        'start_date': 20181121,
-        'end_date': 20181122
-    })
-```
+Note: the branch is currently configured to load the historical data from a xz
+compressed csv (opposed to generating data on-demand using the Arctic Tick 
+Store to save time). To generate the xz csv, run the 
+`Simulator.extract_features()` method (assuming you've recorded data already!).
+Refer to `./trading_gym/simulator_test.py` for an example.
 
 ## 6. Appendix
 ### 6.1 Branches
