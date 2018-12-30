@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 from datetime import datetime as dt
 from trading_gym import TradingGym
 
@@ -11,8 +10,10 @@ if __name__ == '__main__':
         'training': True,
         'env_id': 'coinbase-bitfinex-v0',
         'step_size': 1,
-        'fee': 0.006,
-        'max_position': 1
+        'fee': 0.003,
+        'max_position': 1,
+        'fitting_file': 'BTC-USD_20181120.xz',
+        'testing_file': 'BTC-USD_20181121.xz'
     }
     total_reward = 0.0
     env = TradingGym(**params)
@@ -28,8 +29,9 @@ if __name__ == '__main__':
 
         if done:
             print('Done on %i step' % i)
+            env.render()
             break
 
-    print('Total reward: %f' % total_reward)
+    print('Total reward: %.4f\nTotal pnl: %.4f' % (total_reward, env.broker.get_total_pnl(env._midpoint)))
     elapsed = (dt.now() - start_time).seconds
     print('\nCompleted in %i seconds' % elapsed)
