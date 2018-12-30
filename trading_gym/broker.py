@@ -222,28 +222,9 @@ class Broker(object):
             upside_max = 0.0
             print('*trading_gym._get_reward: Unknown order side: {}'.format(side))
 
-        # print('    %.4f | %i | %.4f | %.4f' % (realized_pnl, steps_in_position, upside_max, drawdown_max))
-
-        reward = realized_pnl
-
-        if reward > 0.0:
-            inventory_holding_time_penalty = pow(0.9999, steps_in_position)  # pentalty for holding inventory
-            upside_pct = realized_pnl / upside_max  # discount by the amount left on the table
-            # assert upside_max != 0.0
-            # assert drawdown_max != 0.0
-            dd_multiple = min(max(upside_max, 0.0001) / max(abs(drawdown_max), 0.003), 10.0)  # encourage positions with little drawdown
-        else:
-            inventory_holding_time_penalty = pow(1.0001, steps_in_position)  # pentalty for holding inventory
-            upside_pct = 1.0
-            dd_multiple = 1.0
-
-        reward *= upside_pct
-        reward *= dd_multiple
-        reward *= inventory_holding_time_penalty
-
         if realized_pnl > 0.0:
-            print('   pnl %.3f | reward %.3f | upside %.3f | dd %.3f | steps: %i'
-                % (realized_pnl, reward, upside_pct, dd_multiple, steps_in_position))
+            print(' realized_pnl: %.4f | steps_in_position: %i | upside_max: %.4f | drawdown_max: %.4f'
+                  % (realized_pnl, steps_in_position, upside_max, drawdown_max))
 
-        return reward
+        return realized_pnl
 

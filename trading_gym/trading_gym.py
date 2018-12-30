@@ -72,7 +72,7 @@ class TradingGym(Env):
 
     def step(self, action):
         if self.done:
-            self.observation = self.reset()
+            self.reset()
             self.done = False
             return self.observation, self.reward, self.done, {}
 
@@ -81,27 +81,25 @@ class TradingGym(Env):
 
         self._midpoint = self.data[self.local_step_number][0]
         self.broker.step(midpoint=self._midpoint)
-        self.reward = self._send_to_broker_and_get_reward(action)  # TODO add as a feature
+        self.reward = self._send_to_broker_and_get_reward(action)
 
-        _next_state = np.concatenate((self.process_data(self.data[self.local_step_number]),
-                                      position_features,
-                                      action_features, np.array([self.reward])))
+        self.observation = np.concatenate((self.process_data(self.data[self.local_step_number]),
+                                           position_features,
+                                           action_features,
+                                           np.array([self.reward])))
 
         self.data_for_render.append(np.concatenate((np.array([self._midpoint]), position_features, action_features)))
 
-        self.observation = (self._state, _next_state)
-        self._state = _next_state
-
-        # TODO undo random
         # self.local_step_number += np.random.randint(low=1, high=10)
         self.local_step_number += self.step_size
+
         if self.local_step_number > self.data.shape[0] - 2:
             self.done = True
             order = Order(ccy=self.sym, side=None, price=self._midpoint, step=self.local_step_number)
             self.reward = self.broker.flatten_inventory(order=order)
             self.logger.info('{} is DONE.'.format(self.env_id))
 
-        return self.observation[1], self.reward, self.done, {}
+        return self.observation, self.reward, self.done, {}
 
     def reset(self):
         self.logger.info(' {} reset. Episode pnl: {}'.format(self.env_id, self.broker.get_total_pnl(self._midpoint)))
@@ -120,24 +118,16 @@ class TradingGym(Env):
         position_features = self._create_position_features()
         action_features = self._create_action_features(action=0)
 
-        _prev_state = np.concatenate((self.process_data(self.data[self.local_step_number]),
-                                      position_features,
-                                      action_features,
-                                      np.array([self.reward])))
-        self.local_step_number += 1
-        _next_state = np.concatenate((self.process_data(self.data[self.local_step_number]),
-                                      position_features,
-                                      action_features,
-                                      np.array([self.reward])))
+        self.observation = np.concatenate((self.process_data(self.data[self.local_step_number]),
+                                           position_features,
+                                           action_features,
+                                           np.array([self.reward])))
 
         self._midpoint = self.data[self.local_step_number][0]
-
         self.data_for_render.append(np.concatenate((np.array([self._midpoint]), position_features, action_features)))
 
         self.local_step_number += self.step_size
-        self._state = _prev_state
-        _pair_state = (_prev_state, _next_state)
-        return _pair_state[1]
+        return self.observation
 
     def render(self, mode='human'):
         columns = ['midpoint'] + self.inventory_features + ['buy', 'sell']
