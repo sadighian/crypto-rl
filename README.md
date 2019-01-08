@@ -7,7 +7,9 @@ The purpose of this application is to provide a toolkit to:
  exchanges (**Coinbase Pro** and **Bitfinex**) into an Arctic 
  Tickstore database (i.e., MongoDB), 
  - **Replay** recorded data in simulations for deep reinforcement learning, and
- - **Train** a deep-q network (DQN) agent to trade cryptocurrencies.
+ - **Train** a Deep Q-Network (DQN) agent to trade cryptocurrencies.
+
+![Design Pattern](images/design-pattern-high-level.png)
 
 ## 2. Scope
 Application is intended to be used to record and simulate limit order book data 
@@ -104,8 +106,13 @@ Open a CLI and start recording full limit order book and trade data.
  ```
 
 ### 5.2 Experiment.py
-Class for running experiments. To run an experiment:
+Class for running experiments. 
 
+**Step 1:**
+Record streaming data using `./recorder.py` (see above)
+
+**Step 2:**
+Open a CLI and run an experiment:
 ```
 python3 experiment.py
 ```
