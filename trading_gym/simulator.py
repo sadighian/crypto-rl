@@ -168,7 +168,7 @@ class Simulator(object):
             print('dates: {}'.format(dates))
             for date in dates[1:]:
                 tmp = order_book_data.loc[order_book_data['system_time'].dt.date == date]
-                self.export_to_csv(tmp, filename='{}_{}'.format(query['ccy'][0], date), compress=True)
+                self.export_to_csv(tmp, filename='{}_{}'.format(query['ccy'][0], date), compress=False)
 
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
         print('***\nSimulator.extract_features() executed in %i seconds\n***' % elapsed)

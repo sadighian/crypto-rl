@@ -1,5 +1,5 @@
 # Configurations
-As of December 21, 2018.
+As of March 04, 2019.
 
 ## 1. Overview
 The `configurations` module contains the settings implemented throughout the project.

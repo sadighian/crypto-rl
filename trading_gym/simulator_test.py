@@ -60,8 +60,8 @@ def test_extract_features():
     for ccy in ['ETH-USD']:
         query = {
             'ccy': [ccy],
-            'start_date': 20181231,
-            'end_date': 20190102
+            'start_date': 20181230,
+            'end_date': 20190101
         }
         sim.extract_features(query)
 
@@ -75,5 +75,5 @@ if __name__ == '__main__':
     Entry point of simulation application
     """
     # test_get_tick_history()
-    test_get_orderbook_snapshot_history()
-    # test_extract_features()
+    # test_get_orderbook_snapshot_history()
+    test_extract_features()

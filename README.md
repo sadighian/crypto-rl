@@ -1,5 +1,5 @@
 # Deep Reinforcement Learning Toolkit for Cryptocurrencies
-As of December 21, 2018.
+As of March 04, 2019.
 
 ## 1. Purpose
 The purpose of this application is to provide a toolkit to:
