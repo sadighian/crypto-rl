@@ -1,14 +1,20 @@
-from trading_gym.dqn_agent import DqnAgent
+from trading_gym.agent import Agent
 
 
 if __name__ == '__main__':
     print('Starting training...')
-    agent = DqnAgent(step_size=1,
-                     window_length=2*60,
-                     train=True,
-                     max_position=1,
-                     weights=False,
-                     fitting_file='LTC-USD_20181120.xz',
-                     testing_file='LTC-USD_20181121.xz')
+
+    kwargs = {
+        'step_size': 1,
+        'window_size': 25,  # number of shapshots to include in the frame rendered by the CNN
+        'train': True,  # if False, episodes start at frame 0
+        'max_position': 1,
+        'weights': False,  # if True, agent loads saved weights
+        'fitting_file': 'ETH-USD_2018-12-31.csv',
+        'testing_file': 'ETH-USD_2019-01-01.csv',
+        'seed': 123
+    }
+
+    agent = Agent(**kwargs)
     agent.start()
-    print('...done training.')
+    print('...training...')

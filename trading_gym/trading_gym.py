@@ -1,6 +1,6 @@
 from gym import Env, spaces
-from simulator import Simulator as Sim
-from broker import Broker, Order
+from .simulator import Simulator as Sim
+from .broker import Broker, Order
 import logging
 import numpy as np
 import os
@@ -71,7 +71,8 @@ class TradingGym(Env):
         variable_features_count = len(self.inventory_features) + len(self.actions) + 1
         self.observation_space = spaces.Box(low=-self.data.min(),
                                             high=self.data.max(),
-                                            shape=(self.window_size, len(self.features) + variable_features_count),
+                                            shape=(self.window_size,
+                                                   len(self.features) + variable_features_count),
                                             dtype=np.float32)
         self.reset()
         print('self.observation_space.shape : {}'.format(self.observation_space.shape))
@@ -119,7 +120,7 @@ class TradingGym(Env):
             order = Order(ccy=self.sym, side=None, price=self._midpoint, step=self.local_step_number)
             self.reward = self.broker.flatten_inventory(order=order)
 
-        return self.observation, self.reward, self.done
+        return self.observation, self.reward, self.done, {}
 
     def reset(self):
         if self.training:
@@ -148,8 +149,7 @@ class TradingGym(Env):
             self.data_buffer.insert(0, _observation)
             self.local_step_number += self.step_size
 
-        self.observation = np.array(self.data_buffer,
-                                    dtype=np.float32).reshape(self.observation_space.shape)
+        self.observation = np.array(self.data_buffer, dtype=np.float32).reshape(self.observation_space.shape)
         print('{} reset.observation.shape = {}'.format(self.sym, np.shape(self.observation)))
 
         return self.observation

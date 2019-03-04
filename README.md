@@ -6,8 +6,8 @@ The purpose of this application is to provide a toolkit to:
  - **Record** full limit order book and trade tick data from two 
  exchanges (**Coinbase Pro** and **Bitfinex**) into an Arctic 
  Tickstore database (i.e., MongoDB), 
- - **Replay** recorded data in simulations for deep reinforcement learning, and
- - **Train** a Deep Q-Network (DQN) agent to trade cryptocurrencies.
+ - **Replay** recorded historical data to derive feature sets for training
+ - **Train** a Dueling Deep Q-Network (DDQN) agent to trade cryptocurrencies.
 
 ![Design Pattern](images/design-pattern-high-level.PNG)
 
@@ -74,7 +74,7 @@ for the following reasons:
 (`./trading_gym/trading_gym.py`) Implementation of the `gym` signatures for a 
 markov decision process (although our environment is POMDP).
 
-(`./trading_gym/dqn_agent.py`) Implementation of a double-deuling q-network using a 
+(`./trading_gym/agent.py`) Implementation of a double-deuling q-network using a 
 shallow network model. This class is where you can modify the network architecture when
 performing network architecture research.
 
@@ -112,6 +112,13 @@ Class for running experiments.
 Record streaming data using `./recorder.py` (see above)
 
 **Step 2:**
+Create derived feature sets and export to `csv` or `xz`
+```
+# test case for exporting data sets to csv or xz
+python3 simulator_test.test_extract_features()
+```
+
+**Step 3:**
 Open a CLI and run an experiment:
 ```
 python3 experiment.py
