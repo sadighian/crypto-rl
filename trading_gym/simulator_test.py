@@ -34,8 +34,8 @@ def test_get_orderbook_snapshot_history():
 
     sim = Simulator(use_arctic=True)
     query = {
-        'ccy': ['ETC-USD'],
-        'start_date': 20181230,
+        'ccy': ['ETC-USD', 'tETCUSD'],
+        'start_date': 20181229,
         'end_date': 20181231
     }
     orderbook_snapshot_history = sim.get_orderbook_snapshot_history(query=query)
@@ -75,5 +75,5 @@ if __name__ == '__main__':
     Entry point of simulation application
     """
     # test_get_tick_history()
-    # test_get_orderbook_snapshot_history()
-    test_extract_features()
+    test_get_orderbook_snapshot_history()
+    # test_extract_features()

@@ -3,7 +3,7 @@ from datetime import timedelta
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
 from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
-# from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
+from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, RECORD_DATA, MAX_BOOK_ROWS
 from dateutil.parser import parse
 import numpy as np
@@ -120,92 +120,6 @@ class Simulator(object):
 
         return columns
 
-    def get_orderbook_snapshot_history(self, query):
-        """
-        Function to replay historical market data and generate
-        the features used for reinforcement learning & training
-        :param tick_history: (list of dicts) historical tick data
-        :return: (list of arrays) snapshots of limit order books using a stationary feature set
-        """
-        tick_history = self.get_tick_history(query=query)
-
-        assert tick_history is not None
-        loop_length = tick_history.shape[0]
-
-        coinbase_tick_counter = 0
-        snapshot_list = list()
-        last_snapshot_time = None
-
-        coinbase_order_book = CoinbaseOrderBook(query['ccy'][0])
-
-        start_time = dt.now(TIMEZONE)
-        print('Starting get_orderbook_snapshot_history() loop with %i ticks for %s' %
-              (loop_length, query['ccy']))
-
-        for idx, tx in enumerate(tick_history.itertuples()):
-
-            tick = tx._asdict()
-
-            if 'type' not in tick:
-                # filter out bad ticks
-                continue
-
-            if tick['type'] in ['load_book', 'book_loaded', 'preload']:
-                # flag for a order book reset
-                coinbase_order_book.new_tick(tick)
-                # skip to next loop
-                continue
-
-            if coinbase_order_book.done_warming_up():
-                new_tick_time = parse(tick['time'])  # timestamp for incoming tick
-                coinbase_tick_counter += 1
-                coinbase_order_book.new_tick(tick)
-
-            if coinbase_tick_counter == 1:
-                # start tracking snapshot timestamps
-                # and keep in mind that snapshots are tethered to coinbase timestamps
-                last_snapshot_time = new_tick_time
-                print('%s first tick: %s | Sequence: %i' %
-                      (coinbase_order_book.sym, str(new_tick_time), coinbase_order_book.sequence))
-                # skip to next loop
-                continue
-
-            # calculate the amount of time between the incoming tick and tick received before that
-            diff = (new_tick_time - last_snapshot_time).microseconds
-
-            # multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
-            multiple = diff // 500000  # 500000 is 500 milliseconds, or 2x a second
-
-            if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
-                for _ in range(multiple):
-                    if coinbase_order_book.done_warming_up():
-                        coinbase_order_book_snapshot = coinbase_order_book.render_book()
-                        snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
-                                                             coinbase_order_book.midpoint,  # midpoint price
-                                                             coinbase_order_book_snapshot))))  # longs/shorts
-                        last_snapshot_time += timedelta(milliseconds=500)  # 250)
-
-                    else:
-                        last_snapshot_time += timedelta(milliseconds=500)  # 250)
-
-            # periodically print number of steps completed
-            if idx % 250000 == 0:
-                elapsed = (dt.now(TIMEZONE) - start_time).seconds
-                print('...completed %i loops in %i seconds' % (idx, elapsed))
-
-            idx += 1
-
-        elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
-              (loop_length, elapsed, loop_length//elapsed))
-
-        orderbook_snapshot_history = pd.DataFrame(snapshot_list,
-            columns=self.get_feature_labels(include_system_time=True, include_bitfinex=False))
-
-        orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
-
-        return orderbook_snapshot_history
-
     @staticmethod
     def export_to_csv(data, filename='data', compress=True):
         start_time = dt.now(tz=TIMEZONE)
@@ -259,117 +173,123 @@ class Simulator(object):
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
         print('***\nSimulator.extract_features() executed in %i seconds\n***' % elapsed)
 
-    # def get_orderbook_snapshot_history(self, query):
-    #     """
-    #     Function to replay historical market data and generate
-    #     the features used for reinforcement learning & training
-    #     :param tick_history: (list of dicts) historical tick data
-    #     :return: (list of arrays) snapshots of limit order books using a stationary feature set
-    #     """
-    #     tick_history = self.get_tick_history(query=query)
-    #     loop_length = tick_history.shape[0]
-    #
-    #     coinbase_tick_counter = 0
-    #     snapshot_list = list()
-    #     last_snapshot_time = None
-    #
-    #     include_bitfinex = len(query['ccy']) > 1
-    #
-    #     coinbase_order_book = CoinbaseOrderBook(query['ccy'][0])
-    #     bitfinex_order_book = BitfinexOrderBook(query['ccy'][1]) if include_bitfinex else None
-    #
-    #     start_time = dt.now(TIMEZONE)
-    #     print('Starting get_orderbook_snapshot_history() loop with %i ticks for %s' %
-    #           (loop_length, query['ccy']))
-    #
-    #     for idx, tx in enumerate(tick_history.itertuples()):
-    #
-    #         tick = tx._asdict()
-    #
-    #         # determine if incoming tick is from coinbase or bitfinex
-    #         coinbase = True if tick['product_id'] == coinbase_order_book.sym else False
-    #
-    #         if 'type' not in tick:
-    #             # filter out bad ticks
-    #             continue
-    #
-    #         if tick['type'] in ['load_book', 'book_loaded', 'preload']:
-    #             # flag for a order book reset
-    #             if coinbase:
-    #                 coinbase_order_book.new_tick(tick)
-    #             else:
-    #                 bitfinex_order_book.new_tick(tick)
-    #             # skip to next loop
-    #             continue
-    #
-    #         if coinbase:  # incoming tick is from Coinbase exchange
-    #             if coinbase_order_book.done_warming_up():
-    #                 new_tick_time = parse(tick['time'])  # timestamp for incoming tick
-    #                 coinbase_tick_counter += 1
-    #                 coinbase_order_book.new_tick(tick)
-    #
-    #             if coinbase_tick_counter == 1:
-    #                 # start tracking snapshot timestamps
-    #                 # and keep in mind that snapshots are tethered to coinbase timestamps
-    #                 last_snapshot_time = new_tick_time
-    #                 print('%s first tick: %s | Sequence: %i' %
-    #                       (coinbase_order_book.sym, str(new_tick_time), coinbase_order_book.sequence))
-    #                 # skip to next loop
-    #                 continue
-    #
-    #             # calculate the amount of time between the incoming tick and tick received before that
-    #             diff = (new_tick_time - last_snapshot_time).microseconds
-    #             # multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
-    #             multiple = diff // 500000  # 500000 is 500 milliseconds, or 2x a second
-    #
-    #             if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
-    #
-    #                 if include_bitfinex:
-    #                     for _ in range(multiple):
-    #                         if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
-    #                             coinbase_order_book_snapshot = coinbase_order_book.render_book()
-    #                             bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
-    #                             midpoint_delta = coinbase_order_book.midpoint - bitfinex_order_book.midpoint
-    #                             snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
-    #                                                                  coinbase_order_book.midpoint,  # midpoint price
-    #                                                                  midpoint_delta,  # price delta between exchanges
-    #                                                                  coinbase_order_book_snapshot,
-    #                                                                  bitfinex_order_book_snapshot))))  # longs/shorts
-    #                             last_snapshot_time += timedelta(milliseconds=500)  # 250)
-    #
-    #                         else:
-    #                             last_snapshot_time += timedelta(milliseconds=500)  # 250)
-    #                 else:  # do not include bitfinex
-    #                     for _ in range(multiple):
-    #                         if coinbase_order_book.done_warming_up():
-    #                             coinbase_order_book_snapshot = coinbase_order_book.render_book()
-    #                             snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
-    #                                                                  coinbase_order_book.midpoint,  # midpoint price
-    #                                                                  coinbase_order_book_snapshot))))  # longs/shorts
-    #                             last_snapshot_time += timedelta(milliseconds=500)  # 250)
-    #
-    #                         else:
-    #                             last_snapshot_time += timedelta(milliseconds=500)  # 250)
-    #
-    #         # incoming tick is from Bitfinex exchange
-    #         elif include_bitfinex & bitfinex_order_book.done_warming_up():
-    #             bitfinex_order_book.new_tick(tick)
-    #
-    #         # periodically print number of steps completed
-    #         if idx % 250000 == 0:
-    #             elapsed = (dt.now(TIMEZONE) - start_time).seconds
-    #             print('...completed %i loops in %i seconds' % (idx, elapsed))
-    #
-    #         idx += 1
-    #
-    #     elapsed = (dt.now(TIMEZONE) - start_time).seconds
-    #     print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
-    #           (loop_length, elapsed, loop_length//elapsed))
-    #
-    #     orderbook_snapshot_history = pd.DataFrame(snapshot_list,
-    #                                               columns=self.get_feature_labels(
-    #                                                   include_system_time=True,
-    #                                                   include_bitfinex=include_bitfinex))
-    #     orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
-    #
-    #     return orderbook_snapshot_history
+    def get_orderbook_snapshot_history(self, query):
+        """
+        Function to replay historical market data and generate
+        the features used for reinforcement learning & training.
+
+        NOTE:
+        The query can either be a single Coinbase CCY, or both Coinbase and Bitfinex,
+        but it cannot be only a Biftinex CCY. Later releases of this repo will
+        support Bitfinex only orderbook reconstruction.
+
+        :param query: (dict) query for finding tick history in Arctic TickStore
+        :return: (list of arrays) snapshots of limit order books using a stationary feature set
+        """
+        tick_history = self.get_tick_history(query=query)
+        loop_length = tick_history.shape[0]
+
+        coinbase_tick_counter = 0
+        snapshot_list = list()
+        last_snapshot_time = None
+
+        include_bitfinex = len(query['ccy']) > 1
+
+        coinbase_order_book = CoinbaseOrderBook(query['ccy'][0])
+        bitfinex_order_book = BitfinexOrderBook(query['ccy'][1]) if include_bitfinex else None
+
+        start_time = dt.now(TIMEZONE)
+        print('Starting get_orderbook_snapshot_history() loop with %i ticks for %s' %
+              (loop_length, query['ccy']))
+
+        for idx, tx in enumerate(tick_history.itertuples()):
+
+            tick = tx._asdict()
+
+            # determine if incoming tick is from coinbase or bitfinex
+            coinbase = True if tick['product_id'] == coinbase_order_book.sym else False
+
+            if 'type' not in tick:
+                # filter out bad ticks
+                continue
+
+            if tick['type'] in ['load_book', 'book_loaded', 'preload']:
+                # flag for a order book reset
+                if coinbase:
+                    coinbase_order_book.new_tick(tick)
+                else:
+                    bitfinex_order_book.new_tick(tick)
+                # skip to next loop
+                continue
+
+            if coinbase:  # incoming tick is from Coinbase exchange
+                if coinbase_order_book.done_warming_up():
+                    new_tick_time = parse(tick['time'])  # timestamp for incoming tick
+                    coinbase_tick_counter += 1
+                    coinbase_order_book.new_tick(tick)
+
+                if coinbase_tick_counter == 1:
+                    # start tracking snapshot timestamps
+                    # and keep in mind that snapshots are tethered to coinbase timestamps
+                    last_snapshot_time = new_tick_time
+                    print('%s first tick: %s | Sequence: %i' %
+                          (coinbase_order_book.sym, str(new_tick_time), coinbase_order_book.sequence))
+                    # skip to next loop
+                    continue
+
+                # calculate the amount of time between the incoming tick and tick received before that
+                diff = (new_tick_time - last_snapshot_time).microseconds
+                # multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
+                multiple = diff // 500000  # 500000 is 500 milliseconds, or 2x a second
+
+                if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
+
+                    if include_bitfinex:
+                        for _ in range(multiple):
+                            if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
+                                coinbase_order_book_snapshot = coinbase_order_book.render_book()
+                                bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
+                                midpoint_delta = coinbase_order_book.midpoint - bitfinex_order_book.midpoint
+                                snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
+                                                                     coinbase_order_book.midpoint,  # midpoint price
+                                                                     midpoint_delta,  # price delta between exchanges
+                                                                     coinbase_order_book_snapshot,
+                                                                     bitfinex_order_book_snapshot))))  # longs/shorts
+                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+
+                            else:
+                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+                    else:  # do not include bitfinex
+                        for _ in range(multiple):
+                            if coinbase_order_book.done_warming_up():
+                                coinbase_order_book_snapshot = coinbase_order_book.render_book()
+                                snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
+                                                                     coinbase_order_book.midpoint,  # midpoint price
+                                                                     coinbase_order_book_snapshot))))  # longs/shorts
+                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+
+                            else:
+                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+
+            # incoming tick is from Bitfinex exchange
+            elif include_bitfinex & bitfinex_order_book.done_warming_up():
+                bitfinex_order_book.new_tick(tick)
+
+            # periodically print number of steps completed
+            if idx % 250000 == 0:
+                elapsed = (dt.now(TIMEZONE) - start_time).seconds
+                print('...completed %i loops in %i seconds' % (idx, elapsed))
+
+            idx += 1
+
+        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
+              (loop_length, elapsed, loop_length//elapsed))
+
+        orderbook_snapshot_history = pd.DataFrame(snapshot_list,
+                                                  columns=self.get_feature_labels(
+                                                      include_system_time=True,
+                                                      include_bitfinex=include_bitfinex))
+        orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
+
+        return orderbook_snapshot_history
