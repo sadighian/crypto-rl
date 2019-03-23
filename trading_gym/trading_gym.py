@@ -150,7 +150,7 @@ class TradingGym(Env):
             self.local_step_number += self.step_size
 
         self.observation = np.array(self.data_buffer, dtype=np.float32).reshape(self.observation_space.shape)
-        print('{} reset.observation.shape = {}'.format(self.sym, np.shape(self.observation)))
+        # print('{} reset.observation.shape = {}'.format(self.sym, np.shape(self.observation)))
 
         return self.observation
 

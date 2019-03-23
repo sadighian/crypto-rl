@@ -22,9 +22,9 @@ class Agent(TradingGym):
                                     max_position=max_position,
                                     window_size=window_size,
                                     seed=seed)
-        self.lags = 4  # four snapshots are stacked on top eachother, as proposed by Deepmind
+        self.frames_to_stack = 1  # optionally, stack 4 frames as proposed for Atarti games
         self.model = self.create_model()
-        self.memory = SequentialMemory(limit=20000, window_length=self.lags)
+        self.memory = SequentialMemory(limit=10000, window_length=self.frames_to_stack)
         self.train = train
         self.training_steps = self.data.shape[0]  # training_steps
         self.weights = weights
@@ -46,33 +46,37 @@ class Agent(TradingGym):
         self.agent.compile(RMSprop(lr=0.00048), metrics=['mae'])
 
     def create_model(self):
-        features_shape = (self.lags,
+        features_shape = (self.frames_to_stack,
                           self.observation_space.shape[0],
                           self.observation_space.shape[1])
 
         model = Sequential()
         print('agent feature shape: {}'.format(features_shape))
         model.add(Conv2D(input_shape=features_shape,
-                         filters=16,
+                         filters=32,
                          kernel_size=8,
                          padding='same',
                          activation='relu',
                          strides=4,
                          data_format='channels_first'))
 
-        model.add(Conv2D(filters=32,
+        model.add(Conv2D(filters=64,
                          kernel_size=4,
                          padding='same',
                          activation='relu',
                          strides=2,
                          data_format='channels_first'))
 
+        model.add(Conv2D(filters=64,
+                         kernel_size=3,
+                         padding='same',
+                         activation='relu',
+                         strides=1,
+                         data_format='channels_first'))
+
         model.add(Flatten())
 
-        # model.add(CuDNNLSTM(64, return_sequences=True))
-        # model.add(CuDNNLSTM(32, return_sequences=False))
-
-        model.add(Dense(512))
+        model.add(Dense(256))
         model.add(Activation('linear'))
 
         model.add(Dense(self.action_space.n))
@@ -94,13 +98,13 @@ class Agent(TradingGym):
             callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250000)]
             callbacks += [FileLogger(log_filename, interval=100)]
 
-            self.agent.fit(self, callbacks=callbacks, nb_steps=self.training_steps, log_interval=10000)
+            self.agent.fit(self, callbacks=callbacks, nb_steps=self.training_steps, log_interval=10000, verbose=0)
             self.agent.save_weights(weights_filename, overwrite=True)
             self.agent.test(self, nb_episodes=2, visualize=False)
-            self.render()
+            # self.render()
         else:
             weights_filename = 'dqn_{}_weights.h5f'.format(self.env_id)
             self.agent.load_weights(weights_filename)
             self.agent.test(self, nb_episodes=2, visualize=False)
-            self.render()
+            # self.render()
 
