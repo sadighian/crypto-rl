@@ -6,16 +6,26 @@ from trading_gym import TradingGym
 if __name__ == '__main__':
     start_time = dt.now()
 
+    # training = True,
+    # fitting_file = 'LTC-USD_20181120.xz',
+    # testing_file = 'LTC-USD_20181121.xz',
+    # env_id = 'coinbasepro-bitfinex-v0',
+    # step_size = 1,
+    # max_position = 1,
+    # window_size = 50,
+    # seed = 1,
+    # frame_stack = False
+
     config = {
         'training': True,
-        'fitting_file': 'ETH-USD_2018-12-31.csv',
-        'testing_file': 'ETH-USD_2019-01-01.csv',
+        'fitting_file': 'ETH-USD_2018-12-31.xz',
+        'testing_file': 'ETH-USD_2019-01-01.xz',
         'env_id': 'coinbase-bitfinex-v1',
         'step_size': 1,
-        'fee': 0.003,
         'max_position': 1,
         'window_size': 5,
-        'seed': 13
+        'seed': 1,
+        'frame_stack': False
     }
 
     total_reward = 0.0
@@ -27,7 +37,9 @@ if __name__ == '__main__':
         else:
             action = 0
 
-        state, reward, done = env.step(action)
+        state, reward, done, _ = env.step(action)
+
+        print('state shape = {}'.format(np.shape(state)))
 
         total_reward += reward
 

@@ -29,3 +29,7 @@ ARCTIC_NAME = 'crypto.tickstore'
 
 # ./database/database.py
 TIMEZONE = tz.utc
+
+
+# ./simulator.py
+BROKER_FEE = 0.003

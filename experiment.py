@@ -10,9 +10,10 @@ if __name__ == '__main__':
         'train': True,  # if False, episodes start at frame 0
         'max_position': 1,
         'weights': False,  # if True, agent loads saved weights
-        'fitting_file': 'ETH-USD_2018-12-31.csv',
-        'testing_file': 'ETH-USD_2019-01-01.csv',
-        'seed': 1
+        'fitting_file': 'ETH-USD_2018-12-31.xz',
+        'testing_file': 'ETH-USD_2019-01-01.xz',
+        'seed': 1,
+        'frame_stack': False
     }
 
     agent = Agent(**kwargs)

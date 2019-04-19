@@ -16,6 +16,8 @@ class Simulator(object):
     def __init__(self, use_arctic=False):
         self._avg = None
         self._std = None
+        self.cwd = os.path.dirname(os.path.realpath(__file__))
+        self.z_score = lambda x: (x - self._avg) / self._std
         try:
             if use_arctic:
                 print('Attempting to connect to Arctic...')
@@ -30,6 +32,10 @@ class Simulator(object):
             self.arctic, self.library = None, None
             print('Unable to connect to Arctic database')
             print(ex)
+
+    def __str__(self):
+        return 'Simulator() connection={}, library={}, avg={}, std={}' \
+            .format(self.arctic, self.library, self._avg, self._std)
 
     def reset(self):
         self._avg = None
@@ -49,7 +55,7 @@ class Simulator(object):
             - endDate: int YYYYMMDD
         :return: list of dicts, where each dict is a tick that was recorded
         """
-        start_time = dt.now(TIMEZONE)
+        start_time = dt.now(tz=TIMEZONE)
 
         assert RECORD_DATA is False
         cursor = self._query_arctic(**query)
@@ -57,20 +63,20 @@ class Simulator(object):
             print('\nNothing returned from Arctic for the query: %s\n...Exiting...' % str(query))
             return
 
-        elapsed = (dt.now(TIMEZONE) - start_time).seconds
+        elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
         print('***\nCompleted get_tick_history() in %i seconds\n***' % elapsed)
 
         return cursor
 
     def _query_arctic(self, ccy, start_date, end_date):
-        start_time = dt.now(TIMEZONE)
+        start_time = dt.now(tz=TIMEZONE)
 
         if self.library is None:
             print('exiting from Simulator... no database to query')
             return None
 
         try:
-            print('\nGetting %s tick data from Arctic Tick Store...' % ccy)
+            print('\nGetting {} tick data from Arctic Tick Store...'.format(ccy))
             cursor = self.library.read(symbol=ccy, date_range=DateRange(start_date, end_date))
 
             # filter ticks for the first LOAD_BOOK message (starting point for order book reconstruction)
@@ -81,7 +87,7 @@ class Simulator(object):
             # cursor = cursor.loc[cursor.index >= min_datetime]
             cursor = cursor.loc[cursor.index >= start_index]
 
-            elapsed = (dt.now(TIMEZONE) - start_time).seconds
+            elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
             print('Completed querying %i %s records in %i seconds' % (cursor.shape[0], ccy, elapsed))
 
         except Exception as ex:
@@ -120,21 +126,21 @@ class Simulator(object):
 
         return columns
 
-    @staticmethod
-    def export_to_csv(data, filename='data', compress=True):
+    def export_to_csv(self, data, filename='data', compress=True):
         start_time = dt.now(tz=TIMEZONE)
 
-        cwd = os.getcwd() + '/trading_gym/data_exports/'
+        sub_folder = '{}/data_exports/{}'.format(self.cwd, filename)
 
         if compress:
-            subfolder = cwd + '{}.xz'.format(filename)
-            data.to_csv(path_or_buf=subfolder, index=False, compression='xz')
+            sub_folder += '.xz'
+            data.to_csv(path_or_buf=sub_folder, index=False, compression='xz')
         else:
-            subfolder = cwd + '{}.csv'.format(filename)
-            data.to_csv(path_or_buf=subfolder, index=False)
+            sub_folder += '.csv'
+            data.to_csv(path_or_buf=sub_folder, index=False)
 
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
-        print('Exported %s to csv in %i seconds' % (filename, elapsed))
+        print('Exported %s with %i rows in %i seconds' %
+              (sub_folder, data.shape[0], elapsed))
 
     @staticmethod
     def import_csv(filename='data.xz'):
@@ -156,8 +162,8 @@ class Simulator(object):
         self._avg = np.mean(orderbook_snapshot_history, axis=0)
         self._std = np.std(orderbook_snapshot_history, axis=0)
 
-    def scale_state(self, _next_state):
-        return (_next_state - self._avg) / self._std
+    # def scale_state(self, _next_state):
+    #     return (_next_state - self._avg) / self._std
 
     def extract_features(self, query):
         start_time = dt.now(tz=TIMEZONE)
@@ -193,10 +199,15 @@ class Simulator(object):
         snapshot_list = list()
         last_snapshot_time = None
 
-        include_bitfinex = len(query['ccy']) > 1
+        symbols = query['ccy']
+        print('querying {}'.format(symbols))
 
-        coinbase_order_book = CoinbaseOrderBook(query['ccy'][0])
-        bitfinex_order_book = BitfinexOrderBook(query['ccy'][1]) if include_bitfinex else None
+        include_bitfinex = len(symbols) > 1
+        if include_bitfinex:
+            print('\n\nIncluding Bitfinex data in feature set.\n\n')
+
+        coinbase_order_book = CoinbaseOrderBook(symbols[0])
+        bitfinex_order_book = BitfinexOrderBook(symbols[1]) if include_bitfinex else None
 
         start_time = dt.now(TIMEZONE)
         print('Starting get_orderbook_snapshot_history() loop with %i ticks for %s' %
@@ -224,7 +235,11 @@ class Simulator(object):
 
             if coinbase:  # incoming tick is from Coinbase exchange
                 if coinbase_order_book.done_warming_up():
-                    new_tick_time = parse(tick['time'])  # timestamp for incoming tick
+                    new_tick_time = parse(tick.get('time'))  # timestamp for incoming tick
+                    if new_tick_time is None:
+                        print('No tick time: {}'.format(tick))
+                        continue
+
                     coinbase_tick_counter += 1
                     coinbase_order_book.new_tick(tick)
 
@@ -239,11 +254,13 @@ class Simulator(object):
 
                 # calculate the amount of time between the incoming tick and tick received before that
                 diff = (new_tick_time - last_snapshot_time).microseconds
+
                 # multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
                 multiple = diff // 500000  # 500000 is 500 milliseconds, or 2x a second
 
-                if multiple >= 1:  # if there is a pause in incoming data, continue to create order book snapshots
-
+                # if there is a pause in incoming data, continue to create order book snapshots
+                if multiple >= 1:
+                    # check to include Bitfinex data in features
                     if include_bitfinex:
                         for _ in range(multiple):
                             if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
@@ -279,8 +296,6 @@ class Simulator(object):
             if idx % 250000 == 0:
                 elapsed = (dt.now(TIMEZONE) - start_time).seconds
                 print('...completed %i loops in %i seconds' % (idx, elapsed))
-
-            idx += 1
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
         print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %

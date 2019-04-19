@@ -12,7 +12,7 @@ def test_get_tick_history():
 
     sim = Simulator(use_arctic=True)
     query = {
-        'ccy': ['ETC-USD'],
+        'ccy': ['BTC-USD'],
         'start_date': 20181231,
         'end_date': 20190102
     }
@@ -34,9 +34,9 @@ def test_get_orderbook_snapshot_history():
 
     sim = Simulator(use_arctic=True)
     query = {
-        'ccy': ['ETC-USD', 'tETCUSD'],
-        'start_date': 20181229,
-        'end_date': 20181231
+        'ccy': ['BTC-USD', 'tBTCUSD'],
+            'start_date': 20190313,
+            'end_date': 20190315
     }
     orderbook_snapshot_history = sim.get_orderbook_snapshot_history(query=query)
 
@@ -56,12 +56,13 @@ def test_extract_features():
     start_time = dt.now(TIMEZONE)
 
     sim = Simulator(use_arctic=True)
-    # for ccy in ['BTC-USD', 'ETH-USD', 'LTC-USD', 'BCH-USD']: #, 'ETC-USD']:
-    for ccy in ['ETH-USD']:
+
+    # for ccy in ['BTC-USD', 'ETH-USD', 'LTC-USD']:  #, 'BCH-USD']:
+    for ccy, ccy2 in [('LTC-USD', 'tLTCUSD')]:
         query = {
-            'ccy': [ccy],
-            'start_date': 20181230,
-            'end_date': 20190101
+            'ccy': [ccy, ccy2],
+            'start_date': 20190314,
+            'end_date': 20190317
         }
         sim.extract_features(query)
 
@@ -74,6 +75,6 @@ if __name__ == '__main__':
     """
     Entry point of simulation application
     """
-    # test_get_tick_history()
+    test_get_tick_history()
     # test_get_orderbook_snapshot_history()
-    test_extract_features()
+    # test_extract_features()

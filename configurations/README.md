@@ -1,5 +1,5 @@
 # Configurations
-As of March 04, 2019.
+As of April 19, 2019.
 
 ## 1. Overview
 The `configurations` module contains the settings implemented throughout the project.
@@ -43,3 +43,7 @@ into the `Arctic Tick Store`
 
 ### 2.11 TIMEZONE
 (`pytz.tz`) Timezone for making `datetime.now()` calls (e.g., UTC)
+
+### 2.12 BROKER_FEE
+(`float`) Percentage of trade notional value that broker charges
+as a fee

@@ -12,23 +12,25 @@ from .trading_gym import TradingGym
 class Agent(TradingGym):
 
     def __init__(self, step_size=1, window_size=5, train=True, max_position=1, weights=True,
-                 fitting_file='ETH-USD_2018-12-31.csv', testing_file='ETH-USD_2018-01-01.csv', seed=123):
+                 fitting_file='ETH-USD_2018-12-31.xz', testing_file='ETH-USD_2018-01-01.xz',
+                 seed=123,
+                 frame_stack=False  # Default to False when using with keras-rl since `rl.memory` stacks frames
+                 ):
         super(Agent, self).__init__(training=train,
                                     fitting_file=fitting_file,
                                     testing_file=testing_file,
                                     env_id='Agent-v0',
                                     step_size=step_size,
-                                    fee=0.003,
                                     max_position=max_position,
                                     window_size=window_size,
-                                    seed=seed)
-        self.frames_to_stack = 1  # optionally, stack 4 frames as proposed for Atarti games
+                                    seed=seed,
+                                    frame_stack=frame_stack)
+        self.memory_frame_stack = 1  # Number of frames to stack e.g., 4
         self.model = self.create_model()
-        self.memory = SequentialMemory(limit=10000, window_length=self.frames_to_stack)
+        self.memory = SequentialMemory(limit=10000, window_length=self.memory_frame_stack)
         self.train = train
         self.training_steps = self.data.shape[0]  # training_steps
         self.weights = weights
-        print('self.action_space.n = {}'.format(self.action_space.n))
 
         # create the agent
         self.agent = DQNAgent(model=self.model,
@@ -46,7 +48,8 @@ class Agent(TradingGym):
         self.agent.compile(RMSprop(lr=0.00048), metrics=['mae'])
 
     def create_model(self):
-        features_shape = (self.frames_to_stack,
+
+        features_shape = (self.memory_frame_stack,
                           self.observation_space.shape[0],
                           self.observation_space.shape[1])
 
