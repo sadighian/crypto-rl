@@ -1,5 +1,5 @@
 # Deep Reinforcement Learning Toolkit for Cryptocurrencies
-As of March 04, 2019.
+As of April 19, 2019.
 
 ## 1. Purpose
 The purpose of this application is to provide a toolkit to:
@@ -107,6 +107,15 @@ Open a CLI and start recording full limit order book and trade data.
 
 ### 5.2 Experiment.py
 Class for running experiments. 
+
+**Test repository with example data**
+Sample data is provided as an example for users 
+(e.g., `./trading_gym/data_exports/*`)
+
+To run the code, open a terminal in this directory and execute the command:
+```
+python3 experiment.py
+```
 
 **Step 1:**
 Record streaming data using `./recorder.py` (see above)
