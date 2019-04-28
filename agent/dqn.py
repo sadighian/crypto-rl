@@ -110,7 +110,7 @@ class Agent(TradingGym):
 
             self.agent.fit(self, callbacks=callbacks, nb_steps=self.training_steps, log_interval=10000, verbose=0)
             self.agent.save_weights(weights_filename, overwrite=True)
-            self.agent.test(self, nb_episodes=2, visualize=False)
+            # self.agent.test(self, nb_episodes=2, visualize=False)
             # self.render()
         else:
             self.agent.load_weights(weights_filename)

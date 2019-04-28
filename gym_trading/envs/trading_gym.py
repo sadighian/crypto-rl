@@ -68,7 +68,7 @@ class TradingGym(Env):
         self.data = self.sim.import_csv(filename=data_used_in_environment)
         self.prices = self.data['coinbase_midpoint'].values
 
-        # self.data = self.data.apply(self.sim.z_score, axis=1)
+        self.data = self.data.apply(self.sim.z_score, axis=1)
         self.data = self.data.values
         self.data_buffer, self.frame_stacker = list(), list()
         self.action_space = spaces.Discrete(len(self.actions))
