@@ -15,7 +15,7 @@ The purpose of this application is to provide a toolkit to:
 
 ## 2. Scope
 Application is intended to be used to record and simulate limit order book data 
-for reinforcement learning modeling. 
+for reinforcement learning. 
 
 Currently, there is no functionality developed to place an order or automate trading.
 
