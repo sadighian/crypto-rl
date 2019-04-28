@@ -115,7 +115,7 @@ python3 experiment.py --window_size=50 --weights=False --fitting_file=...
 Refer to `experiment.py` to see all the keyword arguments.
 
 
-### 6. Please remember to cite this repository if used in your research:
+## 6. Please remember to cite this repository if used in your research:
 ```
     @misc{Crypto-RL,
         author = {Jonathan Sadighian},
