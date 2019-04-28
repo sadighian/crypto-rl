@@ -189,9 +189,6 @@ class Simulator(object):
         self._avg = np.mean(orderbook_snapshot_history, axis=0)
         self._std = np.std(orderbook_snapshot_history, axis=0)
 
-    # def scale_state(self, _next_state):
-    #     return (_next_state - self._avg) / self._std
-
     def extract_features(self, query):
         """
         Create and export limit order book data to csv. This function
