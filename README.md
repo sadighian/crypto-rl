@@ -48,13 +48,10 @@ crypto-rl/
 
 ## 4. Design Patterns
 Refer to each individual's module for design pattern specifications
-- Limit Order Book
-- Stationary LOB Features
-- Data Recorder
-- Database
-- POMDP / Environment
-- Learning Algorithms
-- Neural Networks
+- [Limit Order Book, Data Recorder, and Database](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/data_recorder)
+- [Stationary LOB Features](https://arxiv.org/abs/1810.09965v1)
+- [POMDP / Environment](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/gym_trading)
+- [Learning Algorithms and Neural Networks](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/agent)
 
 
 ## 5. Getting Started
@@ -118,8 +115,21 @@ python3 experiment.py --window_size=50 --weights=False --fitting_file=...
 Refer to `experiment.py` to see all the keyword arguments.
 
 
-## 6. Appendix
-### 6.1 Branches
+### 6. Please remember to cite this repository if used in your research:
+```
+    @misc{Crypto-RL,
+        author = {Jonathan Sadighian},
+        title = {Deep Reinforcement Learning Toolkit for Cryptocurrencies},
+        year = {2019},
+        publisher = {GitHub},
+        journal = {GitHub repository},
+        howpublished = {\url{https://github.com/RedBanies3ofThem/crypto-rl}},
+    }
+```
+
+
+## 7. Appendix
+### 7.1 Branches
 There are multiple branches of this project, each with a different implementation pattern 
 for persisting data:
  - **FULL** branch is intended to be the foundation for a fully automated trading system 
@@ -141,11 +151,11 @@ for persisting data:
  This branch was originally used to benchmark Arctic's performance and is not up to 
  date with the **FULL** branch.
 
-### 6.2 Assumptions
+### 7.2 Assumptions
 - You know how to start up a MongoDB database and have mongoDB installed already
 - You know how to start a python3 program via `terminal`
 - You are running an ubuntu 18+ os
 
-### 6.3 To-dos:
+### 7.3 To-dos:
 1. Create DockerFile so that simulations can be rapidly deployed in the cloud 
 (e.g., AWS Fargate)
