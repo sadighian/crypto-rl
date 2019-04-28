@@ -1,4 +1,4 @@
-from broker import Broker
+from gym_trading.broker import Broker, Order
 
 
 def test_case_one():
@@ -10,10 +10,7 @@ def test_case_one():
 
     # ========
 
-    order_open = {
-        'price': midpoint + (midpoint * fee),
-        'side': 'long'
-    }
+    order_open = Order(ccy='BTC-USD', side='long', price=midpoint, step=1)
     test_position.add(order=order_open)
 
     assert test_position.long_inventory.position_count == 1
@@ -22,10 +19,8 @@ def test_case_one():
     assert test_position.short_inventory.position_count == 0
     assert test_position.short_inventory.get_unrealized_pnl() == 0.
 
-    order_close = {
-        'price': (midpoint * fee) * 5. + midpoint,
-        'side': 'long'
-    }
+    order_close = Order(ccy='BTC-USD', side='long', price=midpoint + (midpoint*fee*5), step=100)
+
     test_position.remove(order=order_close)
     assert test_position.long_inventory.position_count == 0
     print('LONG Unrealized_pnl: %f' % test_position.long_inventory.get_unrealized_pnl())
@@ -44,22 +39,16 @@ def test_case_two():
 
     # ========
 
-    order_open = {
-        'price': midpoint + (midpoint * fee),
-        'side': 'short'
-    }
+    order_open = Order(ccy='BTC-USD', side='short', price=midpoint, step=1)
     test_position.add(order=order_open)
 
-    assert test_position.short_inventory.position_count == 1
+    assert test_position.short_inventory.position_count == 1, test_position.short_inventory.position_count
     print('SHORT Unrealized_pnl: %f' % test_position.short_inventory.get_unrealized_pnl())
 
     assert test_position.long_inventory.position_count == 0
     assert test_position.long_inventory.get_unrealized_pnl() == 0.
 
-    order_close = {
-        'price': midpoint * 0.95,
-        'side': 'short'
-    }
+    order_close = Order(ccy='BTC-USD', side='short', price=midpoint - (midpoint*fee*15), step=100)
     test_position.remove(order=order_close)
     assert test_position.short_inventory.position_count == 0
     print('SHORT Unrealized_pnl: %f' % test_position.short_inventory.get_unrealized_pnl())
@@ -73,15 +62,11 @@ def test_case_three():
     print('\nTest_Case_Three')
     test_position = Broker(5)
     midpoint = 100.
-    fee = .003
 
     # ========
 
     for i in range(10):
-        order_open = {
-            'price': midpoint + i,
-            'side': 'long'
-        }
+        order_open = Order(ccy='BTC-USD', side='long', price=midpoint - i, step=i)
         test_position.add(order=order_open)
 
     print('Confirm we have 5 positions: %i' % test_position.long_inventory.position_count)
@@ -89,14 +74,12 @@ def test_case_three():
     assert test_position.short_inventory.position_count == 0
 
     for i in range(10):
-        order_open = {
-            'price': midpoint - i,
-            'side': 'long'
-        }
+        order_open = Order(ccy='BTC-USD', side='long', price=midpoint + i, step=i)
         test_position.remove(order=order_open)
 
     assert test_position.long_inventory.position_count == 0
     assert test_position.short_inventory.position_count == 0
+
 
 if __name__ == "__main__":
     """

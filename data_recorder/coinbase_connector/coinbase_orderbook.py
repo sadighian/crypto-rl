@@ -1,9 +1,8 @@
-from connector_components.orderbook import OrderBook
+from data_recorder.connector_components.orderbook import OrderBook
 from datetime import datetime as dt
 from time import time
 import requests
 import numpy as np
-from configurations.configs import RECORD_DATA
 
 
 class CoinbaseOrderBook(OrderBook):

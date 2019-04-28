@@ -1,6 +1,6 @@
-from coinbase_connector.coinbase_book import CoinbaseBook
-from bitfinex_connector.bitfinex_book import BitfinexBook
-from database.database import Database
+from data_recorder.coinbase_connector.coinbase_book import CoinbaseBook
+from data_recorder.bitfinex_connector.bitfinex_book import BitfinexBook
+from data_recorder.database.database import Database
 from abc import ABC, abstractmethod
 import numpy as np
 

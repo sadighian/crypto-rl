@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from connector_components.orderbook import OrderBook
+from data_recorder.connector_components.orderbook import OrderBook
 
 
 class BitfinexOrderBook(OrderBook):

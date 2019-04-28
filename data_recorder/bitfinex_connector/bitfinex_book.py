@@ -1,4 +1,4 @@
-from connector_components.book import Book
+from data_recorder.connector_components .book import Book
 from configurations.configs import RECORD_DATA
 
 

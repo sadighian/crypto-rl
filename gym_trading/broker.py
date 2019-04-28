@@ -144,7 +144,7 @@ class PositionI(object):
 class Broker(object):
     '''
     Broker class is a wrapper for the PositionI class
-    and is implemented in `trading_gym.py`
+    and is implemented in `gym_trading.py`
     '''
     def __init__(self, max_position=1):
         self.long_inventory = PositionI(side='long', max_position=max_position)
@@ -220,7 +220,7 @@ class Broker(object):
             steps_in_position = 0
             drawdown_max = 0.0
             upside_max = 0.0
-            print('*trading_gym._get_reward: Unknown order side: {}'.format(side))
+            print('*gym_trading._get_reward: Unknown order side: {}'.format(side))
 
         if realized_pnl > 0.0:
             print(' realized_pnl: %.4f | steps_in_position: %i | upside_max: %.4f | drawdown_max: %.4f'

@@ -12,3 +12,7 @@ The `database` module contains the wrapper class for storing tick data from the 
 This is a wrapper class used for storing streaming tick data into the `Arctic Tick Store`. 
 The `new_tick()` method is implemented in both `bifinex_connector` and 
 `coinbase_connector` projects.
+
+### 2.2 Simulator
+This is a utility class to query Arctic (database), replay historical
+data, and export order book snapshots to a compressed csv.

@@ -2,8 +2,8 @@ from datetime import datetime as dt
 from datetime import timedelta
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
-from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
-from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
+from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
+from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, RECORD_DATA, MAX_BOOK_ROWS
 from dateutil.parser import parse
 import numpy as np
@@ -14,6 +14,11 @@ import os
 class Simulator(object):
 
     def __init__(self, use_arctic=False):
+        """
+
+        :param use_arctic: If True, Simulator creates a connection to Arctic,
+                            Otherwise, no connection is attempted
+        """
         self._avg = None
         self._std = None
         self.cwd = os.path.dirname(os.path.realpath(__file__))
@@ -38,6 +43,10 @@ class Simulator(object):
             .format(self.arctic, self.library, self._avg, self._std)
 
     def reset(self):
+        """
+        Sets averages and standard deviations to NONE
+        :return: void
+        """
         self._avg = None
         self._std = None
 
@@ -126,7 +135,14 @@ class Simulator(object):
 
         return columns
 
-    def export_to_csv(self, data, filename='data', compress=True):
+    def export_to_csv(self, data, filename='BTC-USD_2019-01-01', compress=True):
+        """
+        Export data within a Panda dataframe to a csv
+        :param data: (panda.DataFrame) historical tick data
+        :param filename: CCY_YYYY-MM-DD
+        :param compress: Default True. If True, compress with xz
+        :return: void
+        """
         start_time = dt.now(tz=TIMEZONE)
 
         sub_folder = '{}/data_exports/{}'.format(self.cwd, filename)
@@ -144,6 +160,12 @@ class Simulator(object):
 
     @staticmethod
     def import_csv(filename='data.xz'):
+        """
+        Import an historical tick file created from the
+        export_to_csv() function
+        :param filename: Full file path including filename
+        :return: (panda.DataFrame) historical limit order book data
+        """
         start_time = dt.now(tz=TIMEZONE)
 
         if 'xz' in filename:
@@ -159,6 +181,11 @@ class Simulator(object):
         return data
 
     def fit_scaler(self, orderbook_snapshot_history):
+        """
+        Fit scalers for z-score using previous day's data
+        :param orderbook_snapshot_history: Limit order book data from the previous day
+        :return: void
+        """
         self._avg = np.mean(orderbook_snapshot_history, axis=0)
         self._std = np.std(orderbook_snapshot_history, axis=0)
 
@@ -166,6 +193,13 @@ class Simulator(object):
     #     return (_next_state - self._avg) / self._std
 
     def extract_features(self, query):
+        """
+        Create and export limit order book data to csv. This function
+        exports multiple days of data and ensures each day starts and
+        ends exactly on time.
+        :param query: (dict) ccy= symy, daterange=YYYYMMDD,YYYYMMDD
+        :return: void
+        """
         start_time = dt.now(tz=TIMEZONE)
 
         order_book_data = self.get_orderbook_snapshot_history(query=query)

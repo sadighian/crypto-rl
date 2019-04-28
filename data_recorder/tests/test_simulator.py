@@ -1,4 +1,4 @@
-from simulator import Simulator
+from data_recorder.database.simulator import Simulator
 from configurations.configs import TIMEZONE
 from datetime import datetime as dt
 
@@ -73,8 +73,8 @@ def test_extract_features():
 
 if __name__ == '__main__':
     """
-    Entry point of simulation application
+    Entry point of test application
     """
     test_get_tick_history()
-    # test_get_orderbook_snapshot_history()
-    # test_extract_features()
+    test_get_orderbook_snapshot_history()
+    test_extract_features()

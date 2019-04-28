@@ -4,8 +4,8 @@ from datetime import datetime as dt
 from multiprocessing import Queue
 from threading import Thread
 import websockets
-from bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
-from coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
+from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
+from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from configurations.configs import MAX_RECONNECTION_ATTEMPTS, COINBASE_ENDPOINT, BITFINEX_ENDPOINT
 
 
