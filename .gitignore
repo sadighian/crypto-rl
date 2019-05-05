@@ -3,3 +3,7 @@ venv
 *.csv
 
 .idea
+
+build
+
+dist
