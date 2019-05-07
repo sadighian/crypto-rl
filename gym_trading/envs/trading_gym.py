@@ -108,12 +108,12 @@ class TradingGym(Env):
             action_features = self._create_action_features(action=action)
 
             self.midpoint = self.prices[self._local_step_number]
-            self.broker.step(self.midpoint)
+            self.broker.step(midpoint=self.midpoint)
 
             if current_step == 0:
-                self.reward = self._send_to_broker_and_get_reward(action)
-            else:
-                self.reward += self._send_to_broker_and_get_reward(action)
+                self.reward = 0.
+
+            self.reward += self._send_to_broker_and_get_reward(action=action)
 
             _observation = np.concatenate((self.process_data(self.data[self._local_step_number]),
                                            position_features,
