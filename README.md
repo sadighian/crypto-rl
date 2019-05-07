@@ -43,6 +43,8 @@ crypto-rl/
 	experiment.py          # Entry point for running reinforcement learning experiments
 	recorder.py            # Entry point to start recording limit order book data
 	requirements.txt       # List of project dependencies
+	setup.py               # Run the command `python3 setup.py install` to 
+	                       #    install the extended gym environment i.e., gym_trading.py
 ```
 
 
