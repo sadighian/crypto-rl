@@ -102,7 +102,6 @@ class TradingGym(Env):
 
             if self.done:
                 self.reset()
-                self.done = False
                 return self.observation, self.reward, self.done
 
             position_features = self._create_position_features()

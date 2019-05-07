@@ -19,7 +19,6 @@ class Database(object):
         else:
             self.db = None
             self.collection = None
-            print('%s failed to connect to Arctic Tick Store' % self.sym)
 
     def new_tick(self, msg):
         """
