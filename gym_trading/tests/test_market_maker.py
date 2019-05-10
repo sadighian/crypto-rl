@@ -85,6 +85,6 @@ def test_market_maker():
 
 
 if __name__ == '__main__':
-    # test_gym()
-    test_market_maker()
+    test_gym()
+    # test_market_maker()
 

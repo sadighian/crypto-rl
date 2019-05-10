@@ -96,6 +96,8 @@ class MarketMaker(Env):
 
         # self.data = self.data.apply(self.sim.z_score, axis=1)
         self.data = self.data.values
+        # self.data = None
+
         self.data_buffer, self.frame_stacker = list(), list()
         self.action_space = spaces.Discrete(len(self.actions))
         variable_features_count = len(self.inventory_features) + len(self.actions) + 1
@@ -130,9 +132,8 @@ class MarketMaker(Env):
                 self.reset()
                 return self.observation, self.reward, self.done
 
-            position_features = self._create_position_features()
-            action_features = self._create_action_features(action=action)
-
+            # Get current step's midpoint to calculate PnL, or if
+            # an open order got filled.
             self.midpoint = self.prices[self._local_step_number]
             self.broker.step(bid_price=self.midpoint - self.bid_prices[self._local_step_number][0],
                              ask_price=self.midpoint + self.ask_prices[self._local_step_number][0],
@@ -140,10 +141,14 @@ class MarketMaker(Env):
                              sell_volume=self.data[self._local_step_number][-1],
                              step=self._local_step_number)
 
+            # reset the reward if there are action repeats
             if current_step == 0:
                 self.reward = 0.
 
             self.reward += self._send_to_broker_and_get_reward(action)
+
+            position_features = self._create_position_features()
+            action_features = self._create_action_features(action=action)
 
             _observation = np.concatenate((self.process_data(self.data[self._local_step_number]),
                                            position_features,
@@ -172,7 +177,9 @@ class MarketMaker(Env):
 
         if self._local_step_number > self.data.shape[0] - 8:
             self.done = True
-            self.reward = self.broker.flatten_inventory(midpoint=self.midpoint)
+            best_bid = round(self.midpoint + self.bid_prices[self._local_step_number][0], 2)
+            best_ask = round(self.midpoint + self.ask_prices[self._local_step_number][0], 2)
+            self.reward = self.broker.flatten_inventory(bid_price=best_bid, ask_price=best_ask)
 
         return self.observation, self.reward, self.done, {}
 
@@ -244,7 +251,8 @@ class MarketMaker(Env):
     #     return np.clip(_next_state.reshape((1, -1)), -10., 10.)
 
     def process_data(self, _next_state):
-        return self.sim.scale_state(_next_state).values.reshape((1, -1))
+        # return self.sim.scale_state(_next_state).values.reshape((1, -1))
+        return np.reshape(_next_state, (1, -1))
 
     def _send_to_broker_and_get_reward(self, action):
         reward = 0.0
@@ -330,7 +338,9 @@ class MarketMaker(Env):
             reward = self._create_ask_order_at_level(reward, discouragement, 9)
 
         if action == 23:  # flatten all positions
-            reward += self.broker.flatten_inventory(midpoint=self.midpoint)
+            best_bid = round(self.midpoint + self.bid_prices[self._local_step_number][0], 2)
+            best_ask = round(self.midpoint + self.ask_prices[self._local_step_number][0], 2)
+            reward += self.broker.flatten_inventory(bid_price=best_bid, ask_price=best_ask)
 
         elif action == 24:  #
             logger.info("L'action n.25 n'exist pas ! Il faut faire attention !")

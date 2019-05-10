@@ -81,8 +81,8 @@ def test_gym():
         state, reward, done, _ = env.step(action)
         total_reward += reward
 
-        if reward != 0.0:
-            print('reward = %.4f' % reward)
+        # if reward != 0.0:
+        #     print('reward = %.4f' % reward)
 
         if done:
             elapsed = (dt.now() - start_time).seconds
@@ -93,6 +93,6 @@ def test_gym():
 
 
 if __name__ == '__main__':
-    test_trading_gym()
+    # test_trading_gym()
     test_gym()
 

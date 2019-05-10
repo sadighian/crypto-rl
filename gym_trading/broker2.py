@@ -22,8 +22,8 @@ class Order(object):
         self.queue_ahead = queue_ahead
 
     def __str__(self):
-        return ' %s-%s | %.3f | %i | %.2f' % \
-               (self.ccy, self.side, self.price, self.step, self.queue_ahead)
+        return ' %s-%s | %.3f | %i | %.2f | %.2f' % \
+               (self.ccy, self.side, self.price, self.step, self.executed, self.queue_ahead)
 
     @property
     def is_filled(self):
@@ -109,7 +109,7 @@ class PositionI(object):
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
             steps_to_fill = step - self.order.step
-            logger.info('%s order #%i filled at %.3f after %i steps on %i.' %
+            logger.info('FILLED %s order #%i at %.3f after %i steps on %i.' %
                         (self.side, self.order.id, self.order.price, steps_to_fill, step))
             self.order = None  # set the slot back to no open orders
             return True
@@ -131,7 +131,7 @@ class PositionI(object):
             logger.debug('---%s position #%i has been netted out.' % (self.side, position.id))
             return position
         else:
-            logger.info('Error. No {} pop_position to remove.'.format(self.side))
+            logger.warning('Error. No {} pop_position to remove.'.format(self.side))
             return None
 
     def remove_position(self, midpoint=100.):
@@ -152,15 +152,16 @@ class PositionI(object):
             else:
                 self.average_price = 0
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.info('Removing %s position #%i. PnL=%.4f' %
+            logger.info('Removing %s position #%i. PnL=%.4f\n' %
                         (self.side, order.id, pnl))
             return True
         else:
-            logger.info('Error. No {} positions to remove.'.format(self.side))
+            logger.warning('Error. No {} positions to remove.'.format(self.side))
             return False
 
     def flatten_inventory(self, midpoint=100.):
         prev_realized_pnl = self.realized_pnl
+        logger.debug('{} is flattening inventory of {}'.format(self.side, self.position_count))
         while self.position_count > 0:
             self.remove_position(midpoint=midpoint)
 
@@ -235,9 +236,9 @@ class Broker(object):
     def short_inventory_count(self):
         return self.short_inventory.position_count
 
-    def flatten_inventory(self, midpoint=100.):
-        long_pnl = self.long_inventory.flatten_inventory(midpoint=midpoint)
-        short_pnl = self.short_inventory.flatten_inventory(midpoint=midpoint)
+    def flatten_inventory(self, bid_price=100., ask_price=100.):
+        long_pnl = self.long_inventory.flatten_inventory(midpoint=bid_price)
+        short_pnl = self.short_inventory.flatten_inventory(midpoint=ask_price)
         return long_pnl + short_pnl
 
     def step(self,  bid_price=100., ask_price=100., buy_volume=1000., sell_volume=1000., step=100):
