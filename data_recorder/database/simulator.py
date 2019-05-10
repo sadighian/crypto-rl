@@ -42,6 +42,9 @@ class Simulator(object):
         return 'Simulator() connection={}, library={}, avg={}, std={}' \
             .format(self.arctic, self.library, self._avg, self._std)
 
+    def scale_state(self, next_state):
+        return (next_state - self._avg) / self._std
+
     def reset(self):
         """
         Sets averages and standard deviations to NONE
