@@ -1,6 +1,5 @@
 # Inventory and risk management for the MarketMaker environment
 import logging
-import numpy as np
 
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')

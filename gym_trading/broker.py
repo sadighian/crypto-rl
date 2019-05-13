@@ -1,3 +1,9 @@
+# Inventory and risk management for the Long-Short environment
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
+logger = logging.getLogger('broker')
 
 
 class Order:
@@ -22,7 +28,7 @@ class Order:
             unrealized_pnl = (self.price - midpoint) / self.price
         else:
             unrealized_pnl = 0.0
-            print('alert: uknown order.step() side %s' % self.side)
+            logger.warning('alert: uknown order.step() side %s' % self.side)
 
         if unrealized_pnl < self.drawdown_max:
             self.drawdown_max = unrealized_pnl
@@ -76,10 +82,10 @@ class PositionI(object):
             self.total_exposure += order.price
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
-            # print('  %s @ %.2f | step %i' % (order.side, order.price, order.step))
+            logger.debug('  %s @ %.2f | step %i' % (order.side, order.price, order.step))
             return True
         else:
-            # print('  %s inventory max' % order['side'])
+            logger.debug('  %s inventory max' % order.side)
             return False
 
     def remove(self, order):
@@ -106,7 +112,7 @@ class PositionI(object):
                 self.realized_pnl += realized_trade_pnl
             else:
                 realized_trade_pnl = 0.0
-                print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
+                logger.warning('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
 
             self.last_trade['realized_pnl'] = realized_trade_pnl
 
@@ -129,12 +135,15 @@ class PositionI(object):
             unrealized_pnl = (self.average_price - midpoint) / self.average_price
         else:
             unrealized_pnl = 0.0
-            print('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
+            logger.warning('Error: PositionI.get_unrealized_pnl() for side = {}'.format(
+                self.side))
 
         return unrealized_pnl
 
     def flatten_inventory(self, order):
-        # print(' Flattening {} inventory: {} positions'.format(self.side, self.position_count))
+        logger.debug(' Flattening {} inventory: {} positions'.format(
+            self.side, self.position_count))
+
         before_pnl = self.realized_pnl
         [self.remove(order=order) for _ in range(self.position_count)]
         after_pnl = self.realized_pnl
@@ -161,7 +170,7 @@ class Broker(object):
             is_added = self.short_inventory.add(order=order)
         else:
             is_added = False
-            print('Broker.add() unknown order.side = %s' % order)
+            logger.warning('Broker.add() unknown order.side = %s' % order)
         return is_added
 
     def remove(self, order):
@@ -171,7 +180,7 @@ class Broker(object):
             is_removed = self.short_inventory.remove(order=order)
         else:
             is_removed = False
-            print('Broker.remove() unknown order.side = %s' % order['side'])
+            logger.warning('Broker.remove() unknown order.side = %s' % order.side)
         return is_removed
 
     def get_unrealized_pnl(self, midpoint=100.):
@@ -220,11 +229,12 @@ class Broker(object):
             steps_in_position = 0
             drawdown_max = 0.0
             upside_max = 0.0
-            print('*gym_trading._get_reward: Unknown order side: {}'.format(side))
+            logger.warning('*gym_trading._get_reward: Unknown order side: {}'.format(side))
 
         if realized_pnl > 0.0:
-            print(' realized_pnl: %.4f | steps_in_position: %i | upside_max: %.4f | drawdown_max: %.4f'
-                  % (realized_pnl, steps_in_position, upside_max, drawdown_max))
+            logger.info((' realized_pnl: %.4f | steps_in_position: ' +
+                        '%i | upside_max: %.4f | drawdown_max: %.4f')
+                        % (realized_pnl, steps_in_position, upside_max, drawdown_max))
 
         return realized_pnl
 

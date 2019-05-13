@@ -1,10 +1,10 @@
 from gym.envs.registration import register
-from gym_trading.envs.trading_gym import TradingGym
+from gym_trading.envs.price_jump import PriceJump
 from gym_trading.envs.market_maker import MarketMaker
 
 register(
-    id=TradingGym.id,
-    entry_point='gym_trading.envs:TradingGym',
+    id=PriceJump.id,
+    entry_point='gym_trading.envs:PriceJump',
     max_episode_steps=1000000,
     nondeterministic=False
 )
@@ -16,4 +16,4 @@ register(
     nondeterministic=False
 )
 
-print('Crypto-RL: registered = {}, {}.'.format(TradingGym.id, MarketMaker.id))
+print('Crypto-RL: registered = {}, {}.'.format(PriceJump.id, MarketMaker.id))

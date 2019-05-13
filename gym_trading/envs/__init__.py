@@ -1,4 +1,4 @@
-from gym_trading.envs.trading_gym import TradingGym
+from gym_trading.envs.price_jump import PriceJump
 from gym_trading.envs.market_maker import MarketMaker
 
-print("TradingGym and MarketMaker gyms imported successfully.")
+print("PriceJump and MarketMaker gyms imported successfully.")

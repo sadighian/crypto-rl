@@ -15,7 +15,7 @@ class MarketMaker(Env):
 
     metadata = {'render.modes': ['human']}
     id = 'market-maker-v0'
-    action_repeats = 1
+    action_repeats = 4
     bid_price_features = ['coinbase-bid-distance-0', 'coinbase-bid-distance-1',
                           'coinbase-bid-distance-2', 'coinbase-bid-distance-3',
                           'coinbase-bid-distance-4', 'coinbase-bid-distance-5',
@@ -113,7 +113,7 @@ class MarketMaker(Env):
                                             dtype=np.int)
 
         self.reset()
-        # print('TradingGym instantiated. ' +
+        # print('MarketMaker instantiated. ' +
         #       '\nself.observation_space.shape : {}'.format(
         #           self.observation_space.shape))
 
@@ -124,7 +124,7 @@ class MarketMaker(Env):
     def step_number(self):
         return self._local_step_number
 
-    def step(self, action):
+    def step(self, action_):
 
         for current_step in range(MarketMaker.action_repeats):
 
@@ -144,6 +144,9 @@ class MarketMaker(Env):
             # reset the reward if there are action repeats
             if current_step == 0:
                 self.reward = 0.
+                action = action_
+            else:
+                action = 0
 
             self.reward += self._send_to_broker_and_get_reward(action)
 

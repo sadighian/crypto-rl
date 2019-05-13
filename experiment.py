@@ -48,6 +48,14 @@ parser.add_argument('--frame_stack',
                     help="Stack 4 snapshots as one observation if True, " +
                          "Otherwise 1 snapshot is the observation",
                     type=bool)
+parser.add_argument('--env',
+                    default='long-short-v0',
+                    help="gym_trading environment: 'long-short-v0' or 'market-maker-v0'",
+                    type=str)
+parser.add_argument('--number_of_training_steps',
+                    default=1e5,
+                    help="Number of steps to train the agent (does not include action repeats)",
+                    type=int)
 args = vars(parser.parse_args())
 
 

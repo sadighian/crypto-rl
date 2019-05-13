@@ -15,10 +15,9 @@ pytz==2018.9
 requests==2.21.0
 scipy==1.2.1
 sortedcontainers==2.1.0
-tensorboard==1.12.2
-tensorflow==1.12.2
+tensorboard==1.13.1
 tensorflow-estimator==1.13.0
-tensorflow-gpu==1.12.2
+tensorflow-gpu==1.13.1
 tzlocal==1.5.1
 urllib3==1.24.2
 websockets==7.0

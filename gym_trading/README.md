@@ -1,18 +1,15 @@
-# Trading Gym
-As of April 28th, 2019.
+# GYM_TRADING
+As of May 13th, 2019.
 
 ## 1. Overview
 This package is my implementation of an HFT environment using a POMDP framework.
 
 There are several utility classes within this module:
-1. `broker.py` manages orders, executions, position inventories, and PnL 
-calculations generate feature data, and export feature data to csv, and
-2. `trading_gym.py` is my implementation of a HFT environment using 
-GYM's POMDP framework.
-
-## 2. Reward Structure
-The environment is currently configured to return realized PnL as
-the reward. Moreover, a reward is only returned if a position is
-flattened.
+1. `broker.py` and `broker2.py` manages orders, executions, 
+position inventories, and PnL calculations generate feature 
+data, and export feature data to csv, and
+2. `price_jump.py` and `market_maker.py` are environment implementations
+using the OpenAI Gym framework. These environments use the recorded limit
+order book data for the observation state space.
 
 Note: more reward structure options will be added soon.

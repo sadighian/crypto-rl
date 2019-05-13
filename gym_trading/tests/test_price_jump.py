@@ -1,10 +1,16 @@
 import numpy as np
 from datetime import datetime as dt
 import gym
-from gym_trading.envs.trading_gym import TradingGym
+from gym_trading.envs.price_jump import PriceJump
+import logging
 
 
-def test_trading_gym():
+# logging
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
+logger = logging.getLogger('test_price_jump')
+
+
+def test_price_jump_python():
     start_time = dt.now()
     config = {
         'training': True,
@@ -16,11 +22,19 @@ def test_trading_gym():
         'seed': 1,
         'frame_stack': False
     }
+    logger.info('test_price_jump_python() configs are {}'.format(config))
 
+    env = PriceJump(**config)
     total_reward = 0.0
-    env = TradingGym(**config)
 
-    for i in range(env.data.shape[0]):
+    i = 0
+    done = False
+    env.reset()
+
+    logger.info('Environment reset. Now starting simulation')
+
+    while not done:
+        i += 1
         if i % 200 == 0:
             action = np.random.randint(3)
         else:
@@ -30,25 +44,21 @@ def test_trading_gym():
         total_reward += reward
 
         if reward != 0.0:
-            print('reward: %.5f | total_reward %.5f vs. broker: %.5f | %.5f  %.5f' %
-                  (reward, total_reward, env.broker.get_total_pnl(env.midpoint),
-                   env.broker.get_realized_pnl(), env.broker.get_unrealized_pnl(env.midpoint)))
-            print('midpoint: %.4f | avg.long: %.4f | avg.short: %.4f' %
-                  (env.midpoint, env.broker.long_inventory.average_price,
-                   env.broker.short_inventory.average_price))
-            print("")
+            logger.debug('reward: %.5f | total_reward %.5f vs. broker: %.5f | %.5f  %.5f' %
+                        (reward, total_reward, env.broker.get_total_pnl(env.midpoint),
+                         env.broker.get_realized_pnl(), env.broker.get_unrealized_pnl(env.midpoint)))
 
         if done:
             elapsed = (dt.now() - start_time).seconds
-            print('Done on step #%i @ %i ticks/second' % (i, i // elapsed))
+            logger.info('Done on step #%i @ %i ticks/second' % (i, i // elapsed))
             break
 
-    print('Total reward: %.4f\nTotal pnl: %.4f' %
-          (total_reward,
-           env.broker.get_total_pnl(env.midpoint)))
+    logger.info('Total reward: %.4f\nTotal pnl: %.4f' %
+                (total_reward,
+                 env.broker.get_total_pnl(env.midpoint)))
 
 
-def test_gym():
+def test_price_jump_gym():
     start_time = dt.now()
     import gym_trading
 
@@ -62,13 +72,16 @@ def test_gym():
         'seed': 1,
         'frame_stack': False
     }
+    logger.info('test_price_jump_gym() configs are {}'.format(config))
 
-    env = gym.make(TradingGym.id, **config)
+    env = gym.make(PriceJump.id, **config)
     total_reward = 0.0
 
     i = 0
     done = False
     env.reset()
+
+    logger.info('Environment reset. Now starting simulation')
 
     while not done:
         i += 1
@@ -86,13 +99,13 @@ def test_gym():
 
         if done:
             elapsed = (dt.now() - start_time).seconds
-            print('Done on step #%i @ %i ticks/second' % (i, i // elapsed))
+            logger.info('Done on step #%i @ %i ticks/second' % (i, i // elapsed))
             break
 
-    print('Total reward: %.4f' % total_reward)
+    logger.info('Total reward: %.4f' % total_reward)
 
 
 if __name__ == '__main__':
-    # test_trading_gym()
-    test_gym()
+    test_price_jump_python()
+    test_price_jump_gym()
 

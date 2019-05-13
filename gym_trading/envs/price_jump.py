@@ -6,10 +6,16 @@ import logging
 import numpy as np
 
 
-class TradingGym(Env):
+# logging
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
+logger = logging.getLogger('PriceJump')
+
+
+class PriceJump(Env):
 
     metadata = {'render.modes': ['human']}
     id = 'long-short-v0'
+    action_repeats = 4
 
     def __init__(self, training=True,
                  fitting_file='ETH-USD_2018-12-31.xz',
@@ -19,9 +25,6 @@ class TradingGym(Env):
                  window_size=50,
                  seed=1,
                  frame_stack=False):
-        # logging
-        logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
-        self.logger = logging.getLogger(TradingGym.id)
 
         # properties required for instantiation
         self._random_state = np.random.RandomState(seed=seed)
@@ -85,20 +88,20 @@ class TradingGym(Env):
                                             dtype=np.int)
 
         self.reset()
-        # print('TradingGym instantiated. ' +
+        # print('PriceJump instantiated. ' +
         #       '\nself.observation_space.shape : {}'.format(
         #           self.observation_space.shape))
 
     def __str__(self):
-        return '{} | {}-{}'.format(TradingGym.id, self.sym, self.seed)
+        return '{} | {}-{}'.format(PriceJump.id, self.sym, self.seed)
 
     @property
     def step_number(self):
         return self._local_step_number
 
-    def step(self, action, action_repeats=4):
+    def step(self, action):
 
-        for current_step in range(action_repeats):
+        for current_step in range(PriceJump.action_repeats):
 
             if self.done:
                 self.reset()
@@ -154,10 +157,10 @@ class TradingGym(Env):
         else:
             self._local_step_number = 0
 
-        self.logger.info(' %s-%i reset. Episode pnl: %.4f | First step: %i, max_pos: %i'
-                         % (self.sym, self._seed,
-                            self.broker.get_total_pnl(midpoint=self.midpoint),
-                            self._local_step_number, self.max_position))
+        logger.info(' %s-%i reset. Episode pnl: %.4f | First step: %i, max_pos: %i'
+                    % (self.sym, self._seed,
+                       self.broker.get_total_pnl(midpoint=self.midpoint),
+                       self._local_step_number, self.max_position))
         self.reward = 0.0
         self.done = False
         self.broker.reset()
@@ -198,7 +201,7 @@ class TradingGym(Env):
         pass
 
     def close(self):
-        self.logger.info('{}-{} is being closed.'.format(self.id, self.sym))
+        logger.info('{}-{} is being closed.'.format(self.id, self.sym))
         self.data = None
         self.broker = None
         self.sim = None
@@ -238,10 +241,9 @@ class TradingGym(Env):
                     reward -= 0.00000001
 
             else:
-                self.logger.info('gym_trading.get_reward() ' +
-                                 'Error for action #{} - ' +
-                                 'unable to place an order with broker'
-                                 .format(action))
+                logger.warning(('gym_trading.get_reward() ' +
+                                'Error for action #{} - ' +
+                                'unable to place an order with broker').format(action))
 
         elif action == 2:  # sell
             price_fee_adjusted = self.midpoint - (self.fee * self.midpoint)
@@ -259,14 +261,14 @@ class TradingGym(Env):
                     reward -= 0.00000001
 
             else:
-                self.logger.info('gym_trading.get_reward() ' +
-                                 'Error for action #{} - ' +
-                                 'unable to place an order with broker'
-                                 .format(action))
+                logger.warning('gym_trading.get_reward() ' +
+                               'Error for action #{} - ' +
+                               'unable to place an order with broker'
+                               .format(action))
 
         else:
-            self.logger.info('Unknown action to take in get_reward(): ' +
-                             'action={} | midpoint={}'.format(action, self.midpoint))
+            logger.warning(('Unknown action to take in get_reward(): ' +
+                            'action={} | midpoint={}').format(action, self.midpoint))
 
         return reward
 
