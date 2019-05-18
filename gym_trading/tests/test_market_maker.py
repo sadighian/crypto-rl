@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
 logger = logging.getLogger('test_market_maker')
 
 
-def teset_market_maker_gym():
+def test_market_maker_gym():
     start_time = dt.now()
 
     config = {
@@ -42,8 +42,9 @@ def teset_market_maker_gym():
 
         state, reward, done, _ = env.step(action)
         total_reward += reward
+        env.render()
 
-        # if reward != 0.0:
+        # if abs(reward) >= 0.01:
         #     print('reward = %.4f' % reward)
 
         if done:
@@ -98,6 +99,6 @@ def test_market_maker_python():
 
 
 if __name__ == '__main__':
-    teset_market_maker_gym()
+    test_market_maker_gym()
     test_market_maker_python()
 

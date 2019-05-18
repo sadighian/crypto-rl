@@ -4,6 +4,10 @@ from gym_trading.broker2 import Broker, Order
 from configurations.configs import BROKER_FEE
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
+
+
+plt.style.use('dark_background')
 
 
 # logging
@@ -95,6 +99,7 @@ class MarketMaker(Env):
         self.ask_notionals = self.data[MarketMaker.ask_notional_features].values
 
         # self.data = self.data.apply(self.sim.z_score, axis=1)
+        self.data_ = self.data.copy()
         self.data = self.data.values
         # self.data = None
 
@@ -112,6 +117,13 @@ class MarketMaker(Env):
                                             shape=shape,
                                             dtype=np.int)
 
+        # attributes for rendering
+        self.line1 = []
+        self.screen_size = 1000
+        self.y_vec = None
+        self.x_vec = None
+        self._reset_render_data()
+
         self.reset()
         # print('MarketMaker instantiated. ' +
         #       '\nself.observation_space.shape : {}'.format(
@@ -119,6 +131,11 @@ class MarketMaker(Env):
 
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.sym, self.seed)
+
+    def _reset_render_data(self):
+        self.x_vec = np.linspace(0, self.screen_size * 10, self.screen_size + 1)[0:-1]
+        self.y_vec = np.array(self.prices[:np.shape(self.x_vec)[0]])
+        self.line1 = []
 
     @property
     def step_number(self):
@@ -132,15 +149,6 @@ class MarketMaker(Env):
                 self.reset()
                 return self.observation, self.reward, self.done
 
-            # Get current step's midpoint to calculate PnL, or if
-            # an open order got filled.
-            self.midpoint = self.prices[self._local_step_number]
-            self.broker.step(bid_price=self.midpoint - self.bid_prices[self._local_step_number][0],
-                             ask_price=self.midpoint + self.ask_prices[self._local_step_number][0],
-                             buy_volume=self.data[self._local_step_number][-2],
-                             sell_volume=self.data[self._local_step_number][-1],
-                             step=self._local_step_number)
-
             # reset the reward if there are action repeats
             if current_step == 0:
                 self.reward = 0.
@@ -148,7 +156,18 @@ class MarketMaker(Env):
             else:
                 action = 0
 
-            self.reward += self._send_to_broker_and_get_reward(action)
+            # Get current step's midpoint to calculate PnL, or if
+            # an open order got filled.
+            self.midpoint = self.prices[self._local_step_number]
+            _step_reward = self.broker.step(
+                bid_price=self.midpoint - self.bid_prices[self._local_step_number][0],
+                ask_price=self.midpoint + self.ask_prices[self._local_step_number][0],
+                buy_volume=self.data[self._local_step_number][-2],
+                sell_volume=self.data[self._local_step_number][-1],
+                step=self._local_step_number
+            )
+
+            self.reward += self._send_to_broker_and_get_reward(action) + _step_reward
 
             position_features = self._create_position_features()
             action_features = self._create_action_features(action=action)
@@ -182,7 +201,7 @@ class MarketMaker(Env):
             self.done = True
             best_bid = round(self.midpoint + self.bid_prices[self._local_step_number][0], 2)
             best_ask = round(self.midpoint + self.ask_prices[self._local_step_number][0], 2)
-            self.reward = self.broker.flatten_inventory(bid_price=best_bid, ask_price=best_ask)
+            self.reward += self.broker.flatten_inventory(bid_price=best_bid, ask_price=best_ask)
 
         return self.observation, self.reward, self.done, {}
 
@@ -201,6 +220,8 @@ class MarketMaker(Env):
         self.broker.reset()
         self.data_buffer.clear()
         self.frame_stacker.clear()
+
+        self._reset_render_data()
 
         for step in range(self.window_size + self.frames_to_add):
 
@@ -234,7 +255,12 @@ class MarketMaker(Env):
         return self.observation
 
     def render(self, mode='human'):
-        pass
+        if mode == 'human':
+            self.line1 = _live_plotter(self.x_vec,
+                                       self.y_vec,
+                                       self.line1,
+                                       identifier=self.sym)
+            self.y_vec = np.append(self.y_vec[1:], self.midpoint)
 
     def close(self):
         logger.info('{}-{} is being closed.'.format(self.id, self.sym))
@@ -413,3 +439,31 @@ class MarketMaker(Env):
             if self.broker.add(order=order) is False:
                 reward -= discouragement
         return reward
+
+
+def _live_plotter(x_vec, y1_data, line1, identifier='Add Symbol Name', pause_time=0.00001):
+    if not line1:
+        # this is the call to matplotlib that allows dynamic plotting
+        plt.ion()
+        fig = plt.figure(figsize=(20, 12))
+        ax = fig.add_subplot(111)
+        # create a variable for the line so we can later update it
+        line1, = ax.plot(x_vec, y1_data, '-', label='midpoint', alpha=0.8)
+        # update plot label/title
+        plt.ylabel('Price')
+        plt.legend()
+        plt.title('Title: {}'.format(identifier))
+        plt.show(block=False)
+
+    # after the figure, axis, and line are created, we only need to update the y-data
+    line1.set_ydata(y1_data)
+
+    # adjust limits if new data goes beyond bounds
+    if np.min(y1_data) <= line1.axes.get_ylim()[0] or np.max(y1_data) >= line1.axes.get_ylim()[1]:
+        plt.ylim(np.min(y1_data), np.max(y1_data))
+
+    # this pauses the data so the figure/axis can catch up - the amount of pause can be altered above
+    plt.pause(pause_time)
+
+    # return line so we can update it again in the next iteration
+    return line1

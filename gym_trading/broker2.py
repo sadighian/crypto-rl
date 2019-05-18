@@ -1,5 +1,6 @@
 # Inventory and risk management for the MarketMaker environment
 import logging
+from configurations.configs import BROKER_FEE
 
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
@@ -153,10 +154,10 @@ class PositionI(object):
             self.full_inventory = self.position_count >= self.max_position_count
             logger.info('Removing %s position #%i. PnL=%.4f\n' %
                         (self.side, order.id, pnl))
-            return True
+            return pnl
         else:
             logger.warning('Error. No {} positions to remove.'.format(self.side))
-            return False
+            return pnl
 
     def flatten_inventory(self, midpoint=100.):
         prev_realized_pnl = self.realized_pnl
@@ -197,6 +198,8 @@ class Broker(object):
     Broker class is a wrapper for the PositionI class
     and is implemented in `gym_trading.py`
     '''
+    reward_scale = BROKER_FEE * 2.
+
     def __init__(self, max_position=1):
         self.long_inventory = PositionI(side='long', max_position=max_position)
         self.short_inventory = PositionI(side='short', max_position=max_position)
@@ -236,11 +239,15 @@ class Broker(object):
         return self.short_inventory.position_count
 
     def flatten_inventory(self, bid_price=100., ask_price=100.):
-        long_pnl = self.long_inventory.flatten_inventory(midpoint=bid_price)
-        short_pnl = self.short_inventory.flatten_inventory(midpoint=ask_price)
-        return long_pnl + short_pnl
+        total_pnl = self.long_inventory.flatten_inventory(midpoint=bid_price)
+        total_pnl += self.short_inventory.flatten_inventory(midpoint=ask_price)
+        if total_pnl != 0.:
+            total_pnl /= Broker.reward_scale
+        return total_pnl
 
     def step(self,  bid_price=100., ask_price=100., buy_volume=1000., sell_volume=1000., step=100):
+        reward = 0.
+        pnl = 0.
 
         if self.long_inventory.step(bid_price=bid_price, ask_price=ask_price,
                                     buy_volume=buy_volume, sell_volume=sell_volume, step=step):
@@ -248,7 +255,9 @@ class Broker(object):
             if self.short_inventory_count > 0:
                 # net out the inventory
                 new_position = self.long_inventory.pop_position()
-                self.short_inventory.remove_position(midpoint=new_position.price)
+                pnl = self.short_inventory.remove_position(midpoint=new_position.price)
+                if pnl != 0.:
+                    pnl /= Broker.reward_scale
 
         if self.short_inventory.step(bid_price=bid_price, ask_price=ask_price,
                                      buy_volume=buy_volume, sell_volume=sell_volume, step=step):
@@ -256,7 +265,11 @@ class Broker(object):
             if self.long_inventory_count > 0:
                 # net out the inventory
                 new_position = self.short_inventory.pop_position()
-                self.long_inventory.remove_position(midpoint=new_position.price)
+                pnl += self.long_inventory.remove_position(midpoint=new_position.price)
+                if pnl != 0.:
+                    pnl /= Broker.reward_scale
+
+        return reward + pnl
 
     def get_short_order_distance_to_midpoint(self, midpoint=100.):
         return self.short_inventory.get_distance_to_midpoint(midpoint=midpoint)

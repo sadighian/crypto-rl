@@ -101,11 +101,11 @@ class Agent(object):
 
     def start(self):
         weights_filename = '{}/dqn_weights/dqn_{}_weights.h5f'.format(self.cwd, self.env_name)
-        if self.train:
-            if self.weights:
-                self.agent.load_weights(weights_filename)
-                print('...loading weights for {}'.format(self.env_name))
+        if self.weights:
+            self.agent.load_weights(weights_filename)
+            print('...loading weights for {}'.format(self.env_name))
 
+        if self.train:
             checkpoint_weights_filename = 'dqn_' + self.env_name + '_weights_{step}.h5f'
             checkpoint_weights_filename = '{}/dqn_weights/'.format(self.cwd) + checkpoint_weights_filename
             log_filename = '{}/dqn_weights/dqn_{}_log.json'.format(self.cwd, self.env_name)
@@ -120,9 +120,5 @@ class Agent(object):
                            log_interval=10000,
                            verbose=0)
             self.agent.save_weights(weights_filename, overwrite=True)
-            # self.agent.test(self, nb_episodes=2, visualize=False)
-            # self.render()
         else:
-            self.agent.load_weights(weights_filename)
-            self.agent.test(self.env, nb_episodes=2, visualize=False)
-            # self.render()
+            self.agent.test(self.env, nb_episodes=2, visualize=True)
