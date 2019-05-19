@@ -92,15 +92,15 @@ class MarketMaker(Env):
 
         self.sim.fit_scaler(self.sim.import_csv(filename=fitting_data_filepath))
         self.data = self.sim.import_csv(filename=data_used_in_environment)
-        self.prices = self.data['coinbase_midpoint'].values
-        self.bid_prices = self.data[MarketMaker.bid_price_features].values
-        self.ask_prices = self.data[MarketMaker.ask_price_features].values
-        self.bid_notionals = self.data[MarketMaker.bid_notional_features].values
-        self.ask_notionals = self.data[MarketMaker.ask_notional_features].values
+        self.prices = self.data['coinbase_midpoint'].values  # used to calculate PnL
+        self.bid_prices = self.data[MarketMaker.bid_price_features].values  # used for LOB placement
+        self.ask_prices = self.data[MarketMaker.ask_price_features].values  # used for LOB placement
+        self.bid_notionals = self.data[MarketMaker.bid_notional_features].values  # used for LOB placement
+        self.ask_notionals = self.data[MarketMaker.ask_notional_features].values  # used for LOB placement
 
         # self.data = self.data.apply(self.sim.z_score, axis=1)
-        self.data_ = self.data.copy()
-        self.data = self.data.values
+        self.data_ = self.data.copy()  # used for rendering data
+        self.data = self.data.values  # used for the observation space
         # self.data = None
 
         self.data_buffer, self.frame_stacker = list(), list()
@@ -119,7 +119,7 @@ class MarketMaker(Env):
 
         # attributes for rendering
         self.line1 = []
-        self.screen_size = 1000
+        self.screen_size = 200
         self.y_vec = None
         self.x_vec = None
         self._reset_render_data()
@@ -268,6 +268,7 @@ class MarketMaker(Env):
         self.broker = None
         self.sim = None
         self.data_buffer = None
+        plt.close()
         return
 
     def seed(self, seed=1):

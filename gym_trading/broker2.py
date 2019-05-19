@@ -122,7 +122,7 @@ class PositionI(object):
 
             # update positions attributes
             self.total_exposure -= position.price
-            if self.total_exposure > 0:
+            if self.position_count > 0:
                 self.average_price = self.total_exposure / self.position_count
             else:
                 self.average_price = 0
@@ -147,7 +147,7 @@ class PositionI(object):
             self.realized_pnl += pnl
             # update positions attributes
             self.total_exposure -= order.price
-            if self.total_exposure > 0:
+            if self.position_count > 0:
                 self.average_price = self.total_exposure / self.position_count
             else:
                 self.average_price = 0
