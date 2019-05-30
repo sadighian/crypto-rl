@@ -1,6 +1,7 @@
 from gym import Env, spaces
 from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.broker import Broker, Order
+from gym_trading.render_env import TradingGraph
 from configurations.configs import BROKER_FEE
 import logging
 import numpy as np
@@ -16,6 +17,12 @@ class PriceJump(Env):
     metadata = {'render.modes': ['human']}
     id = 'long-short-v0'
     action_repeats = 4
+    inventory_features = ['long_inventory', 'short_inventory',
+                          'total_unrealized_and_realized_pnl',
+                          'long_unrealized_pnl', 'short_unrealized_pnl']
+    # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
+    features = Sim.get_feature_labels(include_system_time=False,
+                                      include_bitfinex=False)
 
     def __init__(self, training=True,
                  fitting_file='ETH-USD_2018-12-31.xz',
@@ -36,15 +43,11 @@ class PriceJump(Env):
         self.window_size = window_size
         self.frame_stack = frame_stack
         self.frames_to_add = 3 if self.frame_stack else 0
-        self.inventory_features = ['long_inventory', 'short_inventory',
-                                   'long_unrealized_pnl', 'short_unrealized_pnl']
 
         self._action = 0
         # derive gym.env properties
-        self.actions = ((1, 0, 0),  # 0. do nothing
-                        (0, 1, 0),  # 1. buy
-                        (0, 0, 1)  # 2. sell
-                        )
+        self.actions = np.eye(3)
+
         self.sym = testing_file[:7]  # slice the CCY from the filename
 
         # properties that get reset()
@@ -54,43 +57,47 @@ class PriceJump(Env):
         self.midpoint = 0.0
         self.observation = None
 
-        # get historical data for simulations
+        # get Broker class to keep track of PnL and orders
         self.broker = Broker(max_position=max_position)
+        # get historical data for simulations
         self.sim = Sim(use_arctic=False)
-
-        # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
-        self.features = self.sim.get_feature_labels(include_system_time=False,
-                                                    include_bitfinex=False)
 
         fitting_data_filepath = '{}/data_exports/{}'.format(self.sim.cwd, fitting_file)
         data_used_in_environment = '{}/data_exports/{}'.format(self.sim.cwd, testing_file)
-        print('Fitting data: {}\nTesting Data: {}'.format(fitting_data_filepath,
-                                                          data_used_in_environment))
+        # print('Fitting data: {}\nTesting Data: {}'.format(fitting_data_filepath,
+        #                                                   data_used_in_environment))
 
         self.sim.fit_scaler(self.sim.import_csv(filename=fitting_data_filepath))
         self.data = self.sim.import_csv(filename=data_used_in_environment)
-        self.prices = self.data['coinbase_midpoint'].values
+        self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
-        self.data = self.data.apply(self.sim.z_score, axis=1)
+        self.data_ = self.data.copy()
+        logger.info("Pre-scaling {} data...".format(self.sym))
+        self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
+        logger.info("...{} pre-scaling complete.".format(self.sym))
         self.data = self.data.values
+
+        # rendering class
+        self._render = TradingGraph(sym=self.sym)
+        self._render.reset_render_data(y_vec=self.prices_[:np.shape(self._render.x_vec)[0]])
+
         self.data_buffer, self.frame_stacker = list(), list()
+
         self.action_space = spaces.Discrete(len(self.actions))
         variable_features_count = len(self.inventory_features) + len(self.actions) + 1
-
         if self.frame_stack is False:
-            shape = (len(self.features) + variable_features_count, self.window_size)
+            shape = (len(PriceJump.features) + variable_features_count, self.window_size)
         else:
-            shape = (len(self.features) + variable_features_count, self.window_size, 4)
+            shape = (len(PriceJump.features) + variable_features_count, self.window_size, 4)
 
         self.observation_space = spaces.Box(low=self.data.min(),
                                             high=self.data.max(),
                                             shape=shape,
                                             dtype=np.int)
 
-        self.reset()
-        # print('PriceJump instantiated. ' +
-        #       '\nself.observation_space.shape : {}'.format(
-        #           self.observation_space.shape))
+        print('MarketMaker instantiated. ' +
+              '\nself.observation_space.shape : {}'.format(
+                  self.observation_space.shape))
 
     def __str__(self):
         return '{} | {}-{}'.format(PriceJump.id, self.sym, self.seed)
@@ -107,26 +114,29 @@ class PriceJump(Env):
                 self.reset()
                 return self.observation, self.reward, self.done
 
-            position_features = self._create_position_features()
-            action_features = self._create_action_features(action=action)
-
-            self.midpoint = self.prices[self._local_step_number]
-            self.broker.step(midpoint=self.midpoint)
-
+            # reset the reward if there ARE action repeats
             if current_step == 0:
                 self.reward = 0.
+                step_action = action
+            else:
+                step_action = 0
 
-            self.reward += self._send_to_broker_and_get_reward(action=action)
+            self.midpoint = self.prices_[self._local_step_number]
+            self.broker.step(midpoint=self.midpoint)
+            self.reward += self._send_to_broker_and_get_reward(action=step_action)
 
-            _observation = np.concatenate((self.process_data(self.data[self._local_step_number]),
-                                           position_features,
-                                           action_features,
-                                           np.array([self.reward])),
-                                          axis=None)
-            self.data_buffer.append(_observation)
+            step_position_features = self._create_position_features()
+            step_action_features = self._create_action_features(action=step_action)
+
+            step_observation = np.concatenate((self.process_data(self.data_[self._local_step_number]),
+                                               step_position_features,
+                                               step_action_features,
+                                               np.array([self.reward])),
+                                              axis=None)
+            self.data_buffer.append(step_observation)
 
             if len(self.data_buffer) >= self.window_size:
-                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float32))
+                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float64))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
@@ -135,7 +145,7 @@ class PriceJump(Env):
             self._local_step_number += self.step_size
 
         # output shape is [n_features, window_size, frames_to_add] eg [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
+        self.observation = np.array(self.frame_stacker, dtype=np.float64).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
         # because Keras-rl uses its own frame-stacker. There are future plans to integrate
@@ -153,7 +163,7 @@ class PriceJump(Env):
 
     def reset(self):
         if self.training:
-            self._local_step_number = self._random_state.randint(low=1, high=5000)
+            self._local_step_number = self._random_state.randint(low=1, high=self.data.shape[0]//5)
         else:
             self._local_step_number = 0
 
@@ -168,26 +178,26 @@ class PriceJump(Env):
         self.frame_stacker.clear()
 
         for step in range(self.window_size + self.frames_to_add):
-            position_features = self._create_position_features()
-            action_features = self._create_action_features(action=0)
+            step_position_features = self._create_position_features()
+            step_action_features = self._create_action_features(action=0)
 
-            _observation = np.concatenate((self.process_data(self.data[self._local_step_number]),
-                                           position_features,
-                                           action_features,
-                                           np.array([self.reward])),
-                                          axis=None)
-            self.data_buffer.append(_observation)
+            step_observation = np.concatenate((self.process_data(self.data_[self._local_step_number]),
+                                               step_position_features,
+                                               step_action_features,
+                                               np.array([self.reward])),
+                                              axis=None)
+            self.data_buffer.append(step_observation)
             self._local_step_number += self.step_size
 
             if step >= self.window_size - 1:
-                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float32))
+                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float64))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
                     del self.frame_stacker[0]
 
         # output shape is [n_features, window_size, frames_to_add] eg [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
+        self.observation = np.array(self.frame_stacker, dtype=np.float64).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
         # because Keras-rl uses its own frame-stacker. There are future plans to integrate
@@ -198,11 +208,13 @@ class PriceJump(Env):
         return self.observation
 
     def render(self, mode='human'):
-        pass
+        self._render.render(midpoint=self.midpoint, mode=mode)
 
     def close(self):
         logger.info('{}-{} is being closed.'.format(self.id, self.sym))
         self.data = None
+        self.data_ = None
+        self.prices_ = None
         self.broker = None
         self.sim = None
         self.data_buffer = None
@@ -215,8 +227,11 @@ class PriceJump(Env):
 
     @staticmethod
     def process_data(_next_state):
-        # return self.sim.scale_state(_next_state).values.reshape((1, -1))
         return np.clip(_next_state.reshape((1, -1)), -10., 10.)
+
+    # def process_data(self, _next_state):
+    #     # return self.sim.scale_state(_next_state).values.reshape((1, -1))
+    #     return np.reshape(_next_state, (1, -1))
 
     def _send_to_broker_and_get_reward(self, action):
         reward = 0.0
@@ -275,8 +290,9 @@ class PriceJump(Env):
     def _create_position_features(self):
         return np.array((self.broker.long_inventory.position_count / self.max_position,
                          self.broker.short_inventory.position_count / self.max_position,
+                         self.broker.get_total_pnl(midpoint=self.midpoint),
                          self.broker.long_inventory.get_unrealized_pnl(self.midpoint),
                          self.broker.short_inventory.get_unrealized_pnl(self.midpoint)))
 
     def _create_action_features(self, action):
-        return np.array(self.actions[action])
+        return self.actions[action]

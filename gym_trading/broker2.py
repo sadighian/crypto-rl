@@ -19,11 +19,18 @@ class Order(object):
         self.executed = 0.
         Order._id += 1
         self.id = Order._id
-        self.queue_ahead = queue_ahead
+        self._queue_ahead = queue_ahead
 
     def __str__(self):
         return ' %s-%s | %.3f | %i | %.2f | %.2f' % \
-               (self.ccy, self.side, self.price, self.step, self.executed, self.queue_ahead)
+               (self.ccy, self.side, self.price, self.step, self.executed, self._queue_ahead)
+
+    def queue_ahead(self, executed_volume=100.):
+        self._queue_ahead -= executed_volume
+        if self._queue_ahead < 0.:
+            splash = 0. - self._queue_ahead
+            self._queue_ahead = 0.
+            self.executed += splash
 
     @property
     def is_filled(self):
@@ -31,7 +38,7 @@ class Order(object):
 
     @property
     def is_first_in_queue(self):
-        return self.queue_ahead <= 0.
+        return self._queue_ahead <= 0.
 
 
 class PositionI(object):
@@ -95,13 +102,14 @@ class PositionI(object):
                 if self.order.is_first_in_queue:
                     self.order.executed += buy_volume
                 else:
-                    self.order.queue_ahead -= buy_volume
+                    self.order.queue_ahead(buy_volume)
+
         elif self.order.side == 'short':
             if ask_price >= self.order.price:
                 if self.order.is_first_in_queue:
                     self.order.executed += sell_volume
                 else:
-                    self.order.queue_ahead -= sell_volume
+                    self.order.queue_ahead(sell_volume)
 
         if self.order.is_filled:
             self.positions.append(self.order)
@@ -246,7 +254,6 @@ class Broker(object):
         return total_pnl
 
     def step(self,  bid_price=100., ask_price=100., buy_volume=1000., sell_volume=1000., step=100):
-        reward = 0.
         pnl = 0.
 
         if self.long_inventory.step(bid_price=bid_price, ask_price=ask_price,
@@ -255,9 +262,9 @@ class Broker(object):
             if self.short_inventory_count > 0:
                 # net out the inventory
                 new_position = self.long_inventory.pop_position()
-                pnl = self.short_inventory.remove_position(midpoint=new_position.price)
-                if pnl != 0.:
-                    pnl /= Broker.reward_scale
+                pnl += self.short_inventory.remove_position(midpoint=new_position.price)
+                # if pnl != 0.:
+                #     pnl /= Broker.reward_scale
 
         if self.short_inventory.step(bid_price=bid_price, ask_price=ask_price,
                                      buy_volume=buy_volume, sell_volume=sell_volume, step=step):
@@ -266,10 +273,10 @@ class Broker(object):
                 # net out the inventory
                 new_position = self.short_inventory.pop_position()
                 pnl += self.long_inventory.remove_position(midpoint=new_position.price)
-                if pnl != 0.:
-                    pnl /= Broker.reward_scale
+                # if pnl != 0.:
+                #     pnl /= Broker.reward_scale
 
-        return reward + pnl
+        return pnl
 
     def get_short_order_distance_to_midpoint(self, midpoint=100.):
         return self.short_inventory.get_distance_to_midpoint(midpoint=midpoint)

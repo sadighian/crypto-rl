@@ -13,7 +13,7 @@ parser.add_argument('--step_size',
                     help="Increment for looping through historical data",
                     type=int)
 parser.add_argument('--window_size',
-                    default=50,
+                    default=40,
                     help="Number of lags to include in the observation",
                     type=int)
 parser.add_argument('--train',
@@ -23,7 +23,7 @@ parser.add_argument('--train',
                     "If False, then agent is tested",
                     type=bool)
 parser.add_argument('--max_position',
-                    default=1,
+                    default=5,
                     help="Maximum number of positions that are " +
                          "able to be held in a broker's inventory",
                     type=int)
@@ -47,6 +47,10 @@ parser.add_argument('--frame_stack',
                     default=False,
                     help="Stack 4 snapshots as one observation if True, " +
                          "Otherwise 1 snapshot is the observation",
+                    type=bool)
+parser.add_argument('--visualize',
+                    default=False,
+                    help="Render midpoint on a screen",
                     type=bool)
 parser.add_argument('--env',
                     default='long-short-v0',
