@@ -17,4 +17,5 @@ register(
     nondeterministic=False
 )
 
-print('Crypto-RL: registered = {}, {}.'.format(PriceJump.id, MarketMaker.id))
+
+print('Crypto-RL: registered = {}, {}'.format(PriceJump.id, MarketMaker.id))

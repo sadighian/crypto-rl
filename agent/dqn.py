@@ -12,12 +12,13 @@ import gym_trading
 class Agent(object):
     name = 'DQN'
 
-    def __init__(self, step_size=1, window_size=5, train=True, max_position=1, weights=True,
+    def __init__(self, step_size=1, window_size=20, train=True, max_position=5, weights=True,
                  fitting_file='ETH-USD_2018-12-31.xz', testing_file='ETH-USD_2018-01-01.xz',
                  seed=123,
                  frame_stack=False,  # Default to False when using with keras-rl since `rl.memory` stacks frames
                  env='market-maker-v0',
-                 number_of_training_steps=1e5
+                 number_of_training_steps=1e5,
+                 visualize=False
                  ):
         self.env_name = env
         self.env = gym.make(self.env_name,
@@ -36,6 +37,7 @@ class Agent(object):
         self.number_of_training_steps = number_of_training_steps
         self.weights = weights
         self.cwd = os.path.dirname(os.path.realpath(__file__))
+        self.visualize = visualize
 
         # create the agent
         self.agent = DQNAgent(model=self.model,
@@ -67,21 +69,21 @@ class Agent(object):
         model = Sequential()
         print('agent feature shape: {}'.format(features_shape))
         model.add(Conv2D(input_shape=features_shape,
-                         filters=32,
+                         filters=16,
                          kernel_size=8,
                          padding='same',
                          activation='relu',
                          strides=4,
                          data_format='channels_first'))
 
-        model.add(Conv2D(filters=64,
+        model.add(Conv2D(filters=32,
                          kernel_size=4,
                          padding='same',
                          activation='relu',
                          strides=2,
                          data_format='channels_first'))
 
-        model.add(Conv2D(filters=64,
+        model.add(Conv2D(filters=32,
                          kernel_size=3,
                          padding='same',
                          activation='relu',
@@ -118,7 +120,8 @@ class Agent(object):
                            callbacks=callbacks,
                            nb_steps=self.number_of_training_steps,
                            log_interval=10000,
-                           verbose=0)
+                           verbose=0,
+                           visualize=self.visualize)
             self.agent.save_weights(weights_filename, overwrite=True)
         else:
-            self.agent.test(self.env, nb_episodes=2, visualize=True)
+            self.agent.test(self.env, nb_episodes=2, visualize=self.visualize)

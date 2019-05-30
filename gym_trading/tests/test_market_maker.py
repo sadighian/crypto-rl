@@ -19,8 +19,8 @@ def test_market_maker_gym():
         'fitting_file': 'ETH-USD_2018-12-31.xz',
         'testing_file': 'ETH-USD_2019-01-01.xz',
         'step_size': 1,
-        'max_position': 1,
-        'window_size': 5,
+        'max_position': 5,
+        'window_size': 1,
         'seed': 1,
         'frame_stack': False
     }
@@ -101,4 +101,3 @@ def test_market_maker_python():
 if __name__ == '__main__':
     test_market_maker_gym()
     test_market_maker_python()
-
