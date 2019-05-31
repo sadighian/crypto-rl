@@ -14,7 +14,6 @@ class Agent(object):
 
     def __init__(self, step_size=1, window_size=20, train=True, max_position=5, weights=True,
                  fitting_file='ETH-USD_2018-12-31.xz', testing_file='ETH-USD_2018-01-01.xz',
-                 seed=123,
                  frame_stack=False,  # Default to False when using with keras-rl since `rl.memory` stacks frames
                  env='market-maker-v0',
                  number_of_training_steps=1e5,
@@ -28,7 +27,6 @@ class Agent(object):
                             step_size=step_size,
                             max_position=max_position,
                             window_size=window_size,
-                            seed=seed,
                             frame_stack=False)
         self.memory_frame_stack = 4 if frame_stack else 1  # Number of frames to stack e.g., 4
         self.model = self.create_model()

@@ -1,6 +1,7 @@
 # Inventory and risk management for the MarketMaker environment
 import logging
 from configurations.configs import BROKER_FEE
+import numpy as np
 
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
@@ -40,6 +41,9 @@ class Order(object):
     def is_first_in_queue(self):
         return self._queue_ahead <= 0.
 
+    def get_queue_ahead(self):
+        return self._queue_ahead
+
 
 class PositionI(object):
     """
@@ -74,10 +78,13 @@ class PositionI(object):
 
     def add_order(self, order):
         if not self.full_inventory:
+            price = order.price
             if self.order is None:
                 logger.debug('Opened new order={}'.format(order))
             else:
                 logger.debug('Updating existing order{} --> {}'.format(self.order, order))
+                price = np.copy(self.order.price)
+            order.price = price
             self.order = order
             return True
         else:
@@ -117,8 +124,8 @@ class PositionI(object):
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
             steps_to_fill = step - self.order.step
-            logger.info('FILLED %s order #%i at %.3f after %i steps on %i.' %
-                        (self.side, self.order.id, self.order.price, steps_to_fill, step))
+            logger.debug('FILLED %s order #%i at %.3f after %i steps on %i.' %
+                        (self.order.side, self.order.id, self.order.price, steps_to_fill, step))
             self.order = None  # set the slot back to no open orders
             return True
 
@@ -126,7 +133,7 @@ class PositionI(object):
 
     def pop_position(self):
         if self.position_count > 0:
-            position = self.positions.pop(0)
+            position = self.positions.pop()
 
             # update positions attributes
             self.total_exposure -= position.price
@@ -136,16 +143,17 @@ class PositionI(object):
                 self.average_price = 0
 
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.debug('---%s position #%i has been netted out.' % (self.side, position.id))
+            logger.info('---%s position #%i @ %.4f has been netted out.' % (self.side, position.id,
+                                                                            position.price))
             return position
         else:
-            logger.warning('Error. No {} pop_position to remove.'.format(self.side))
+            logger.info('Error. No {} pop_position to remove.'.format(self.side))
             return None
 
     def remove_position(self, midpoint=100.):
         pnl = 0.
         if self.position_count > 0:
-            order = self.positions.pop()
+            order = self.positions.pop(0)
             # Calculate PnL
             if self.side == 'long':
                 pnl = (midpoint - order.price) / order.price
@@ -164,7 +172,7 @@ class PositionI(object):
                         (self.side, order.id, pnl))
             return pnl
         else:
-            logger.warning('Error. No {} positions to remove.'.format(self.side))
+            logger.info('Error. No {} positions to remove.'.format(self.side))
             return pnl
 
     def flatten_inventory(self, midpoint=100.):
@@ -283,3 +291,20 @@ class Broker(object):
 
     def get_long_order_distance_to_midpoint(self, midpoint=100.):
         return self.long_inventory.get_distance_to_midpoint(midpoint=midpoint)
+
+    def get_queues_ahead_features(self):
+        buy_queue = short_queue = 0.
+
+        if self.long_inventory.order:
+            queue = self.long_inventory.order.get_queue_ahead()
+            executions = max(self.long_inventory.order.executed, 0.0001)
+            trade_size = self.long_inventory.order._size
+            buy_queue = (executions - queue) / (queue + trade_size)
+
+        if self.short_inventory.order:
+            queue = self.short_inventory.order.get_queue_ahead()
+            executions = max(self.short_inventory.order.executed, 0.0001)
+            trade_size = self.short_inventory.order._size
+            short_queue = (executions - queue) / (queue + trade_size)
+
+        return buy_queue, short_queue
