@@ -86,10 +86,10 @@ class MarketMaker(Env):
         self.data = self.sim.import_csv(filename=data_used_in_environment)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
-        self.data_ = self.data.values.copy()
-        # logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
-        # self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
-        # logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
+        self.data_ = self.data.copy()
+        logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
+        self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
+        logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
         self.data = self.data.values
 
         # rendering class
