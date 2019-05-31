@@ -23,6 +23,7 @@ class PriceJump(Env):
     # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
     features = Sim.get_feature_labels(include_system_time=False,
                                       include_bitfinex=False)
+    instance = 0
 
     def __init__(self, training=True,
                  fitting_file='ETH-USD_2018-12-31.xz',
@@ -30,12 +31,12 @@ class PriceJump(Env):
                  step_size=1,
                  max_position=1,
                  window_size=50,
-                 seed=1,
                  frame_stack=False):
 
         # properties required for instantiation
-        self._random_state = np.random.RandomState(seed=seed)
-        self._seed = seed
+        PriceJump.instance += 1
+        self._random_state = np.random.RandomState(seed=int(PriceJump.instance))
+        self._seed = int(PriceJump.instance)
         self.training = training
         self.step_size = step_size
         self.fee = BROKER_FEE
@@ -95,7 +96,7 @@ class PriceJump(Env):
                                             shape=shape,
                                             dtype=np.int)
 
-        print('MarketMaker instantiated. ' +
+        print('PriceJump instantiated. ' +
               '\nself.observation_space.shape : {}'.format(
                   self.observation_space.shape))
 

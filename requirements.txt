@@ -7,7 +7,7 @@ Keras-Applications==1.0.7
 Keras-Preprocessing==1.0.9
 keras-rl==0.4.2
 more-itertools==6.0.0
-numpy==1.16.2
+numpy==1.16.3
 pandas==0.24.1
 pymongo==3.7.2
 pytest==4.3.0

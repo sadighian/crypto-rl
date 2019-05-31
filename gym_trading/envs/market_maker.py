@@ -21,7 +21,8 @@ class MarketMaker(Env):
     inventory_features = ['long_inventory', 'short_inventory',
                           'total_unrealized_and_realized_pnl',
                           'long_unrealized_pnl', 'short_unrealized_pnl',
-                          'buy_distance_to_midpoint', 'short_distance_to_midpoint']
+                          'buy_distance_to_midpoint', 'short_distance_to_midpoint',
+                          'buy_queue_vol', 'short_queue_vol']
     # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
     features = Sim.get_feature_labels(include_system_time=False,
                                       include_bitfinex=False)
@@ -35,18 +36,21 @@ class MarketMaker(Env):
 
     target_pnl = BROKER_FEE * 10
 
+    instance_count = 0
+
     def __init__(self, training=True,
                  fitting_file='ETH-USD_2018-12-31.xz',
                  testing_file='ETH-USD_2019-01-01.xz',
                  step_size=1,
                  max_position=5,
-                 window_size=40,
-                 seed=1,
+                 window_size=4,
                  frame_stack=False):
 
         # properties required for instantiation
-        self._random_state = np.random.RandomState(seed=seed)
-        self._seed = seed
+        MarketMaker.instance_count += 1
+        self._random_state = np.random.RandomState(
+            seed=int(MarketMaker.instance_count))
+        self._seed = int(MarketMaker.instance_count)  # seed
         self.training = training
         self.step_size = step_size
         self.fee = BROKER_FEE
@@ -82,10 +86,10 @@ class MarketMaker(Env):
         self.data = self.sim.import_csv(filename=data_used_in_environment)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
-        self.data_ = self.data.copy()
-        logger.info("Pre-scaling {} data...".format(self.sym))
-        self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
-        logger.info("...{} pre-scaling complete.".format(self.sym))
+        self.data_ = self.data.values.copy()
+        # logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
+        # self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
+        # logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
         self.data = self.data.values
 
         # rendering class
@@ -153,12 +157,12 @@ class MarketMaker(Env):
             step_observation = np.concatenate((self.process_data(self.data_[self._local_step_number]),
                                                step_position_features,
                                                step_action_features,
-                                               np.array([self.reward], dtype=np.float64)),
+                                               np.array([self.reward], dtype=np.float32)),
                                               axis=None)
             self.data_buffer.append(step_observation)
 
             if len(self.data_buffer) >= self.window_size:
-                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float64))
+                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float32))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
@@ -167,7 +171,7 @@ class MarketMaker(Env):
             self._local_step_number += self.step_size
 
         # output shape is [n_features, window_size, frames_to_add] e.g., [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float64).transpose()
+        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
         # because Keras-rl uses its own frame-stacker. There are future plans to integrate
@@ -211,14 +215,14 @@ class MarketMaker(Env):
             self._local_step_number += self.step_size
 
             if step >= self.window_size - 1:
-                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float64))
+                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float32))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
                     del self.frame_stacker[0]
 
         # output shape is [n_features, window_size, frames_to_add] eg [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float64).transpose()
+        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
         # because Keras-rl uses its own frame-stacker. There are future plans to integrate
@@ -366,7 +370,8 @@ class MarketMaker(Env):
                          self.broker.get_long_order_distance_to_midpoint(midpoint=self.midpoint) /
                          self.broker.reward_scale,
                          self.broker.get_short_order_distance_to_midpoint(midpoint=self.midpoint) /
-                         self.broker.reward_scale))
+                         self.broker.reward_scale,
+                         *self.broker.get_queues_ahead_features()))
 
     def _create_action_features(self, action):
         return self.actions[action]

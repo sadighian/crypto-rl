@@ -39,10 +39,6 @@ parser.add_argument('--testing_file',
                     default='ETH-USD_2019-01-01.xz',
                     help="Dataset for training the agent (current day)",
                     type=str)
-parser.add_argument('--seed',
-                    default=1,
-                    help="Random number seed for environment",
-                    type=int)
 parser.add_argument('--frame_stack',
                     default=False,
                     help="Stack 4 snapshots as one observation if True, " +
@@ -53,6 +49,7 @@ parser.add_argument('--visualize',
                     help="Render midpoint on a screen",
                     type=bool)
 parser.add_argument('--env',
+                    # default='market-maker-v0',
                     default='long-short-v0',
                     help="gym_trading environment: 'long-short-v0' or 'market-maker-v0'",
                     type=str)
