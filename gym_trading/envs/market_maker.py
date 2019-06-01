@@ -48,9 +48,8 @@ class MarketMaker(Env):
 
         # properties required for instantiation
         MarketMaker.instance_count += 1
-        self._random_state = np.random.RandomState(
-            seed=int(MarketMaker.instance_count))
-        self.seed = int(MarketMaker.instance_count)  # seed
+        self._seed = int(MarketMaker.instance_count)  # seed
+        self._random_state = np.random.RandomState(seed=self._seed)
         self.training = training
         self.step_size = step_size
         self.fee = BROKER_FEE
@@ -88,10 +87,10 @@ class MarketMaker(Env):
         self.data = self.sim.import_csv(filename=data_used_in_environment)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
-        self.data_ = self.data.copy()
-        logger.info("Pre-scaling {}-{} data...".format(self.sym, self.seed))
+        self.data_ = self.data.copy()#.values
+        logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
         self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
-        logger.info("...{}-{} pre-scaling complete.".format(self.sym, self.seed))
+        logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
         self.data = self.data.values
 
         # rendering class
@@ -121,7 +120,7 @@ class MarketMaker(Env):
                   self.observation_space.shape))
 
     def __str__(self):
-        return '{} | {}-{}'.format(MarketMaker.id, self.sym, self.seed)
+        return '{} | {}-{}'.format(MarketMaker.id, self.sym, self._seed)
 
     def step(self, action):
 
@@ -187,7 +186,7 @@ class MarketMaker(Env):
             self.observation = self.observation.reshape(
                 self.observation.shape[0], -1)
 
-        if self.local_step_number > self.data.shape[0] - 8:
+        if self.local_step_number > self.data.shape[0] - 40:
             self.done = True
             self.reward += self.broker.flatten_inventory(*self._get_nbbo())
 
@@ -202,7 +201,7 @@ class MarketMaker(Env):
             self.local_step_number = 0
 
         logger.info(' {}-{} reset. Episode pnl: {} | First step: {}'.format(
-            self.sym, self.seed,
+            self.sym, self._seed,
             self.broker.get_total_pnl(midpoint=self.midpoint),
             self.local_step_number))
         self.reward = 0.0
@@ -262,7 +261,7 @@ class MarketMaker(Env):
 
     def seed(self, seed=1):
         self._random_state = np.random.RandomState(seed=seed)
-        self.seed = seed
+        self._seed = seed
         return [seed]
 
     @staticmethod
@@ -381,11 +380,11 @@ class MarketMaker(Env):
             (self.broker.long_inventory.position_count / self.max_position,
              self.broker.short_inventory.position_count / self.max_position,
              self.broker.get_total_pnl(midpoint=self.midpoint) /
-                MarketMaker.target_pnl,
+             MarketMaker.target_pnl,
              self.broker.long_inventory.get_unrealized_pnl(self.midpoint) /
-                self.broker.reward_scale,
+             self.broker.reward_scale,
              self.broker.short_inventory.get_unrealized_pnl(self.midpoint) /
-                self.broker.reward_scale,
+             self.broker.reward_scale,
              self.broker.get_long_order_distance_to_midpoint(
                  midpoint=self.midpoint) / self.broker.reward_scale,
              self.broker.get_short_order_distance_to_midpoint(

@@ -21,19 +21,49 @@ class Order(object):
         self.executed = 0.
         Order._id += 1
         self.id = Order._id
-        self._queue_ahead = queue_ahead
+        self.queue_ahead = queue_ahead
+        self.executions = dict()
+        self.average_exectution_price = -1.
 
     def __str__(self):
         return ' %s-%s | %.3f | %i | %.2f | %.2f' % \
                (self.ccy, self.side, self.price, self.step, self.executed,
-                self._queue_ahead)
+                self.queue_ahead)
 
-    def queue_ahead(self, executed_volume=100.):
-        self._queue_ahead -= executed_volume
-        if self._queue_ahead < 0.:
-            splash = 0. - self._queue_ahead
-            self._queue_ahead = 0.
-            self.executed += splash
+    def reduce_queue_ahead(self, executed_volume=100.):
+        self.queue_ahead -= executed_volume
+        if self.queue_ahead < 0.:
+            splash = 0. - self.queue_ahead
+            self.queue_ahead = 0.
+            self.process_executions(volume=splash)
+
+    def process_executions(self, volume=100.):
+        self.executed += volume
+        overflow = 0.
+        if self.is_filled:
+            overflow = self.executed - Order._size
+            # print('executed before = {}'.format(self.executed))
+            self.executed -= overflow
+            # print('executed after = {}'.format(self.executed))
+        _price = float(self.price)
+        if _price in self.executions:
+            self.executions[_price] += volume - overflow
+        else:
+            self.executions[_price] = volume - overflow
+
+    def get_average_execution_price(self):
+        total_volume = 0.
+        for k, v in self.executions.items():
+            total_volume += v / k
+        # print('acquired {} position size of {}'.format(self.side, total_volume))
+        self.average_exectution_price = 0.
+        for k, v in self.executions.items():
+            self.average_exectution_price += k * ((v / k) / total_volume)
+        self.average_exectution_price = round(self.average_exectution_price, 4)
+        # print('{} avg_price is {} | {}'.format(self.side,
+        #                                        self.average_exectution_price,
+        #                                        self.price))
+        return self.average_exectution_price
 
     @property
     def is_filled(self):
@@ -41,10 +71,7 @@ class Order(object):
 
     @property
     def is_first_in_queue(self):
-        return self._queue_ahead <= 0.
-
-    def get_queue_ahead(self):
-        return self._queue_ahead
+        return self.queue_ahead <= 0.
 
 
 class PositionI(object):
@@ -80,20 +107,21 @@ class PositionI(object):
 
     def add_order(self, order):
         if not self.full_inventory:
-            price = order.price
             if self.order is None:
                 logger.debug('Opened new order={}'.format(order))
+                self.order = order
             else:
-                logger.debug('Updating existing order{} --> {}'.format(
-                    self.order, order))
-                price = np.copy(self.order.price)
-            order.price = price
-            self.order = order
+                logger.debug('Updating existing order{} '
+                             '--> {}'.format(self.order, order))
+                self.order.price = np.copy(order.price)
+                self.order.queue_ahead = np.copy(order.queue_ahead)
+                self.order.id = np.copy(order.id)
+
             return True
         else:
             logger.debug("{} order rejected. "
-                         "Already at max position limit ({})".format(
-                self.side, self.max_position_count))
+                         "Already at max position "
+                         "limit ({})".format(self.side, self.max_position_count))
             return False
 
     def cancel_order(self):
@@ -112,26 +140,26 @@ class PositionI(object):
         if self.order.side == 'long':
             if bid_price <= self.order.price:
                 if self.order.is_first_in_queue:
-                    self.order.executed += buy_volume
+                    self.order.process_executions(buy_volume)
                 else:
-                    self.order.queue_ahead(buy_volume)
+                    self.order.reduce_queue_ahead(buy_volume)
 
         elif self.order.side == 'short':
             if ask_price >= self.order.price:
                 if self.order.is_first_in_queue:
-                    self.order.executed += sell_volume
+                    self.order.process_executions(sell_volume)
                 else:
-                    self.order.queue_ahead(sell_volume)
+                    self.order.reduce_queue_ahead(sell_volume)
 
         if self.order.is_filled:
             self.positions.append(self.order)
-            self.total_exposure += self.order.price
+            self.total_exposure += self.order.get_average_execution_price()
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
             steps_to_fill = step - self.order.step
             logger.debug('FILLED %s order #%i at %.3f after %i steps on %i.' %
-                        (self.order.side, self.order.id, self.order.price,
-                         steps_to_fill, step))
+                         (self.order.side, self.order.id, self.order.price,
+                          steps_to_fill, step))
             self.order = None  # set the slot back to no open orders
             return True
 
@@ -142,7 +170,7 @@ class PositionI(object):
             position = self.positions.pop()
 
             # update positions attributes
-            self.total_exposure -= position.price
+            self.total_exposure -= position.average_exectution_price
             if self.position_count > 0:
                 self.average_price = self.total_exposure / self.position_count
             else:
@@ -168,7 +196,7 @@ class PositionI(object):
             # Add Profit and Loss to total
             self.realized_pnl += pnl
             # update positions attributes
-            self.total_exposure -= order.price
+            self.total_exposure -= order.average_exectution_price
             if self.position_count > 0:
                 self.average_price = self.total_exposure / self.position_count
             else:
@@ -309,13 +337,13 @@ class Broker(object):
         buy_queue = short_queue = 0.
 
         if self.long_inventory.order:
-            queue = self.long_inventory.order.get_queue_ahead()
+            queue = self.long_inventory.order.queue_ahead
             executions = max(self.long_inventory.order.executed, 0.0001)
             trade_size = self.long_inventory.order._size
             buy_queue = (executions - queue) / (queue + trade_size)
 
         if self.short_inventory.order:
-            queue = self.short_inventory.order.get_queue_ahead()
+            queue = self.short_inventory.order.queue_ahead
             executions = max(self.short_inventory.order.executed, 0.0001)
             trade_size = self.short_inventory.order._size
             short_queue = (executions - queue) / (queue + trade_size)

@@ -29,14 +29,14 @@ class PriceJump(Env):
                  fitting_file='ETH-USD_2018-12-31.xz',
                  testing_file='ETH-USD_2019-01-01.xz',
                  step_size=1,
-                 max_position=1,
-                 window_size=50,
+                 max_position=5,
+                 window_size=4,
                  frame_stack=False):
 
         # properties required for instantiation
         PriceJump.instance += 1
-        self._random_state = np.random.RandomState(seed=int(PriceJump.instance))
-        self.seed = int(PriceJump.instance)
+        self._seed = int(PriceJump.instance_count)  # seed
+        self._random_state = np.random.RandomState(seed=self._seed)
         self.training = training
         self.step_size = step_size
         self.fee = BROKER_FEE
@@ -107,7 +107,7 @@ class PriceJump(Env):
                   self.observation_space.shape))
 
     def __str__(self):
-        return '{} | {}-{}'.format(PriceJump.id, self.sym, self.seed)
+        return '{} | {}-{}'.format(PriceJump.id, self.sym, self._seed)
 
     def step(self, action):
 
@@ -135,13 +135,13 @@ class PriceJump(Env):
                 self.process_data(self.data_[self.local_step_number]),
                 step_position_features,
                 step_action_features,
-                np.array([self.reward])),
+                np.array([self.reward], dtype=np.float32)),
                 axis=None)
             self.data_buffer.append(step_observation)
 
             if len(self.data_buffer) >= self.window_size:
-                self.frame_stacker.append(np.array(self.data_buffer,
-                                                   dtype=np.float64))
+                self.frame_stacker.append(
+                    np.array(self.data_buffer, dtype=np.float32))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
@@ -149,13 +149,14 @@ class PriceJump(Env):
 
             self.local_step_number += self.step_size
 
-        # output shape is [n_features, window_size, frames_to_add] eg [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float64).transpose()
+        # output shape is [n_features, window_size, frames_to_add]
+        #   e.g., [40, 100, 1]
+        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
-        # because Keras-rl uses its own frame-stacker. There are future plans
-        # to integrate this repository with more reinforcement learning packages,
-        # such as baselines.
+        # because Keras-rl uses its own frame-stacker. There are future
+        # plans to integrate this repository with more reinforcement learning
+        # packages, such as baselines.
         if self.frame_stack is False:
             self.observation = self.observation.reshape(
                 self.observation.shape[0], -1)
@@ -187,6 +188,7 @@ class PriceJump(Env):
         self.frame_stacker.clear()
 
         for step in range(self.window_size + self.frames_to_add):
+
             step_position_features = self._create_position_features()
             step_action_features = self._create_action_features(action=0)
 
@@ -201,19 +203,20 @@ class PriceJump(Env):
 
             if step >= self.window_size - 1:
                 self.frame_stacker.append(
-                    np.array(self.data_buffer, dtype=np.float64))
+                    np.array(self.data_buffer, dtype=np.float32))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
                     del self.frame_stacker[0]
 
-        # output shape is [n_features, window_size, frames_to_add] eg [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float64).transpose()
+        # output shape is [n_features, window_size, frames_to_add]
+        #   e.g., [40, 100, 1]
+        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
         # because Keras-rl uses its own frame-stacker. There are future plans
-        # to integrate this repository with more reinforcement learning
-        # packages, such as baselines.
+        # to integrate this repository with more reinforcement learning packages,
+        # such as baselines.
         if self.frame_stack is False:
             self.observation = self.observation.reshape(
                 self.observation.shape[0], -1)
@@ -235,7 +238,7 @@ class PriceJump(Env):
 
     def seed(self, seed=1):
         self._random_state = np.random.RandomState(seed=seed)
-        self.seed = seed
+        self._seed = seed
         return [seed]
 
     @staticmethod
@@ -248,6 +251,7 @@ class PriceJump(Env):
 
     def _send_to_broker_and_get_reward(self, action):
         reward = 0.0
+        discouragement = 0.000000000001
 
         if action == 0:  # do nothing
             pass
@@ -266,7 +270,7 @@ class PriceJump(Env):
                               price=price_fee_adjusted,
                               step=self.local_step_number)
                 if self.broker.add(order=order) is False:
-                    reward -= 0.00000001
+                    reward -= discouragement
 
             else:
                 logger.info(('gym_trading.get_reward() ' +
@@ -286,7 +290,7 @@ class PriceJump(Env):
                               price=price_fee_adjusted,
                               step=self.local_step_number)
                 if self.broker.add(order=order) is False:
-                    reward -= 0.00000001
+                    reward -= discouragement
 
             else:
                 logger.info('gym_trading.get_reward() ' +
