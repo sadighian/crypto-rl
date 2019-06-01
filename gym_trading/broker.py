@@ -18,7 +18,8 @@ class Order:
 
     def __str__(self):
         return ' %s | %s | %.3f | %i | %.3f | %.3f' % \
-               (self.ccy, self.side, self.price, self.step, self.drawdown_max, self.upside_max)
+               (self.ccy, self.side, self.price, self.step, self.drawdown_max,
+                self.upside_max)
 
     def update(self, midpoint=100.0):
 
@@ -82,7 +83,8 @@ class PositionI(object):
             self.total_exposure += order.price
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.debug('  %s @ %.2f | step %i' % (order.side, order.price, order.step))
+            logger.debug('  %s @ %.2f | step %i' % (order.side, order.price,
+                                                    order.step))
             return True
         else:
             logger.debug('  %s inventory max' % order.side)
@@ -105,22 +107,25 @@ class PositionI(object):
             self.last_trade['drawdown_max'] = opening_order.drawdown_max
 
             if self.side == 'long':
-                realized_trade_pnl = (order.price - opening_order.price) / opening_order.price
+                realized_trade_pnl = (order.price - opening_order.price) /  \
+                                     opening_order.price
                 self.realized_pnl += realized_trade_pnl
             elif self.side == 'short':
-                realized_trade_pnl = (opening_order.price - order.price) / opening_order.price
+                realized_trade_pnl = (opening_order.price - order.price) /  \
+                                     opening_order.price
                 self.realized_pnl += realized_trade_pnl
             else:
                 realized_trade_pnl = 0.0
-                logger.warning('PositionI.remove() Warning - position side unrecognized = {}'.format(self.side))
+                logger.warning('PositionI.remove() Warning -  position side '
+                               'unrecognized = {}'.format(self.side))
 
             self.last_trade['realized_pnl'] = realized_trade_pnl
 
             # if realized_trade_pnl > 0.0:
-            #     print(' %s PNL %.3f | upside %.3f / downside %.3f | steps: %i' % (self.side, realized_trade_pnl,
-            #                                                self.last_trade['upside_max'],
-            #                                                self.last_trade['drawdown_max'],
-            #                                                self.last_trade['steps_in_position']))
+            #     print(' %s PNL %.3f | upside %.3f / downside %.3f  | steps: %i'
+            #     % (self.side, realized_trade_pnl, self.last_trade['upside_max'],
+            #     self.last_trade['drawdown_max'],
+            #     self.last_trade['steps_in_position']))
             return True
         else:
             return False
@@ -135,8 +140,8 @@ class PositionI(object):
             unrealized_pnl = (self.average_price - midpoint) / self.average_price
         else:
             unrealized_pnl = 0.0
-            logger.warning('Error: PositionI.get_unrealized_pnl() for side = {}'.format(
-                self.side))
+            logger.info('Error: PositionI.get_unrealized_pnl() for '
+                        'side = {}'.format(self.side))
 
         return unrealized_pnl
 
@@ -229,12 +234,14 @@ class Broker(object):
             steps_in_position = 0
             drawdown_max = 0.0
             upside_max = 0.0
-            logger.warning('*gym_trading._get_reward: Unknown order side: {}'.format(side))
+            logger.warning('*gym_trading._get_reward: '
+                           'Unknown order side: {}'.format(side))
 
         if realized_pnl > 0.0:
             logger.info((' realized_pnl: %.4f | steps_in_position: ' +
                         '%i | upside_max: %.4f | drawdown_max: %.4f')
-                        % (realized_pnl, steps_in_position, upside_max, drawdown_max))
+                        % (realized_pnl, steps_in_position, upside_max,
+                           drawdown_max))
 
         return realized_pnl
 

@@ -10,8 +10,10 @@ class OrderBook(ABC):
     def __init__(self, ccy, exchange):
         self.sym = ccy
         self.db = Database(ccy, exchange)
-        self.bids = CoinbaseBook(ccy, 'bids') if exchange == 'coinbase' else BitfinexBook(ccy, 'bids')
-        self.asks = CoinbaseBook(ccy, 'asks') if exchange == 'coinbase' else BitfinexBook(ccy, 'asks')
+        self.bids = CoinbaseBook(ccy, 'bids') if exchange == 'coinbase' else \
+            BitfinexBook(ccy, 'bids')
+        self.asks = CoinbaseBook(ccy, 'asks') if exchange == 'coinbase' else \
+            BitfinexBook(ccy, 'asks')
         self.midpoint = float()
         self.trade_tracker = dict({'buys': float(0),
                                    'sells': float(0)})

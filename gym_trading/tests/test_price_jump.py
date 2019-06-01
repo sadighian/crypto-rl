@@ -3,6 +3,7 @@ from datetime import datetime as dt
 import gym
 from gym_trading.envs.price_jump import PriceJump
 import logging
+import gym_trading
 
 
 # logging
@@ -44,9 +45,12 @@ def test_price_jump_python():
         total_reward += reward
 
         if reward != 0.0:
-            logger.debug('reward: %.5f | total_reward %.5f vs. broker: %.5f | %.5f  %.5f' %
-                        (reward, total_reward, env.broker.get_total_pnl(env.midpoint),
-                         env.broker.get_realized_pnl(), env.broker.get_unrealized_pnl(env.midpoint)))
+            logger.debug('reward: %.5f | total_reward %.5f vs. broker: %.5f | '
+                         '%.5f  %.5f' %
+                         (reward, total_reward, env.broker.get_total_pnl(
+                             env.midpoint),
+                          env.broker.get_realized_pnl(),
+                          env.broker.get_unrealized_pnl(env.midpoint)))
 
         if done:
             elapsed = (dt.now() - start_time).seconds

@@ -1,4 +1,5 @@
-from configurations.configs import TIMEZONE, RECORD_DATA, MONGO_ENDPOINT, ARCTIC_NAME, BATCH_SIZE
+from configurations.configs import TIMEZONE, RECORD_DATA, MONGO_ENDPOINT, \
+    ARCTIC_NAME, BATCH_SIZE
 from arctic import Arctic, TICK_STORE
 from datetime import datetime as dt
 

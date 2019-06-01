@@ -91,12 +91,14 @@ class CoinbaseOrderBook(OrderBook):
         message_type = msg['type']
         if 'sequence' not in msg:
             if message_type == 'subscriptions':
-                # request an order book snapshot after the websocket feed is established
+                # request an order book snapshot after the
+                #   websocket feed is established
                 print('Coinbase Subscriptions successful for : %s' % self.sym)
                 self.load_book()
             return True
         elif np.isnan(msg['sequence']):
-            # this situation appears during data replays (and not in live data feeds)
+            # this situation appears during data replays
+            #   (and not in live data feeds)
             print('\n%s found a nan in the sequence' % self.sym)
             return True
 
@@ -128,7 +130,8 @@ class CoinbaseOrderBook(OrderBook):
             return False
 
         # persist data to Arctic Tick Store
-        self.db.new_tick(msg)  # make sure CONFIGS.RECORDING is false when replaying data
+        self.db.new_tick(msg)
+        # make sure CONFIGS.RECORDING is false when replaying data
 
         side = msg['side']
         if message_type == 'received':

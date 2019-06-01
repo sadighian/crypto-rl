@@ -77,7 +77,8 @@ class BitfinexOrderBook(OrderBook):
                 self.asks.warming_up = False
                 return True
             else:
-                print('new_tick() message does not know how to be processed = %s' % str(msg))
+                print('new_tick() message does not know how to be processed = %s' %
+                      str(msg))
 
         # unhandled exception
         else:
@@ -249,7 +250,8 @@ class BitfinexOrderBook(OrderBook):
         """
         if msg['event'] == 'subscribed':
             self.channel_id[msg['channel']] = msg['chanId']
-            print('%s Added channel_id: %i for %s' % (self.sym, msg['chanId'], msg['channel']))
+            print('%s Added channel_id: %i for %s' % (self.sym, msg['chanId'],
+                                                      msg['channel']))
             return True
 
         elif msg['event'] == 'info':
@@ -260,12 +262,14 @@ class BitfinexOrderBook(OrderBook):
                 code = None
 
             if code == 20051:
-                print('\nBitfinex - %s: 20051 Stop/Restart Websocket Server (please reconnect)' % self.sym)
+                print('\nBitfinex - %s: 20051 Stop/Restart Websocket Server '
+                      '(please reconnect)' % self.sym)
                 return False  # need to re-subscrbe to the data feed
             elif code == 20060:
-                print('\nBitfinex - ' + self.sym + ': 20060 Entering in Maintenance mode. ' +
-                      'Please pause any activity and resume after receiving the ' +
-                      'info message 20061 (it should take 120 seconds at most).')
+                print('\nBitfinex - ' + self.sym + ': 20060.'
+                                                   ' Entering in Maintenance mode. '
+                      + 'Please pause any activity and resume after receiving the '
+                      + 'info message 20061 (it should take 120 seconds at most).')
                 return True
             elif code == 20061:
                 print('\nBitfinex - ' + self.sym + ': 20061 Maintenance ended. ' +
@@ -273,7 +277,8 @@ class BitfinexOrderBook(OrderBook):
                       'It is advised to unsubscribe/subscribe again all channels.')
                 return False  # need to re-subscrbe to the data feed
             elif code == 10300:
-                print('\nBitfinex - %s: 10300 Subscription failed (generic)' % self.sym)
+                print('\nBitfinex - %s: 10300 Subscription failed (generic)' %
+                      self.sym)
                 return True
             elif code == 10301:
                 print('\nBitfinex - %s: 10301 Already subscribed' % self.sym)
@@ -282,7 +287,8 @@ class BitfinexOrderBook(OrderBook):
                 print('\nBitfinex - %s: 10302 Unknown channel' % self.sym)
                 return True
             elif code == 10400:
-                print('\nBitfinex - %s: 10400 Subscription failed (generic)' % self.sym)
+                print('\nBitfinex - %s: 10400 Subscription failed (generic)' %
+                      self.sym)
                 return True
             elif code == 10401:
                 print('\nBitfinex - %s: 10401 Not subscribed' % self.sym)

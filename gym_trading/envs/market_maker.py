@@ -50,7 +50,7 @@ class MarketMaker(Env):
         MarketMaker.instance_count += 1
         self._random_state = np.random.RandomState(
             seed=int(MarketMaker.instance_count))
-        self._seed = int(MarketMaker.instance_count)  # seed
+        self.seed = int(MarketMaker.instance_count)  # seed
         self.training = training
         self.step_size = step_size
         self.fee = BROKER_FEE
@@ -59,7 +59,7 @@ class MarketMaker(Env):
         self.frame_stack = frame_stack
         self.frames_to_add = 3 if self.frame_stack else 0
 
-        self._action = 0
+        self.action = 0
         # derive gym.env properties
         self.actions = np.eye(17)
 
@@ -68,7 +68,7 @@ class MarketMaker(Env):
         # properties that get reset()
         self.reward = 0.0
         self.done = False
-        self._local_step_number = 0
+        self.local_step_number = 0
         self.midpoint = 0.0
         self.observation = None
 
@@ -77,33 +77,39 @@ class MarketMaker(Env):
         # get historical data for simulations
         self.sim = Sim(use_arctic=False)
 
-        fitting_data_filepath = '{}/data_exports/{}'.format(self.sim.cwd, fitting_file)
-        data_used_in_environment = '{}/data_exports/{}'.format(self.sim.cwd, testing_file)
+        fitting_data_filepath = '{}/data_exports/{}'.format(self.sim.cwd,
+                                                            fitting_file)
+        data_used_in_environment = '{}/data_exports/{}'.format(self.sim.cwd,
+                                                               testing_file)
         # print('Fitting data: {}\nTesting Data: {}'.format(fitting_data_filepath,
-        #                                                   data_used_in_environment))
+        #                                                data_used_in_environment))
 
         self.sim.fit_scaler(self.sim.import_csv(filename=fitting_data_filepath))
         self.data = self.sim.import_csv(filename=data_used_in_environment)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
         self.data_ = self.data.copy()
-        logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
+        logger.info("Pre-scaling {}-{} data...".format(self.sym, self.seed))
         self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
-        logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
+        logger.info("...{}-{} pre-scaling complete.".format(self.sym, self.seed))
         self.data = self.data.values
 
         # rendering class
         self._render = TradingGraph(sym=self.sym)
-        self._render.reset_render_data(y_vec=self.prices_[:np.shape(self._render.x_vec)[0]])
+        # graph midpoint prices
+        self._render.reset_render_data(
+            y_vec=self.prices_[:np.shape(self._render.x_vec)[0]])
 
         self.data_buffer, self.frame_stacker = list(), list()
 
         self.action_space = spaces.Discrete(len(self.actions))
-        variable_features_count = len(self.inventory_features) + len(self.actions) + 1
+        variable_features_count = len(self.inventory_features)+len(self.actions)+1
         if self.frame_stack is False:
-            shape = (len(MarketMaker.features) + variable_features_count, self.window_size)
+            shape = (len(MarketMaker.features) + variable_features_count,
+                     self.window_size)
         else:
-            shape = (len(MarketMaker.features) + variable_features_count, self.window_size, 4)
+            shape = (len(MarketMaker.features) + variable_features_count,
+                     self.window_size, 4)
 
         self.observation_space = spaces.Box(low=self.data.min(),
                                             high=self.data.max(),
@@ -116,10 +122,6 @@ class MarketMaker(Env):
 
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.sym, self.seed)
-
-    @property
-    def step_number(self):
-        return self._local_step_number
 
     def step(self, action):
 
@@ -137,7 +139,7 @@ class MarketMaker(Env):
                 step_action = 0
 
             # Get current step's midpoint
-            self.midpoint = self.prices_[self._local_step_number]
+            self.midpoint = self.prices_[self.local_step_number]
             # Pass current time step midpoint to broker to calculate PnL,
             # or if any open orders are to be filled
             step_best_bid, step_best_ask = self._get_nbbo()
@@ -146,40 +148,46 @@ class MarketMaker(Env):
                 ask_price=step_best_ask,
                 buy_volume=self._get_book_data(MarketMaker.buy_trade_index),
                 sell_volume=self._get_book_data(MarketMaker.sell_trade_index),
-                step=self._local_step_number
+                step=self.local_step_number
             ) / self.broker.reward_scale
 
-            self.reward += self._send_to_broker_and_get_reward(step_action) + step_reward
+            self.reward += self._send_to_broker_and_get_reward(step_action) + \
+                           step_reward
 
             step_position_features = self._create_position_features()
             step_action_features = self._create_action_features(action=step_action)
 
-            step_observation = np.concatenate((self.process_data(self.data_[self._local_step_number]),
-                                               step_position_features,
-                                               step_action_features,
-                                               np.array([self.reward], dtype=np.float32)),
-                                              axis=None)
+            step_observation = np.concatenate((
+                self.process_data(self.data_[self.local_step_number]),
+                step_position_features,
+                step_action_features,
+                np.array([self.reward], dtype=np.float32)),
+                axis=None)
             self.data_buffer.append(step_observation)
 
             if len(self.data_buffer) >= self.window_size:
-                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float32))
+                self.frame_stacker.append(
+                    np.array(self.data_buffer, dtype=np.float32))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
                     del self.frame_stacker[0]
 
-            self._local_step_number += self.step_size
+            self.local_step_number += self.step_size
 
-        # output shape is [n_features, window_size, frames_to_add] e.g., [40, 100, 1]
+        # output shape is [n_features, window_size, frames_to_add]
+        #   e.g., [40, 100, 1]
         self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
-        # because Keras-rl uses its own frame-stacker. There are future plans to integrate
-        # this repository with more reinforcement learning packages, such as baselines.
+        # because Keras-rl uses its own frame-stacker. There are future
+        # plans to integrate this repository with more reinforcement learning
+        # packages, such as baselines.
         if self.frame_stack is False:
-            self.observation = self.observation.reshape(self.observation.shape[0], -1)
+            self.observation = self.observation.reshape(
+                self.observation.shape[0], -1)
 
-        if self._local_step_number > self.data.shape[0] - 8:
+        if self.local_step_number > self.data.shape[0] - 8:
             self.done = True
             self.reward += self.broker.flatten_inventory(*self._get_nbbo())
 
@@ -187,14 +195,16 @@ class MarketMaker(Env):
 
     def reset(self):
         if self.training:
-            self._local_step_number = self._random_state.randint(low=1, high=self.data.shape[0]//5)
+            self.local_step_number = self._random_state.randint(
+                low=1,
+                high=self.data.shape[0] // 5)
         else:
-            self._local_step_number = 0
+            self.local_step_number = 0
 
-        logger.info(' {}-{} reset. Episode pnl: {} | First step: {}, max_pos: {}'.format(
-            self.sym, self._seed,
+        logger.info(' {}-{} reset. Episode pnl: {} | First step: {}'.format(
+            self.sym, self.seed,
             self.broker.get_total_pnl(midpoint=self.midpoint),
-            self._local_step_number, self.max_position))
+            self.local_step_number))
         self.reward = 0.0
         self.done = False
         self.broker.reset()
@@ -206,29 +216,34 @@ class MarketMaker(Env):
             step_position_features = self._create_position_features()
             step_action_features = self._create_action_features(action=0)
 
-            step_observation = np.concatenate((self.process_data(self.data_[self._local_step_number]),
+            step_observation = np.concatenate((self.process_data(
+                self.data_[self.local_step_number]),
                                                step_position_features,
                                                step_action_features,
                                                np.array([self.reward])),
-                                              axis=None)
+                axis=None)
             self.data_buffer.append(step_observation)
-            self._local_step_number += self.step_size
+            self.local_step_number += self.step_size
 
             if step >= self.window_size - 1:
-                self.frame_stacker.append(np.array(self.data_buffer, dtype=np.float32))
+                self.frame_stacker.append(
+                    np.array(self.data_buffer, dtype=np.float32))
                 del self.data_buffer[0]
 
                 if len(self.frame_stacker) > self.frames_to_add + 1:
                     del self.frame_stacker[0]
 
-        # output shape is [n_features, window_size, frames_to_add] eg [40, 100, 1]
+        # output shape is [n_features, window_size, frames_to_add]
+        #   e.g., [40, 100, 1]
         self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
 
         # This removes a dimension to be compatible with the Keras-rl module
-        # because Keras-rl uses its own frame-stacker. There are future plans to integrate
-        # this repository with more reinforcement learning packages, such as baselines.
+        # because Keras-rl uses its own frame-stacker. There are future plans
+        # to integrate this repository with more reinforcement learning packages,
+        # such as baselines.
         if self.frame_stack is False:
-            self.observation = self.observation.reshape(self.observation.shape[0], -1)
+            self.observation = self.observation.reshape(
+                self.observation.shape[0], -1)
 
         return self.observation
 
@@ -247,7 +262,7 @@ class MarketMaker(Env):
 
     def seed(self, seed=1):
         self._random_state = np.random.RandomState(seed=seed)
-        self._seed = seed
+        self.seed = seed
         return [seed]
 
     @staticmethod
@@ -362,16 +377,21 @@ class MarketMaker(Env):
         return reward
 
     def _create_position_features(self):
-        return np.array((self.broker.long_inventory.position_count / self.max_position,
-                         self.broker.short_inventory.position_count / self.max_position,
-                         self.broker.get_total_pnl(midpoint=self.midpoint) / MarketMaker.target_pnl,
-                         self.broker.long_inventory.get_unrealized_pnl(self.midpoint) / self.broker.reward_scale,
-                         self.broker.short_inventory.get_unrealized_pnl(self.midpoint) / self.broker.reward_scale,
-                         self.broker.get_long_order_distance_to_midpoint(midpoint=self.midpoint) /
-                         self.broker.reward_scale,
-                         self.broker.get_short_order_distance_to_midpoint(midpoint=self.midpoint) /
-                         self.broker.reward_scale,
-                         *self.broker.get_queues_ahead_features()))
+        return np.array(
+            (self.broker.long_inventory.position_count / self.max_position,
+             self.broker.short_inventory.position_count / self.max_position,
+             self.broker.get_total_pnl(midpoint=self.midpoint) /
+                MarketMaker.target_pnl,
+             self.broker.long_inventory.get_unrealized_pnl(self.midpoint) /
+                self.broker.reward_scale,
+             self.broker.short_inventory.get_unrealized_pnl(self.midpoint) /
+                self.broker.reward_scale,
+             self.broker.get_long_order_distance_to_midpoint(
+                 midpoint=self.midpoint) / self.broker.reward_scale,
+             self.broker.get_short_order_distance_to_midpoint(
+                 midpoint=self.midpoint) / self.broker.reward_scale,
+             *self.broker.get_queues_ahead_features())
+        )
 
     def _create_action_features(self, action):
         return self.actions[action]
@@ -381,7 +401,8 @@ class MarketMaker(Env):
 
         if side == 'long':
             best_bid = self._get_book_data(MarketMaker.best_bid_index + level)
-            above_best_bid = round(self._get_book_data(MarketMaker.best_bid_index + level - adjustment), 2)
+            above_best_bid = round(self._get_book_data(
+                MarketMaker.best_bid_index + level - adjustment), 2)
             price_improvement_bid = round(best_bid + 0.01, 2)
 
             if above_best_bid == price_improvement_bid:
@@ -391,7 +412,8 @@ class MarketMaker(Env):
                 bid_price = round(self.midpoint - price_improvement_bid, 2)
                 bid_queue_ahead = 0.
 
-            bid_order = Order(ccy=self.sym, side='long', price=bid_price, step=self._local_step_number,
+            bid_order = Order(ccy=self.sym, side='long', price=bid_price,
+                              step=self.local_step_number,
                               queue_ahead=bid_queue_ahead)
 
             if self.broker.add(order=bid_order) is False:
@@ -401,7 +423,8 @@ class MarketMaker(Env):
 
         if side == 'short':
             best_ask = self._get_book_data(MarketMaker.best_bid_index + level)
-            above_best_ask = round(self._get_book_data(MarketMaker.best_ask_index + level - adjustment), 2)
+            above_best_ask = round(self._get_book_data(
+                MarketMaker.best_ask_index + level - adjustment), 2)
             price_improvement_ask = round(best_ask - 0.01, 2)
 
             if above_best_ask == price_improvement_ask:
@@ -411,7 +434,8 @@ class MarketMaker(Env):
                 ask_price = round(self.midpoint + price_improvement_ask, 2)
                 ask_queue_ahead = 0.
 
-            ask_order = Order(ccy=self.sym, side='short', price=ask_price, step=self._local_step_number,
+            ask_order = Order(ccy=self.sym, side='short', price=ask_price,
+                              step=self.local_step_number,
                               queue_ahead=ask_queue_ahead)
 
             if self.broker.add(order=ask_order) is False:
@@ -422,9 +446,11 @@ class MarketMaker(Env):
         return reward
 
     def _get_nbbo(self):
-        best_bid = round(self.midpoint - self._get_book_data(MarketMaker.best_bid_index), 2)
-        best_ask = round(self.midpoint + self._get_book_data(MarketMaker.best_ask_index), 2)
+        best_bid = round(self.midpoint - self._get_book_data(
+            MarketMaker.best_bid_index), 2)
+        best_ask = round(self.midpoint + self._get_book_data(
+            MarketMaker.best_ask_index), 2)
         return best_bid, best_ask
 
     def _get_book_data(self, index=0):
-        return self.data[self._local_step_number][index]
+        return self.data[self.local_step_number][index]

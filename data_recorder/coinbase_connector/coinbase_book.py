@@ -74,7 +74,8 @@ class CoinbaseBook(Book):
                 self.order_map[old_order['order_id']] = old_order
                 self.price_dict[old_order['price']]['size'] -= diff
             elif RECORD_DATA:
-                print('\n%s change: missing order_ID [%s] from order_map\n' % (self.sym, msg))
+                print('\n%s change: missing order_ID [%s] from order_map\n' %
+                      (self.sym, msg))
 
     def remove_order(self, msg):
         """
@@ -91,4 +92,5 @@ class CoinbaseBook(Book):
                 if self.price_dict[old_order['price']]['count'] == 0:
                     self.remove_price(old_order['price'])
             elif RECORD_DATA:
-                print('%s remove_order: price not in price_map [%s]' % (msg['product_id'], str(old_order['price'])))
+                print('%s remove_order: price not in price_map [%s]' %
+                      (msg['product_id'], str(old_order['price'])))

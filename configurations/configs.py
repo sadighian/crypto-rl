@@ -4,10 +4,9 @@ import pytz as tz
 # ./recorder.py
 SNAPSHOT_RATE = 15.  # 0.25 = 4x second
 BASKET = [('BTC-USD', 'tBTCUSD'),
-          #('ETH-USD', 'tETHUSD'),
-          #('LTC-USD', 'tLTCUSD'),
-          #('BCH-USD', 'tBCHUSD'),
-          ('ETC-USD', 'tETCUSD')]
+          ('ETH-USD', 'tETHUSD'),
+          ('LTC-USD', 'tLTCUSD'),
+          ('BCH-USD', 'tBCHUSD')]
 
 
 # ./connector_components/client.py

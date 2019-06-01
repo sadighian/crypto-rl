@@ -4,7 +4,8 @@ from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
 from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
-from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, RECORD_DATA, MAX_BOOK_ROWS
+from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, \
+    RECORD_DATA, MAX_BOOK_ROWS
 from dateutil.parser import parse
 import numpy as np
 import pandas as pd
@@ -72,7 +73,8 @@ class Simulator(object):
         assert RECORD_DATA is False
         cursor = self._query_arctic(**query)
         if cursor is None:
-            print('\nNothing returned from Arctic for the query: %s\n...Exiting...' % str(query))
+            print('\nNothing returned from Arctic for the query: %s\n...Exiting...'
+                  % str(query))
             return
 
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
@@ -89,9 +91,11 @@ class Simulator(object):
 
         try:
             print('\nGetting {} tick data from Arctic Tick Store...'.format(ccy))
-            cursor = self.library.read(symbol=ccy, date_range=DateRange(start_date, end_date))
+            cursor = self.library.read(symbol=ccy,
+                                       date_range=DateRange(start_date, end_date))
 
-            # filter ticks for the first LOAD_BOOK message (starting point for order book reconstruction)
+            # filter ticks for the first LOAD_BOOK message
+            #   (starting point for order book reconstruction)
             # min_datetime = cursor.loc[cursor.type == 'load_book'].index[0]
             dates = np.unique(cursor.loc[cursor.type == 'load_book'].index.date)
             start_index = cursor.loc[((cursor.index.date == dates[0]) &
@@ -100,7 +104,8 @@ class Simulator(object):
             cursor = cursor.loc[cursor.index >= start_index]
 
             elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
-            print('Completed querying %i %s records in %i seconds' % (cursor.shape[0], ccy, elapsed))
+            print('Completed querying %i %s records in %i seconds' %
+                  (cursor.shape[0], ccy, elapsed))
 
         except Exception as ex:
             cursor = None
@@ -112,8 +117,10 @@ class Simulator(object):
     def get_feature_labels(include_system_time=True, include_bitfinex=True):
         """
         Function to create the features' labels
-        :param include_system_time: True/False (False removes the system_time column)
-        :param lags: Number of lags to include
+        :param include_bitfinex: (boolean) If TRUE, Bitfinex's LOB data
+                is included in the dataset, in addition to Coinbase-Pro
+        :param include_system_time: True/False
+                (False removes the system_time column)
         :return:
         """
         columns = list()
@@ -132,7 +139,8 @@ class Simulator(object):
             for side in ['bid', 'ask']:
                 for feature in ['notional', 'distance']:
                     for level in range(MAX_BOOK_ROWS):
-                        columns.append(('%s-%s-%s-%i' % (exchange, side, feature, level)))
+                        columns.append(('%s-%s-%s-%i' %
+                                        (exchange, side, feature, level)))
             for trade_side in ['buys', 'sells']:
                 columns.append('%s-%s' % (exchange, trade_side))
 
@@ -172,9 +180,11 @@ class Simulator(object):
         start_time = dt.now(tz=TIMEZONE)
 
         if 'xz' in filename:
-            data = pd.read_csv(filepath_or_buffer=filename, index_col=0, compression='xz', engine='c')
+            data = pd.read_csv(filepath_or_buffer=filename, index_col=0,
+                               compression='xz', engine='c')
         elif 'csv' in filename:
-            data = pd.read_csv(filepath_or_buffer=filename, index_col=0, engine='c')
+            data = pd.read_csv(filepath_or_buffer=filename, index_col=0,
+                               engine='c')
         else:
             print('Error: file must be a csv or xz')
             data = None
@@ -186,7 +196,8 @@ class Simulator(object):
     def fit_scaler(self, orderbook_snapshot_history):
         """
         Fit scalers for z-score using previous day's data
-        :param orderbook_snapshot_history: Limit order book data from the previous day
+        :param orderbook_snapshot_history: Limit order book data
+                from the previous day
         :return: void
         """
         self._avg = np.mean(orderbook_snapshot_history, axis=0)
@@ -207,11 +218,15 @@ class Simulator(object):
             dates = order_book_data['system_time'].dt.date.unique()
             print('dates: {}'.format(dates))
             for date in dates[1:]:
-                tmp = order_book_data.loc[order_book_data['system_time'].dt.date == date]
-                self.export_to_csv(tmp, filename='{}_{}'.format(query['ccy'][0], date), compress=False)
+                tmp = order_book_data.loc[order_book_data['system_time'].dt.date
+                                          == date]
+                self.export_to_csv(tmp,
+                                   filename='{}_{}'.format(query['ccy'][0], date),
+                                   compress=False)
 
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
-        print('***\nSimulator.extract_features() executed in %i seconds\n***' % elapsed)
+        print('***\nSimulator.extract_features() executed in %i seconds\n***'
+              % elapsed)
 
     def get_orderbook_snapshot_history(self, query):
         """
@@ -224,7 +239,8 @@ class Simulator(object):
         support Bitfinex only orderbook reconstruction.
 
         :param query: (dict) query for finding tick history in Arctic TickStore
-        :return: (list of arrays) snapshots of limit order books using a stationary feature set
+        :return: (list of arrays) snapshots of limit order books using a
+                stationary feature set
         """
         tick_history = self.get_tick_history(query=query)
         loop_length = tick_history.shape[0]
@@ -241,18 +257,20 @@ class Simulator(object):
             print('\n\nIncluding Bitfinex data in feature set.\n\n')
 
         coinbase_order_book = CoinbaseOrderBook(symbols[0])
-        bitfinex_order_book = BitfinexOrderBook(symbols[1]) if include_bitfinex else None
+        bitfinex_order_book = BitfinexOrderBook(symbols[1]) if include_bitfinex \
+            else None
 
         start_time = dt.now(TIMEZONE)
-        print('Starting get_orderbook_snapshot_history() loop with %i ticks for %s' %
-              (loop_length, query['ccy']))
+        print('Starting get_orderbook_snapshot_history() loop with %i ticks for %s'
+              % (loop_length, query['ccy']))
 
         for idx, tx in enumerate(tick_history.itertuples()):
 
             tick = tx._asdict()
 
             # determine if incoming tick is from coinbase or bitfinex
-            coinbase = True if tick['product_id'] == coinbase_order_book.sym else False
+            coinbase = True if tick['product_id'] == coinbase_order_book.sym else \
+                False
 
             if 'type' not in tick:
                 # filter out bad ticks
@@ -269,7 +287,8 @@ class Simulator(object):
 
             if coinbase:  # incoming tick is from Coinbase exchange
                 if coinbase_order_book.done_warming_up():
-                    new_tick_time = parse(tick.get('time'))  # timestamp for incoming tick
+                    new_tick_time = parse(tick.get('time'))
+                    # timestamp for incoming tick
                     if new_tick_time is None:
                         print('No tick time: {}'.format(tick))
                         continue
@@ -279,48 +298,60 @@ class Simulator(object):
 
                 if coinbase_tick_counter == 1:
                     # start tracking snapshot timestamps
-                    # and keep in mind that snapshots are tethered to coinbase timestamps
+                    #   and keep in mind that snapshots are tethered to
+                    #   coinbase timestamps
                     last_snapshot_time = new_tick_time
                     print('%s first tick: %s | Sequence: %i' %
-                          (coinbase_order_book.sym, str(new_tick_time), coinbase_order_book.sequence))
+                          (coinbase_order_book.sym, str(new_tick_time),
+                           coinbase_order_book.sequence))
                     # skip to next loop
                     continue
 
-                # calculate the amount of time between the incoming tick and tick received before that
+                # calculate the amount of time between the incoming
+                #   tick and tick received before that
                 diff = (new_tick_time - last_snapshot_time).microseconds
 
-                # multiple = diff // 250000  # 250000 is 250 milliseconds, or 4x a second
-                multiple = diff // 500000  # 500000 is 500 milliseconds, or 2x a second
+                # multiple = diff // 250000
+                multiple = diff // 500000  # 500000 is 500 milliseconds,
+                #   or 2x a second
 
-                # if there is a pause in incoming data, continue to create order book snapshots
+                # if there is a pause in incoming data,
+                #   continue to create order book snapshots
                 if multiple >= 1:
                     # check to include Bitfinex data in features
                     if include_bitfinex:
                         for _ in range(multiple):
-                            if coinbase_order_book.done_warming_up() & bitfinex_order_book.done_warming_up():
-                                coinbase_order_book_snapshot = coinbase_order_book.render_book()
-                                bitfinex_order_book_snapshot = bitfinex_order_book.render_book()
-                                midpoint_delta = coinbase_order_book.midpoint - bitfinex_order_book.midpoint
-                                snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
-                                                                     coinbase_order_book.midpoint,  # midpoint price
-                                                                     midpoint_delta,  # price delta between exchanges
-                                                                     coinbase_order_book_snapshot,
-                                                                     bitfinex_order_book_snapshot))))  # longs/shorts
-                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+                            if coinbase_order_book.done_warming_up() & \
+                                    bitfinex_order_book.done_warming_up():
+                                coinbase_order_book_snapshot = \
+                                    coinbase_order_book.render_book()
+                                bitfinex_order_book_snapshot = \
+                                    bitfinex_order_book.render_book()
+                                midpoint_delta = coinbase_order_book.midpoint - \
+                                                 bitfinex_order_book.midpoint
+                                snapshot_list.append(list(np.hstack((
+                                    new_tick_time,  # tick time
+                                    coinbase_order_book.midpoint,  # midpoint price
+                                    midpoint_delta,  # price delta between exchanges
+                                    coinbase_order_book_snapshot,
+                                    bitfinex_order_book_snapshot))))  # longs/shorts
+                                last_snapshot_time += timedelta(milliseconds=500)
 
                             else:
-                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+                                last_snapshot_time += timedelta(milliseconds=500)
                     else:  # do not include bitfinex
                         for _ in range(multiple):
                             if coinbase_order_book.done_warming_up():
-                                coinbase_order_book_snapshot = coinbase_order_book.render_book()
-                                snapshot_list.append(list(np.hstack((new_tick_time,  # tick time
-                                                                     coinbase_order_book.midpoint,  # midpoint price
-                                                                     coinbase_order_book_snapshot))))  # longs/shorts
-                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+                                coinbase_order_book_snapshot = \
+                                    coinbase_order_book.render_book()
+                                snapshot_list.append(
+                                    list(np.hstack((new_tick_time,  # tick time
+                                                    coinbase_order_book.midpoint,
+                                                    coinbase_order_book_snapshot))))
+                                last_snapshot_time += timedelta(milliseconds=500)
 
                             else:
-                                last_snapshot_time += timedelta(milliseconds=500)  # 250)
+                                last_snapshot_time += timedelta(milliseconds=500)
 
             # incoming tick is from Bitfinex exchange
             elif include_bitfinex & bitfinex_order_book.done_warming_up():
@@ -332,13 +363,15 @@ class Simulator(object):
                 print('...completed %i loops in %i seconds' % (idx, elapsed))
 
         elapsed = (dt.now(TIMEZONE) - start_time).seconds
-        print('Completed run_simulation() with %i ticks in %i seconds at %i ticks/second' %
-              (loop_length, elapsed, loop_length//elapsed))
+        print('Completed run_simulation() with %i ticks in %i seconds '
+              'at %i ticks/second'
+              % (loop_length, elapsed, loop_length//elapsed))
 
-        orderbook_snapshot_history = pd.DataFrame(snapshot_list,
-                                                  columns=self.get_feature_labels(
-                                                      include_system_time=True,
-                                                      include_bitfinex=include_bitfinex))
+        orderbook_snapshot_history = pd.DataFrame(
+            snapshot_list,
+            columns=self.get_feature_labels(
+                include_system_time=True,
+                include_bitfinex=include_bitfinex))
         orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
 
         return orderbook_snapshot_history

@@ -12,13 +12,14 @@ import gym_trading
 class Agent(object):
     name = 'DQN'
 
-    def __init__(self, step_size=1, window_size=20, train=True, max_position=5, weights=True,
-                 fitting_file='ETH-USD_2018-12-31.xz', testing_file='ETH-USD_2018-01-01.xz',
-                 frame_stack=False,  # Default to False when using with keras-rl since `rl.memory` stacks frames
-                 env='market-maker-v0',
-                 number_of_training_steps=1e5,
-                 visualize=False
-                 ):
+    def __init__(self, step_size=1, window_size=20, train=True, max_position=5,
+                 weights=True, fitting_file='ETH-USD_2018-12-31.xz',
+                 testing_file='ETH-USD_2018-01-01.xz',
+                 frame_stack=False,
+                 # Default frame_stack to False when using with keras-rl since
+                 #  `rl.memory` stacks frames
+                 env='market-maker-v0', number_of_training_steps=1e5,
+                 visualize=False):
         self.env_name = env
         self.env = gym.make(self.env_name,
                             training=train,
@@ -28,9 +29,11 @@ class Agent(object):
                             max_position=max_position,
                             window_size=window_size,
                             frame_stack=False)
-        self.memory_frame_stack = 4 if frame_stack else 1  # Number of frames to stack e.g., 4
+        # Number of frames to stack e.g., 1; Keras-RL uses its own stacker
+        self.memory_frame_stack = 4 if frame_stack else 1
         self.model = self.create_model()
-        self.memory = SequentialMemory(limit=10000, window_length=self.memory_frame_stack)
+        self.memory = SequentialMemory(limit=10000,
+                                       window_length=self.memory_frame_stack)
         self.train = train
         self.number_of_training_steps = number_of_training_steps
         self.weights = weights
@@ -43,7 +46,7 @@ class Agent(object):
                               memory=self.memory,
                               processor=None,
                               nb_steps_warmup=500,
-                              enable_dueling_network=True,  # enables double-dueling q-network
+                              enable_dueling_network=True,
                               dueling_type='avg',
                               enable_double_dqn=True,
                               gamma=0.999,
@@ -100,18 +103,23 @@ class Agent(object):
         return model
 
     def start(self):
-        weights_filename = '{}/dqn_weights/dqn_{}_weights.h5f'.format(self.cwd, self.env_name)
+        weights_filename = '{}/dqn_weights/dqn_{}_weights.h5f'.format(self.cwd,
+                                                                      self.env_name)
         if self.weights:
             self.agent.load_weights(weights_filename)
             print('...loading weights for {}'.format(self.env_name))
 
         if self.train:
-            checkpoint_weights_filename = 'dqn_' + self.env_name + '_weights_{step}.h5f'
-            checkpoint_weights_filename = '{}/dqn_weights/'.format(self.cwd) + checkpoint_weights_filename
-            log_filename = '{}/dqn_weights/dqn_{}_log.json'.format(self.cwd, self.env_name)
+            checkpoint_weights_filename = 'dqn_' + self.env_name + \
+                                          '_weights_{step}.h5f'
+            checkpoint_weights_filename = '{}/dqn_weights/'.format(self.cwd) + \
+                                          checkpoint_weights_filename
+            log_filename = '{}/dqn_weights/dqn_{}_log.json'.format(self.cwd,
+                                                                   self.env_name)
             print('FileLogger: {}'.format(log_filename))
 
-            callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250000)]
+            callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename,
+                                                 interval=250000)]
             callbacks += [FileLogger(log_filename, interval=100)]
 
             self.agent.fit(self.env,

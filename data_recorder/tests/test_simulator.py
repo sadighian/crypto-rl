@@ -41,7 +41,8 @@ def test_get_orderbook_snapshot_history():
     orderbook_snapshot_history = sim.get_orderbook_snapshot_history(query=query)
 
     filename = '{}_{}'.format(query['ccy'][0], query['start_date'])
-    sim.export_to_csv(data=orderbook_snapshot_history, filename=filename, compress=False)
+    sim.export_to_csv(data=orderbook_snapshot_history,
+                      filename=filename, compress=False)
 
     elapsed = (dt.now(TIMEZONE) - start_time).seconds
     print('Completed %s in %i seconds' % (__name__, elapsed))
@@ -50,7 +51,8 @@ def test_get_orderbook_snapshot_history():
 
 def test_extract_features():
     """
-    Test case to export multiple testing/training data sets for reinforcement learning
+    Test case to export multiple testing/training data
+        sets for reinforcement learning
     :return:
     """
     start_time = dt.now(TIMEZONE)

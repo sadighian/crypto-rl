@@ -17,5 +17,6 @@ class CoinbaseClient(Client):
             if self.book.new_tick(msg) is False:
                 self.book.load_book()
                 self.retry_counter += 1
-                print('\n[Coinbase - %s] ...going to try and reload the order book\n' % self.sym)
+                print('\n[Coinbase - %s] ...going to try and reload the order '
+                      'book\n' % self.sym)
                 continue

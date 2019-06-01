@@ -11,17 +11,20 @@ class Book(ABC):
         self.order_map = dict()
         self.side = side
         self.sym = sym
-        self.warming_up = True  # this value needs to be set within the orderbook class
+        self.warming_up = True
+        # this value needs to be set within the orderbook class
 
     def __str__(self):
         if self.warming_up:
             message = 'warming up'
         elif self.side == 'asks':
             ask_price, ask_value = self.get_ask()
-            message = '%s x %s' % (str(round(ask_price, 3)), str(round(ask_value['size'], 2)))
+            message = '%s x %s' % \
+                      (str(round(ask_price, 3)), str(round(ask_value['size'], 2)))
         else:
             bid_price, bid_value = self.get_bid()
-            message = '%s x %s' % (str(round(bid_value['size'], 2)), str(round(bid_price, 3)))
+            message = '%s x %s' % \
+                      (str(round(bid_value['size'], 2)), str(round(bid_price, 3)))
         return message
 
     def clear(self):

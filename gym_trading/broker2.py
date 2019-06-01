@@ -12,7 +12,8 @@ class Order(object):
     _size = 1000.
     _id = 0
 
-    def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1, queue_ahead=100.):
+    def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1,
+                 queue_ahead=100.):
         self.ccy = ccy
         self.side = side
         self.price = price
@@ -24,7 +25,8 @@ class Order(object):
 
     def __str__(self):
         return ' %s-%s | %.3f | %i | %.2f | %.2f' % \
-               (self.ccy, self.side, self.price, self.step, self.executed, self._queue_ahead)
+               (self.ccy, self.side, self.price, self.step, self.executed,
+                self._queue_ahead)
 
     def queue_ahead(self, executed_volume=100.):
         self._queue_ahead -= executed_volume
@@ -82,13 +84,15 @@ class PositionI(object):
             if self.order is None:
                 logger.debug('Opened new order={}'.format(order))
             else:
-                logger.debug('Updating existing order{} --> {}'.format(self.order, order))
+                logger.debug('Updating existing order{} --> {}'.format(
+                    self.order, order))
                 price = np.copy(self.order.price)
             order.price = price
             self.order = order
             return True
         else:
-            logger.debug("{} order rejected. Already at max position limit ({})".format(
+            logger.debug("{} order rejected. "
+                         "Already at max position limit ({})".format(
                 self.side, self.max_position_count))
             return False
 
@@ -100,7 +104,8 @@ class PositionI(object):
         self.order = None
         return True
 
-    def step(self, bid_price=100., ask_price=100., buy_volume=1000., sell_volume=1000., step=100):
+    def step(self, bid_price=100., ask_price=100., buy_volume=1000.,
+             sell_volume=1000., step=100):
         if self.order is None:
             return False
 
@@ -125,7 +130,8 @@ class PositionI(object):
             self.full_inventory = self.position_count >= self.max_position_count
             steps_to_fill = step - self.order.step
             logger.debug('FILLED %s order #%i at %.3f after %i steps on %i.' %
-                        (self.order.side, self.order.id, self.order.price, steps_to_fill, step))
+                        (self.order.side, self.order.id, self.order.price,
+                         steps_to_fill, step))
             self.order = None  # set the slot back to no open orders
             return True
 
@@ -143,8 +149,8 @@ class PositionI(object):
                 self.average_price = 0
 
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.info('---%s position #%i @ %.4f has been netted out.' % (self.side, position.id,
-                                                                            position.price))
+            logger.info('---%s position #%i @ %.4f has been netted out.' % (
+                self.side, position.id, position.price))
             return position
         else:
             logger.info('Error. No {} pop_position to remove.'.format(self.side))
@@ -177,7 +183,8 @@ class PositionI(object):
 
     def flatten_inventory(self, midpoint=100.):
         prev_realized_pnl = self.realized_pnl
-        logger.debug('{} is flattening inventory of {}'.format(self.side, self.position_count))
+        logger.debug('{} is flattening inventory of {}'.format(self.side,
+                                                               self.position_count))
         while self.position_count > 0:
             self.remove_position(midpoint=midpoint)
 
@@ -230,8 +237,8 @@ class Broker(object):
         elif order.side == 'short':
             return self.short_inventory.add_order(order=order)
         else:
-            logger.warning('Error. Broker trying to add to the wrong side [{}]'.format(
-                order.side))
+            logger.warning('Error. Broker trying to add to '
+                           'the wrong side [{}]'.format(order.side))
             return False
 
     def get_unrealized_pnl(self, midpoint=100.):
@@ -243,7 +250,8 @@ class Broker(object):
         return self.short_inventory.realized_pnl + self.long_inventory.realized_pnl
 
     def get_total_pnl(self, midpoint):
-        total_pnl = self.get_unrealized_pnl(midpoint=midpoint) + self.get_realized_pnl()
+        total_pnl = self.get_unrealized_pnl(midpoint=midpoint) + \
+                    self.get_realized_pnl()
         return total_pnl
 
     @property
@@ -261,26 +269,31 @@ class Broker(object):
             total_pnl /= Broker.reward_scale
         return total_pnl
 
-    def step(self,  bid_price=100., ask_price=100., buy_volume=1000., sell_volume=1000., step=100):
+    def step(self,  bid_price=100., ask_price=100., buy_volume=1000.,
+             sell_volume=1000., step=100):
         pnl = 0.
 
         if self.long_inventory.step(bid_price=bid_price, ask_price=ask_price,
-                                    buy_volume=buy_volume, sell_volume=sell_volume, step=step):
+                                    buy_volume=buy_volume,
+                                    sell_volume=sell_volume, step=step):
             # check if we can net the inventory
             if self.short_inventory_count > 0:
                 # net out the inventory
                 new_position = self.long_inventory.pop_position()
-                pnl += self.short_inventory.remove_position(midpoint=new_position.price)
+                pnl += self.short_inventory.remove_position(
+                    midpoint=new_position.price)
                 # if pnl != 0.:
                 #     pnl /= Broker.reward_scale
 
         if self.short_inventory.step(bid_price=bid_price, ask_price=ask_price,
-                                     buy_volume=buy_volume, sell_volume=sell_volume, step=step):
+                                     buy_volume=buy_volume,
+                                     sell_volume=sell_volume, step=step):
             # check if we can net the inventory
             if self.long_inventory_count > 0:
                 # net out the inventory
                 new_position = self.short_inventory.pop_position()
-                pnl += self.long_inventory.remove_position(midpoint=new_position.price)
+                pnl += self.long_inventory.remove_position(
+                    midpoint=new_position.price)
                 # if pnl != 0.:
                 #     pnl /= Broker.reward_scale
 

@@ -17,7 +17,8 @@ class TradingGraph:
         self.line1 = []
         self.screen_size = 1000
         self.y_vec = None
-        self.x_vec = np.linspace(0, self.screen_size * 10, self.screen_size + 1)[0:-1]
+        self.x_vec = np.linspace(0, self.screen_size * 10,
+                                 self.screen_size + 1)[0:-1]
 
     def reset_render_data(self, y_vec):
         self.y_vec = y_vec
@@ -32,7 +33,8 @@ class TradingGraph:
             self.y_vec = np.append(self.y_vec[1:], midpoint)
 
     @staticmethod
-    def live_plotter(x_vec, y1_data, line1, identifier='Add Symbol Name', pause_time=0.00001):
+    def live_plotter(x_vec, y1_data, line1, identifier='Add Symbol Name',
+                     pause_time=0.00001):
         if not line1:
             # this is the call to matplotlib that allows dynamic plotting
             plt.ion()
@@ -46,7 +48,8 @@ class TradingGraph:
             plt.title('Title: {}'.format(identifier))
             plt.show(block=False)
 
-        # after the figure, axis, and line are created, we only need to update the y-data
+        # after the figure, axis, and line are created, we only need to update the
+        # y-data
         line1.set_ydata(y1_data)
 
         # adjust limits if new data goes beyond bounds

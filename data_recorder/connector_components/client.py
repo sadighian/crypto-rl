@@ -6,7 +6,8 @@ from threading import Thread
 import websockets
 from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
-from configurations.configs import MAX_RECONNECTION_ATTEMPTS, COINBASE_ENDPOINT, BITFINEX_ENDPOINT
+from configurations.configs import MAX_RECONNECTION_ATTEMPTS, COINBASE_ENDPOINT, \
+    BITFINEX_ENDPOINT
 
 
 class Client(Thread):
@@ -22,8 +23,12 @@ class Client(Thread):
         self.queue = Queue(maxsize=0)
 
         if self.exchange == 'coinbase':
-            self.request = json.dumps(dict(type='subscribe', product_ids=[self.sym], channels=['full']))
-            self.request_unsubscribe = json.dumps(dict(type='unsubscribe', product_ids=[self.sym], channels=['full']))
+            self.request = json.dumps(dict(type='subscribe',
+                                           product_ids=[self.sym],
+                                           channels=['full']))
+            self.request_unsubscribe = json.dumps(dict(type='unsubscribe',
+                                                       product_ids=[self.sym],
+                                                       channels=['full']))
             self.book = CoinbaseOrderBook(self.sym)
             self.trades_request = None
             self.ws_endpoint = COINBASE_ENDPOINT
@@ -58,7 +63,8 @@ class Client(Thread):
                     "event": "unsubscribe",
                     "chanId": channel
                 }
-                print('Client - Bitfinex: %s unsubscription request sent:\n%s\n' % (self.sym, request_unsubscribe))
+                print('Client - Bitfinex: %s unsubscription request sent:\n%s\n' %
+                      (self.sym, request_unsubscribe))
                 await self.ws.send(request_unsubscribe)
                 output = json.loads(await self.ws.recv())
                 print('Client - Bitfinex: Unsubscribe successful %s' % output)
@@ -73,11 +79,13 @@ class Client(Thread):
             self.ws = await websockets.connect(self.ws_endpoint)
 
             await self.ws.send(self.request)
-            print('BOOK %s: %s subscription request sent.' % (self.exchange, self.sym))
+            print('BOOK %s: %s subscription request sent.' %
+                  (self.exchange, self.sym))
 
             if self.exchange == 'bitfinex':
                 await self.ws.send(self.trades_request)
-                print('TRADES %s: %s subscription request sent.' % (self.exchange, self.sym))
+                print('TRADES %s: %s subscription request sent.' %
+                      (self.exchange, self.sym))
 
             self.last_subscribe_time = dt.now()
 
@@ -92,14 +100,17 @@ class Client(Thread):
             if elapsed < 10:
                 sleep_time = max(10 - elapsed, 1)
                 time.sleep(sleep_time)
-                print('%s - %s is sleeping %i seconds...' % (self.exchange, self.sym, sleep_time))
+                print('%s - %s is sleeping %i seconds...' %
+                      (self.exchange, self.sym, sleep_time))
 
             if self.retry_counter < self.max_retries:
-                print('%s: Retrying to connect... attempted #%i' % (self.exchange, self.retry_counter))
+                print('%s: Retrying to connect... attempted #%i' %
+                      (self.exchange, self.retry_counter))
                 await self.subscribe()  # recursion
             else:
-                print('%s: %s Ran out of reconnection attempts. Have already tried %i times.'
-                      % (self.exchange, self.sym, self.retry_counter))
+                print('%s: %s Ran out of reconnection attempts. '
+                      'Have already tried %i times.' %
+                      (self.exchange, self.sym, self.retry_counter))
 
     def run(self):
         """

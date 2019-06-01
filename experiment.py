@@ -51,11 +51,13 @@ parser.add_argument('--visualize',
 parser.add_argument('--env',
                     default='market-maker-v0',
                     # default='long-short-v0',
-                    help="gym_trading environment: 'long-short-v0' or 'market-maker-v0'",
+                    help="gym_trading environment: 'long-short-v0' or "
+                         "'market-maker-v0'",
                     type=str)
 parser.add_argument('--number_of_training_steps',
                     default=1e5,
-                    help="Number of steps to train the agent (does not include action repeats)",
+                    help="Number of steps to train the agent "
+                         "(does not include action repeats)",
                     type=int)
 args = vars(parser.parse_args())
 
