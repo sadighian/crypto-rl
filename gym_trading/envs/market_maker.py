@@ -83,7 +83,14 @@ class MarketMaker(Env):
         # print('Fitting data: {}\nTesting Data: {}'.format(fitting_data_filepath,
         #                                                data_used_in_environment))
 
-        self.sim.fit_scaler(self.sim.import_csv(filename=fitting_data_filepath))
+        fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
+        fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
+                                                   values)
+        fitting_data['coinbase_midpoint'] = fitting_data['coinbase_midpoint'].\
+            pct_change().fillna(method='bfill')
+        self.sim.fit_scaler(fitting_data)
+        del fitting_data
+
         self.data = self.sim.import_csv(filename=data_used_in_environment)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
