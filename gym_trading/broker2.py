@@ -177,7 +177,7 @@ class PositionI(object):
                 self.average_price = 0
 
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.info('---%s position #%i @ %.4f has been netted out.' % (
+            logger.debug('---%s position #%i @ %.4f has been netted out.' % (
                 self.side, position.id, position.price))
             return position
         else:
@@ -202,7 +202,7 @@ class PositionI(object):
             else:
                 self.average_price = 0
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.info('Removing %s position #%i. PnL=%.4f\n' %
+            logger.debug('Removing %s position #%i. PnL=%.4f\n' %
                         (self.side, order.id, pnl))
             return pnl
         else:

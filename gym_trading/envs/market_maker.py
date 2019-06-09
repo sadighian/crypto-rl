@@ -88,6 +88,14 @@ class MarketMaker(Env):
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
         self.data_ = self.data.copy()#.values
+
+        self.data_['coinbase_midpoint'] = np.log(self.data_['coinbase_midpoint'].values)
+        self.data_['coinbase_midpoint'] = self.data_['coinbase_midpoint'].\
+            pct_change().fillna(method='bfill')
+
+        # self.data_['coinbase_midpoint'].pct_change(
+        #     ).fillna(method='bfill')
+
         logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
         self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
         logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
@@ -262,6 +270,7 @@ class MarketMaker(Env):
     def seed(self, seed=1):
         self._random_state = np.random.RandomState(seed=seed)
         self._seed = seed
+        logger.info('MarketMaker.seed({})'.format(seed))
         return [seed]
 
     @staticmethod

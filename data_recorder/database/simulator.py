@@ -222,7 +222,7 @@ class Simulator(object):
                                           == date]
                 self.export_to_csv(tmp,
                                    filename='{}_{}'.format(query['ccy'][0], date),
-                                   compress=False)
+                                   compress=True)
 
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
         print('***\nSimulator.extract_features() executed in %i seconds\n***'
