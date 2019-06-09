@@ -19,7 +19,7 @@ MAX_RECONNECTION_ATTEMPTS = 300
 MAX_BOOK_ROWS = 15
 
 
-# ./connector_components/database.py
+# ./database/database.py
 BATCH_SIZE = 100000
 RECORD_DATA = False
 MONGO_ENDPOINT = 'localhost'
@@ -32,3 +32,6 @@ TIMEZONE = tz.utc
 
 # ./simulator.py
 BROKER_FEE = 0.003
+
+# ./indicators/*
+INDICATOR_WINDOW = 2*60*13

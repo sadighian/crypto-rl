@@ -66,36 +66,19 @@ class Agent(object):
         features_shape = (self.memory_frame_stack,
                           self.env.observation_space.shape[0],
                           self.env.observation_space.shape[1])
-
         model = Sequential()
-        print('agent feature shape: {}'.format(features_shape))
-        model.add(Conv2D(input_shape=features_shape,
-                         filters=16,
-                         kernel_size=8,
-                         padding='same',
-                         activation='relu',
-                         strides=4,
-                         data_format='channels_first'))
+        conv = Conv2D
 
-        model.add(Conv2D(filters=32,
-                         kernel_size=4,
-                         padding='same',
-                         activation='relu',
-                         strides=2,
-                         data_format='channels_first'))
-
-        model.add(Conv2D(filters=32,
-                         kernel_size=3,
-                         padding='same',
-                         activation='relu',
-                         strides=1,
-                         data_format='channels_first'))
-
+        model.add(conv(input_shape=features_shape, filters=16, kernel_size=[2, 8],
+                       padding='same', activation='relu', strides=[2, 4],
+                       data_format='channels_first'))
+        model.add(conv(filters=32, kernel_size=[2, 4], padding='same', activation='relu',
+                       strides=2, data_format='channels_first'))
+        model.add(conv(filters=32, kernel_size=[2, 2], padding='same', activation='relu',
+                       strides=1, data_format='channels_first'))
         model.add(Flatten())
-
         model.add(Dense(256))
         model.add(Activation('linear'))
-
         model.add(Dense(self.env.action_space.n))
         model.add(Activation('softmax'))
 

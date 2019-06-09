@@ -3,6 +3,8 @@ from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.broker2 import Broker, Order
 from gym_trading.render_env import TradingGraph
 from configurations.configs import BROKER_FEE
+from data_recorder.indicators.rsi import RSI
+from data_recorder.indicators.tns import TnS
 import logging
 import numpy as np
 
@@ -26,6 +28,7 @@ class MarketMaker(Env):
     # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
     features = Sim.get_feature_labels(include_system_time=False,
                                       include_bitfinex=False)
+    indicator_features = ['tns', 'rsi']
     best_bid_index = features.index('coinbase-bid-distance-0')
     best_ask_index = features.index('coinbase-ask-distance-0')
     notional_bid_index = features.index('coinbase-bid-notional-0')
@@ -86,7 +89,7 @@ class MarketMaker(Env):
         fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
         fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
                                                    values)
-        fitting_data['coinbase_midpoint'] = fitting_data['coinbase_midpoint'].\
+        fitting_data['coinbase_midpoint'] = fitting_data['coinbase_midpoint']. \
             pct_change().fillna(method='bfill')
         self.sim.fit_scaler(fitting_data)
         del fitting_data
@@ -97,11 +100,11 @@ class MarketMaker(Env):
         self.data_ = self.data.copy()#.values
 
         self.data_['coinbase_midpoint'] = np.log(self.data_['coinbase_midpoint'].values)
-        self.data_['coinbase_midpoint'] = self.data_['coinbase_midpoint'].\
+        self.data_['coinbase_midpoint'] = self.data_['coinbase_midpoint']. \
             pct_change().fillna(method='bfill')
 
-        # self.data_['coinbase_midpoint'].pct_change(
-        #     ).fillna(method='bfill')
+        self.tns = TnS()
+        self.rsi = RSI()
 
         logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
         self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
@@ -117,7 +120,10 @@ class MarketMaker(Env):
         self.data_buffer, self.frame_stacker = list(), list()
 
         self.action_space = spaces.Discrete(len(self.actions))
-        variable_features_count = len(self.inventory_features)+len(self.actions)+1
+
+        variable_features_count = len(self.inventory_features) + len(self.actions) + 1 + \
+                                  len(MarketMaker.indicator_features)
+
         if self.frame_stack is False:
             shape = (len(MarketMaker.features) + variable_features_count,
                      self.window_size)
@@ -157,11 +163,17 @@ class MarketMaker(Env):
             # Pass current time step midpoint to broker to calculate PnL,
             # or if any open orders are to be filled
             step_best_bid, step_best_ask = self._get_nbbo()
+            buy_volume = self._get_book_data(MarketMaker.buy_trade_index)
+            sell_volume = self._get_book_data(MarketMaker.sell_trade_index)
+
+            self.tns.new_tick(buys=buy_volume, sells=sell_volume)
+            self.rsi.new_tick(price=self.midpoint)
+
             step_reward = self.broker.step(
                 bid_price=step_best_bid,
                 ask_price=step_best_ask,
-                buy_volume=self._get_book_data(MarketMaker.buy_trade_index),
-                sell_volume=self._get_book_data(MarketMaker.sell_trade_index),
+                buy_volume=buy_volume,
+                sell_volume=sell_volume,
                 step=self.local_step_number
             ) / self.broker.reward_scale
 
@@ -170,9 +182,11 @@ class MarketMaker(Env):
 
             step_position_features = self._create_position_features()
             step_action_features = self._create_action_features(action=step_action)
+            step_indicator_features = self._create_indicator_features()
 
             step_observation = np.concatenate((
                 self.process_data(self.data_[self.local_step_number]),
+                step_indicator_features,
                 step_position_features,
                 step_action_features,
                 np.array([self.reward], dtype=np.float32)),
@@ -211,7 +225,7 @@ class MarketMaker(Env):
         if self.training:
             self.local_step_number = self._random_state.randint(
                 low=1,
-                high=self.data.shape[0] // 5)
+                high=self.data.shape[0] // 4)
         else:
             self.local_step_number = 0
 
@@ -224,14 +238,26 @@ class MarketMaker(Env):
         self.broker.reset()
         self.data_buffer.clear()
         self.frame_stacker.clear()
+        self.rsi.reset()
+        self.tns.reset()
 
-        for step in range(self.window_size + self.frames_to_add):
+        for step in range(self.window_size + self.frames_to_add + self.tns.window):
+
+            self.midpoint = self.prices_[self.local_step_number]
+
+            step_buy_volume = self._get_book_data(MarketMaker.buy_trade_index)
+            step_sell_volume = self._get_book_data(MarketMaker.sell_trade_index)
+
+            self.tns.new_tick(buys=step_buy_volume, sells=step_sell_volume)
+            self.rsi.new_tick(price=self.midpoint)
 
             step_position_features = self._create_position_features()
             step_action_features = self._create_action_features(action=0)
+            step_indicator_features = self._create_indicator_features()
 
             step_observation = np.concatenate((self.process_data(
                 self.data_[self.local_step_number]),
+                                               step_indicator_features,
                                                step_position_features,
                                                step_action_features,
                                                np.array([self.reward])),
@@ -272,6 +298,8 @@ class MarketMaker(Env):
         self.broker = None
         self.sim = None
         self.data_buffer = None
+        self.tns = None
+        self.rsi = None
         return
 
     def seed(self, seed=1):
@@ -405,11 +433,14 @@ class MarketMaker(Env):
                  midpoint=self.midpoint) / self.broker.reward_scale,
              self.broker.get_short_order_distance_to_midpoint(
                  midpoint=self.midpoint) / self.broker.reward_scale,
-             *self.broker.get_queues_ahead_features())
-        )
+             *self.broker.get_queues_ahead_features()),
+            dtype=np.float32)
 
     def _create_action_features(self, action):
         return self.actions[action]
+
+    def _create_indicator_features(self):
+        return np.array((self.tns.get_value(), self.rsi.get_value()), dtype=np.float32)
 
     def _create_order_at_level(self, reward, discouragement, level=0, side='long'):
         adjustment = 1 if level > 0 else 0

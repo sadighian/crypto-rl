@@ -23,6 +23,23 @@ Currently, there is no functionality developed to place an order or automate tra
 ## 3. Dependencies
 See `requirements.txt`
 
+*Note*: to run and train the DQN Agent (`./agent/dqn.py`) tensorflow and Keras-RL
+need to be installed manually and are not listed in the `requirements.txt` 
+in order to keep this project compatible with other open 
+sourced reinforcement learning platforms (e.g., OpenAI's Baselines).
+
+Pip install the following:
+
+```
+Keras==2.2.4
+Keras-Applications==1.0.7
+Keras-Preprocessing==1.0.9
+keras-rl==0.4.2
+
+tensorboard==1.13.1
+tensorflow-estimator==1.13.0
+tensorflow-gpu==1.13.1
+```
 
 ## 4. Project Structure
 The key elements in this project and brief descriptions.
@@ -36,8 +53,8 @@ crypto-rl/
 		...tools to connect, download, and retrieve limit order book data
 	gym_trading/
 		...extended openai.gym environment to observe limit order book data
-	images/
-		...diagrams for readme's
+	design-patterns/
+		...visual diagrams module architecture
 	venv/
 		...virtual environment for local deployments
 	experiment.py          # Entry point for running reinforcement learning experiments
@@ -96,10 +113,15 @@ Run a historial data simulation to take snapshots of the
 limit order book(s) and export their stationary features
 to a compressed csv.
 
-To do this, you can leverage the test cases in `data_recorder/database/tests/`
+To do this, you can leverage the test cases in `data_recorder/tests/`
 or write your own logic. When using the test case methods, make sure
 to change the query parameters to match what you've actually recorded and
 is in your database.
+
+Example to export features to a compressed csv:
+```
+python3 data_recorder/tests/test_extract_features.py
+```
 
 ### 5.3 Train an agent
 
