@@ -23,13 +23,13 @@ class RSI(object):
         self.ups = 0.
         self.downs = 0.
 
-    def new_tick(self, price=100.):
+    def step(self, price=100.):
         if np.isnan(self.last_price):
             self.last_price = price
             return
 
         if np.isnan(price):
-            print('Error: RSI.new_tick() -> price is {}'.format(price))
+            print('Error: RSI.step() -> price is {}'.format(price))
             return
 
         if price == 0.:

@@ -41,7 +41,8 @@ class MarketMaker(Env):
 
     instance_count = 0
 
-    def __init__(self, training=True,
+    def __init__(self, *,
+                 training=True,
                  fitting_file='ETH-USD_2018-12-31.xz',
                  testing_file='ETH-USD_2019-01-01.xz',
                  step_size=1,
@@ -55,7 +56,6 @@ class MarketMaker(Env):
         self._random_state = np.random.RandomState(seed=self._seed)
         self.training = training
         self.step_size = step_size
-        self.fee = BROKER_FEE
         self.max_position = max_position
         self.window_size = window_size
         self.frame_stack = frame_stack
@@ -97,19 +97,20 @@ class MarketMaker(Env):
         self.data = self.sim.import_csv(filename=data_used_in_environment)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
-        self.data_ = self.data.copy()#.values
+        self.normalized_data = self.data.copy()
+        self.data = self.data.values
 
-        self.data_['coinbase_midpoint'] = np.log(self.data_['coinbase_midpoint'].values)
-        self.data_['coinbase_midpoint'] = self.data_['coinbase_midpoint']. \
-            pct_change().fillna(method='bfill')
+        self.normalized_data['coinbase_midpoint'] = \
+            np.log(self.normalized_data['coinbase_midpoint'].values)
+        self.normalized_data['coinbase_midpoint'] = \
+            self.normalized_data['coinbase_midpoint'].pct_change().fillna(method='bfill')
 
         self.tns = TnS()
         self.rsi = RSI()
 
         logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
-        self.data_ = self.data_.apply(self.sim.z_score, axis=1).values
+        self.normalized_data = self.normalized_data.apply(self.sim.z_score, axis=1).values
         logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
-        self.data = self.data.values
 
         # rendering class
         self._render = TradingGraph(sym=self.sym)
@@ -124,21 +125,22 @@ class MarketMaker(Env):
         variable_features_count = len(self.inventory_features) + len(self.actions) + 1 + \
                                   len(MarketMaker.indicator_features)
 
-        if self.frame_stack is False:
-            shape = (len(MarketMaker.features) + variable_features_count,
+        if self.frame_stack:
+            shape = (4,
+                     len(MarketMaker.features) + variable_features_count,
                      self.window_size)
         else:
-            shape = (len(MarketMaker.features) + variable_features_count,
-                     self.window_size, 4)
+            shape = (self.window_size,
+                     len(MarketMaker.features) + variable_features_count)
 
         self.observation_space = spaces.Box(low=self.data.min(),
                                             high=self.data.max(),
                                             shape=shape,
                                             dtype=np.int)
 
-        print('MarketMaker instantiated. ' +
-              '\nself.observation_space.shape : {}'.format(
-                  self.observation_space.shape))
+        print('MarketMaker #{} instantiated.\nself.observation_space.shape : {}'.format(
+            MarketMaker.instance_count,
+            self.observation_space.shape))
 
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.sym, self._seed)
@@ -166,8 +168,8 @@ class MarketMaker(Env):
             buy_volume = self._get_book_data(MarketMaker.buy_trade_index)
             sell_volume = self._get_book_data(MarketMaker.sell_trade_index)
 
-            self.tns.new_tick(buys=buy_volume, sells=sell_volume)
-            self.rsi.new_tick(price=self.midpoint)
+            self.tns.step(buys=buy_volume, sells=sell_volume)
+            self.rsi.step(price=self.midpoint)
 
             step_reward = self.broker.step(
                 bid_price=step_best_bid,
@@ -175,17 +177,17 @@ class MarketMaker(Env):
                 buy_volume=buy_volume,
                 sell_volume=sell_volume,
                 step=self.local_step_number
-            ) / self.broker.reward_scale
+            )
 
-            self.reward += self._send_to_broker_and_get_reward(step_action) + \
-                           step_reward
+            self.reward += self._send_to_broker_and_get_reward(step_action)
+            self.reward += step_reward
 
             step_position_features = self._create_position_features()
             step_action_features = self._create_action_features(action=step_action)
             step_indicator_features = self._create_indicator_features()
 
             step_observation = np.concatenate((
-                self.process_data(self.data_[self.local_step_number]),
+                self.process_data(self.normalized_data[self.local_step_number]),
                 step_indicator_features,
                 step_position_features,
                 step_action_features,
@@ -203,17 +205,14 @@ class MarketMaker(Env):
 
             self.local_step_number += self.step_size
 
-        # output shape is [n_features, window_size, frames_to_add]
-        #   e.g., [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
+        self.observation = np.array(self.frame_stacker, dtype=np.float32)
 
         # This removes a dimension to be compatible with the Keras-rl module
         # because Keras-rl uses its own frame-stacker. There are future
         # plans to integrate this repository with more reinforcement learning
         # packages, such as baselines.
         if self.frame_stack is False:
-            self.observation = self.observation.reshape(
-                self.observation.shape[0], -1)
+            self.observation = np.squeeze(self.observation, axis=0)
 
         if self.local_step_number > self.data.shape[0] - 40:
             self.done = True
@@ -248,15 +247,15 @@ class MarketMaker(Env):
             step_buy_volume = self._get_book_data(MarketMaker.buy_trade_index)
             step_sell_volume = self._get_book_data(MarketMaker.sell_trade_index)
 
-            self.tns.new_tick(buys=step_buy_volume, sells=step_sell_volume)
-            self.rsi.new_tick(price=self.midpoint)
+            self.tns.step(buys=step_buy_volume, sells=step_sell_volume)
+            self.rsi.step(price=self.midpoint)
 
             step_position_features = self._create_position_features()
             step_action_features = self._create_action_features(action=0)
             step_indicator_features = self._create_indicator_features()
 
             step_observation = np.concatenate((self.process_data(
-                self.data_[self.local_step_number]),
+                self.normalized_data[self.local_step_number]),
                                                step_indicator_features,
                                                step_position_features,
                                                step_action_features,
@@ -273,17 +272,14 @@ class MarketMaker(Env):
                 if len(self.frame_stacker) > self.frames_to_add + 1:
                     del self.frame_stacker[0]
 
-        # output shape is [n_features, window_size, frames_to_add]
-        #   e.g., [40, 100, 1]
-        self.observation = np.array(self.frame_stacker, dtype=np.float32).transpose()
+        self.observation = np.array(self.frame_stacker, dtype=np.float32)
 
         # This removes a dimension to be compatible with the Keras-rl module
         # because Keras-rl uses its own frame-stacker. There are future plans
         # to integrate this repository with more reinforcement learning packages,
         # such as baselines.
         if self.frame_stack is False:
-            self.observation = self.observation.reshape(
-                self.observation.shape[0], -1)
+            self.observation = np.squeeze(self.observation, axis=0)
 
         return self.observation
 
@@ -293,7 +289,7 @@ class MarketMaker(Env):
     def close(self):
         logger.info('{}-{} is being closed.'.format(self.id, self.sym))
         self.data = None
-        self.data_ = None
+        self.normalized_data = None
         self.prices_ = None
         self.broker = None
         self.sim = None

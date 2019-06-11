@@ -18,7 +18,7 @@ class TnS(object):
         self.ups = 0.
         self.downs = 0.
 
-    def new_tick(self, buys=0., sells=0.):
+    def step(self, buys=0., sells=0.):
         self.ups += buys
         self.downs += sells
         self.all_history_queue.append((buys, sells))

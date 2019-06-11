@@ -202,7 +202,7 @@ class PositionI(object):
             else:
                 self.average_price = 0
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.debug('Removing %s position #%i. PnL=%.4f\n' %
+            logger.info('Closing %s position #%i. PnL=%.4f\n' %
                         (self.side, order.id, pnl))
             return pnl
         else:
@@ -210,13 +210,17 @@ class PositionI(object):
             return pnl
 
     def flatten_inventory(self, midpoint=100.):
-        prev_realized_pnl = self.realized_pnl
         logger.debug('{} is flattening inventory of {}'.format(self.side,
                                                                self.position_count))
+        prev_realized_pnl = self.realized_pnl
+        if self.position_count < 1:
+            return -0.00000000001
+
         while self.position_count > 0:
             self.remove_position(midpoint=midpoint)
+            self.realized_pnl -= BROKER_FEE  # marker order fee
 
-        return self.realized_pnl - prev_realized_pnl
+        return self.realized_pnl - prev_realized_pnl  # net change in PnL
 
     def get_unrealized_pnl(self, midpoint=100.):
         if self.position_count == 0:
@@ -325,7 +329,7 @@ class Broker(object):
                 # if pnl != 0.:
                 #     pnl /= Broker.reward_scale
 
-        return pnl
+        return pnl / Broker.reward_scale
 
     def get_short_order_distance_to_midpoint(self, midpoint=100.):
         return self.short_inventory.get_distance_to_midpoint(midpoint=midpoint)

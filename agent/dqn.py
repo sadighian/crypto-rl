@@ -63,18 +63,16 @@ class Agent(object):
 
     def create_model(self):
 
-        features_shape = (self.memory_frame_stack,
-                          self.env.observation_space.shape[0],
-                          self.env.observation_space.shape[1])
+        features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
         model = Sequential()
         conv = Conv2D
 
-        model.add(conv(input_shape=features_shape, filters=16, kernel_size=[2, 8],
-                       padding='same', activation='relu', strides=[2, 4],
+        model.add(conv(input_shape=features_shape, filters=16, kernel_size=8,
+                       padding='same', activation='relu', strides=4,
                        data_format='channels_first'))
-        model.add(conv(filters=32, kernel_size=[2, 4], padding='same', activation='relu',
+        model.add(conv(filters=32, kernel_size=4, padding='same', activation='relu',
                        strides=2, data_format='channels_first'))
-        model.add(conv(filters=32, kernel_size=[2, 2], padding='same', activation='relu',
+        model.add(conv(filters=32, kernel_size=2, padding='same', activation='relu',
                        strides=1, data_format='channels_first'))
         model.add(Flatten())
         model.add(Dense(256))
@@ -105,12 +103,15 @@ class Agent(object):
                                                  interval=250000)]
             callbacks += [FileLogger(log_filename, interval=100)]
 
+            print('Starting training...')
             self.agent.fit(self.env,
                            callbacks=callbacks,
                            nb_steps=self.number_of_training_steps,
                            log_interval=10000,
                            verbose=0,
                            visualize=self.visualize)
+            print('Saving AGENT weights...')
             self.agent.save_weights(weights_filename, overwrite=True)
         else:
+            print('Starting TEST...')
             self.agent.test(self.env, nb_episodes=2, visualize=self.visualize)

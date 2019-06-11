@@ -49,8 +49,8 @@ parser.add_argument('--visualize',
                     help="Render midpoint on a screen",
                     type=bool)
 parser.add_argument('--env',
-                    default='market-maker-v0',
-                    # default='long-short-v0',
+                    # default='market-maker-v0',
+                    default='long-short-v0',
                     help="gym_trading environment: 'long-short-v0' or "
                          "'market-maker-v0'",
                     type=str)
