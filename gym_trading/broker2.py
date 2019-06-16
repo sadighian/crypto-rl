@@ -202,7 +202,7 @@ class PositionI(object):
             else:
                 self.average_price = 0
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.info('Closing %s position #%i. PnL=%.4f\n' %
+            logger.debug('Closing %s position #%i. PnL=%.4f\n' %
                         (self.side, order.id, pnl))
             return pnl
         else:

@@ -99,11 +99,14 @@ class MarketMaker(Env):
 
         self.normalized_data = self.data.copy()
         self.data = self.data.values
+        self.max_steps = self.data.shape[0] - self.step_size * \
+                         MarketMaker.action_repeats - 1
 
         self.normalized_data['coinbase_midpoint'] = \
             np.log(self.normalized_data['coinbase_midpoint'].values)
-        self.normalized_data['coinbase_midpoint'] = \
-            self.normalized_data['coinbase_midpoint'].pct_change().fillna(method='bfill')
+        self.normalized_data['coinbase_midpoint'] = (
+            self.normalized_data['coinbase_midpoint'] -
+            self.normalized_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
 
         self.tns = TnS()
         self.rsi = RSI()
@@ -214,7 +217,7 @@ class MarketMaker(Env):
         if self.frame_stack is False:
             self.observation = np.squeeze(self.observation, axis=0)
 
-        if self.local_step_number > self.data.shape[0] - 40:
+        if self.local_step_number > self.max_steps:
             self.done = True
             self.reward += self.broker.flatten_inventory(*self._get_nbbo())
 

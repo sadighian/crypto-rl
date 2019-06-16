@@ -95,10 +95,11 @@ class PriceJump(Env):
         self.normalized_data = self.data.copy()
         self.data = self.data.values
 
-        self.normalized_data['coinbase_midpoint'] = \
-            np.log(self.normalized_data['coinbase_midpoint'].values)
-        self.normalized_data['coinbase_midpoint'] = \
-            self.normalized_data['coinbase_midpoint'].pct_change().fillna(method='bfill')
+        self.normalized_data['coinbase_midpoint'] = np.log(
+            self.normalized_data['coinbase_midpoint'].values)
+        self.normalized_data['coinbase_midpoint'] = (
+            self.normalized_data['coinbase_midpoint'] -
+            self.normalized_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
 
         self.tns = TnS()
         self.rsi = RSI()
