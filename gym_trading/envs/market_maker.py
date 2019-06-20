@@ -18,6 +18,7 @@ class MarketMaker(Env):
     # gym.env required
     metadata = {'render.modes': ['human']}
     id = 'market-maker-v0'
+
     # constants
     action_repeats = 4
     inventory_features = ['long_inventory', 'short_inventory',
@@ -37,7 +38,7 @@ class MarketMaker(Env):
     buy_trade_index = features.index('coinbase-buys')
     sell_trade_index = features.index('coinbase-sells')
 
-    target_pnl = BROKER_FEE * 10
+    target_pnl = BROKER_FEE * 10 * 5  # 5 for max_positions
 
     instance_count = 0
 
@@ -99,14 +100,15 @@ class MarketMaker(Env):
 
         self.normalized_data = self.data.copy()
         self.data = self.data.values
+
         self.max_steps = self.data.shape[0] - self.step_size * \
                          MarketMaker.action_repeats - 1
 
         self.normalized_data['coinbase_midpoint'] = \
             np.log(self.normalized_data['coinbase_midpoint'].values)
         self.normalized_data['coinbase_midpoint'] = (
-            self.normalized_data['coinbase_midpoint'] -
-            self.normalized_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
+                self.normalized_data['coinbase_midpoint'] -
+                self.normalized_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
 
         self.tns = TnS()
         self.rsi = RSI()
@@ -231,10 +233,13 @@ class MarketMaker(Env):
         else:
             self.local_step_number = 0
 
-        logger.info(' {}-{} reset. Episode pnl: {} | First step: {}'.format(
+        msg = ' {}-{} reset. Episode pnl: {:.4f} with {} trades | First step: {}'.format(
             self.sym, self._seed,
             self.broker.get_total_pnl(midpoint=self.midpoint),
-            self.local_step_number))
+            self.broker.get_total_trade_count(),
+            self.local_step_number
+        )
+        logger.info(msg)
         self.reward = 0.0
         self.done = False
         self.broker.reset()
@@ -428,10 +433,8 @@ class MarketMaker(Env):
              self.broker.reward_scale,
              self.broker.short_inventory.get_unrealized_pnl(self.midpoint) /
              self.broker.reward_scale,
-             self.broker.get_long_order_distance_to_midpoint(
-                 midpoint=self.midpoint) / self.broker.reward_scale,
-             self.broker.get_short_order_distance_to_midpoint(
-                 midpoint=self.midpoint) / self.broker.reward_scale,
+             self.broker.get_long_order_distance_to_midpoint(midpoint=self.midpoint),
+             self.broker.get_short_order_distance_to_midpoint(midpoint=self.midpoint),
              *self.broker.get_queues_ahead_features()),
             dtype=np.float32)
 

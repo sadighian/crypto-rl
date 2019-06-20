@@ -91,6 +91,7 @@ class PositionI(object):
         self.side = side
         self.average_price = 0.0
         self.reward_size = 1 / self.max_position_count
+        self.total_trade_count = 0
 
     def reset(self):
         self.positions.clear()
@@ -100,6 +101,7 @@ class PositionI(object):
         self.full_inventory = False
         self.total_exposure = 0.0
         self.average_price = 0.0
+        self.total_trade_count = 0
 
     @property
     def position_count(self):
@@ -202,6 +204,7 @@ class PositionI(object):
             else:
                 self.average_price = 0
             self.full_inventory = self.position_count >= self.max_position_count
+            self.total_trade_count += 1  # entry and exit = two trades
             logger.debug('Closing %s position #%i. PnL=%.4f\n' %
                         (self.side, order.id, pnl))
             return pnl
@@ -332,10 +335,12 @@ class Broker(object):
         return pnl / Broker.reward_scale
 
     def get_short_order_distance_to_midpoint(self, midpoint=100.):
-        return self.short_inventory.get_distance_to_midpoint(midpoint=midpoint)
+        return self.short_inventory.get_distance_to_midpoint(midpoint=midpoint) / \
+               Broker.reward_scale
 
     def get_long_order_distance_to_midpoint(self, midpoint=100.):
-        return self.long_inventory.get_distance_to_midpoint(midpoint=midpoint)
+        return self.long_inventory.get_distance_to_midpoint(midpoint=midpoint) / \
+               Broker.reward_scale
 
     def get_queues_ahead_features(self):
         buy_queue = short_queue = 0.
@@ -353,3 +358,7 @@ class Broker(object):
             short_queue = (executions - queue) / (queue + trade_size)
 
         return buy_queue, short_queue
+
+    def get_total_trade_count(self):
+        return self.long_inventory.total_trade_count + \
+               self.short_inventory.total_trade_count

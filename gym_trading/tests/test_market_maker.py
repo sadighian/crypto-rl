@@ -15,7 +15,7 @@ def test_market_maker_gym():
     start_time = dt.now()
 
     config = {
-        'training': True,
+        'training': False,
         'fitting_file': 'ETH-USD_2018-12-31.xz',
         'testing_file': 'ETH-USD_2019-01-01.xz',
         'step_size': 1,
@@ -34,23 +34,25 @@ def test_market_maker_gym():
     while not done:
         i += 1
 
-        if i % 200 == 0:
+        if i % 3 == 0:
             action = np.random.randint(env.action_space.n)
         else:
             action = 0
 
         state, reward, done, _ = env.step(action)
         total_reward += reward
-        env.render()
+        # env.render()
 
         # if abs(reward) >= 0.01:
         #     print('reward = %.4f' % reward)
 
         if done:
             elapsed = (dt.now() - start_time).seconds
-            print('Done on step #%i @ %i ticks/second' % (i, i // elapsed))
+            print('Done on step #%i @ %i ticks/second' % (i, (i // elapsed) *
+                  MarketMaker.action_repeats))
             break
 
+    env.reset()
     print('Total reward: %.4f' % total_reward)
 
 
