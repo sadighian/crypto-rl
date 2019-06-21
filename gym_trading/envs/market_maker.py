@@ -20,7 +20,7 @@ class MarketMaker(Env):
     id = 'market-maker-v0'
 
     # constants
-    action_repeats = 4
+    action_repeats = 10
     inventory_features = ['long_inventory', 'short_inventory',
                           'total_unrealized_and_realized_pnl',
                           'long_unrealized_pnl', 'short_unrealized_pnl',
@@ -90,8 +90,9 @@ class MarketMaker(Env):
         fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
         fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
                                                    values)
-        fitting_data['coinbase_midpoint'] = fitting_data['coinbase_midpoint']. \
-            pct_change().fillna(method='bfill')
+        fitting_data['coinbase_midpoint'] = (
+                fitting_data['coinbase_midpoint'] -
+                fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
         self.sim.fit_scaler(fitting_data)
         del fitting_data
 
@@ -132,8 +133,8 @@ class MarketMaker(Env):
 
         if self.frame_stack:
             shape = (4,
-                     len(MarketMaker.features) + variable_features_count,
-                     self.window_size)
+                     self.window_size,
+                     len(MarketMaker.features) + variable_features_count)
         else:
             shape = (self.window_size,
                      len(MarketMaker.features) + variable_features_count)

@@ -33,6 +33,9 @@ class PriceJump(Env):
 
     buy_trade_index = features.index('coinbase-buys')
     sell_trade_index = features.index('coinbase-sells')
+
+    target_pnl = BROKER_FEE * 10 * 5  # e.g., 5 for max_positions
+    fee = BROKER_FEE
     instance_count = 0
 
     def __init__(self, *,
@@ -50,7 +53,6 @@ class PriceJump(Env):
         self._random_state = np.random.RandomState(seed=self._seed)
         self.training = training
         self.step_size = step_size
-        self.fee = BROKER_FEE
         self.max_position = max_position
         self.window_size = window_size
         self.frame_stack = frame_stack
@@ -84,8 +86,9 @@ class PriceJump(Env):
         fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
         fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
                                                    values)
-        fitting_data['coinbase_midpoint'] = fitting_data['coinbase_midpoint']. \
-            pct_change().fillna(method='bfill')
+        fitting_data['coinbase_midpoint'] = (
+                fitting_data['coinbase_midpoint'] -
+                fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
         self.sim.fit_scaler(fitting_data)
         del fitting_data
 
@@ -95,11 +98,14 @@ class PriceJump(Env):
         self.normalized_data = self.data.copy()
         self.data = self.data.values
 
-        self.normalized_data['coinbase_midpoint'] = np.log(
-            self.normalized_data['coinbase_midpoint'].values)
+        self.max_steps = self.data.shape[0] - self.step_size * \
+                         PriceJump.action_repeats - 1
+
+        self.normalized_data['coinbase_midpoint'] = \
+            np.log(self.normalized_data['coinbase_midpoint'].values)
         self.normalized_data['coinbase_midpoint'] = (
-            self.normalized_data['coinbase_midpoint'] -
-            self.normalized_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
+                self.normalized_data['coinbase_midpoint'] -
+                self.normalized_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
 
         self.tns = TnS()
         self.rsi = RSI()
@@ -123,8 +129,8 @@ class PriceJump(Env):
 
         if self.frame_stack:
             shape = (4,
-                     len(PriceJump.features) + variable_features_count,
-                     self.window_size)
+                     self.window_size,
+                     len(PriceJump.features) + variable_features_count)
         else:
             shape = (self.window_size,
                      len(PriceJump.features) + variable_features_count)
@@ -202,7 +208,7 @@ class PriceJump(Env):
         if self.frame_stack is False:
             self.observation = np.squeeze(self.observation, axis=0)
 
-        if self.local_step_number > self.data.shape[0] - 40:
+        if self.local_step_number > self.max_steps:
             self.done = True
             order = Order(ccy=self.sym, side=None, price=self.midpoint,
                           step=self.local_step_number)
@@ -218,10 +224,13 @@ class PriceJump(Env):
         else:
             self.local_step_number = 0
 
-        logger.info(' {}-{} reset. Episode pnl: {} | First step: {}'.format(
+        msg = ' {}-{} reset. Episode pnl: {:.4f} with {} trades | First step: {}'.format(
             self.sym, self._seed,
             self.broker.get_total_pnl(midpoint=self.midpoint),
-            self.local_step_number))
+            self.broker.get_total_trade_count(),
+            self.local_step_number
+        )
+        logger.info(msg)
         self.reward = 0.0
         self.done = False
         self.broker.reset()
@@ -307,10 +316,10 @@ class PriceJump(Env):
         discouragement = 0.000000000001
 
         if action == 0:  # do nothing
-            pass
+            reward += discouragement
 
         elif action == 1:  # buy
-            price_fee_adjusted = self.midpoint + (self.fee * self.midpoint)
+            price_fee_adjusted = self.midpoint + (PriceJump.fee * self.midpoint)
             if self.broker.short_inventory_count > 0:
                 order = Order(ccy=self.sym, side='short',
                               price=price_fee_adjusted,
@@ -331,7 +340,7 @@ class PriceJump(Env):
                              'unable to place an order with broker').format(action))
 
         elif action == 2:  # sell
-            price_fee_adjusted = self.midpoint - (self.fee * self.midpoint)
+            price_fee_adjusted = self.midpoint - (PriceJump.fee * self.midpoint)
             if self.broker.long_inventory_count > 0:
                 order = Order(ccy=self.sym, side='long',
                               price=price_fee_adjusted,
@@ -361,9 +370,11 @@ class PriceJump(Env):
         return np.array(
             (self.broker.long_inventory.position_count / self.max_position,
              self.broker.short_inventory.position_count / self.max_position,
-             self.broker.get_total_pnl(midpoint=self.midpoint),
-             self.broker.long_inventory.get_unrealized_pnl(self.midpoint),
-             self.broker.short_inventory.get_unrealized_pnl(self.midpoint))
+             self.broker.get_total_pnl(midpoint=self.midpoint) / PriceJump.target_pnl,
+             self.broker.long_inventory.get_unrealized_pnl(self.midpoint) /
+                self.broker.reward_scale,
+             self.broker.short_inventory.get_unrealized_pnl(self.midpoint) /
+                self.broker.reward_scale)
         )
 
     def _create_action_features(self, action):

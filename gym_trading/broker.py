@@ -1,5 +1,6 @@
 # Inventory and risk management for the Long-Short environment
 import logging
+from configurations.configs import BROKER_FEE
 
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
@@ -60,6 +61,7 @@ class PositionI(object):
             'drawdown_max': 0.0,
             'realized_pnl': 0.0
         }
+        self.total_trade_count = 0
 
     def reset(self):
         self.positions.clear()
@@ -70,6 +72,7 @@ class PositionI(object):
         self.total_exposure = 0.0
         self.average_price = 0.0
         # self.last_trade = {}
+        self.total_trade_count = 0
 
     def step(self, midpoint=100.0):
         if self.position_count > 0:
@@ -121,6 +124,7 @@ class PositionI(object):
 
             self.last_trade['realized_pnl'] = realized_trade_pnl
 
+            self.total_trade_count += 1
             # if realized_trade_pnl > 0.0:
             #     print(' %s PNL %.3f | upside %.3f / downside %.3f  | steps: %i'
             #     % (self.side, realized_trade_pnl, self.last_trade['upside_max'],
@@ -160,6 +164,8 @@ class Broker(object):
     Broker class is a wrapper for the PositionI class
     and is implemented in `gym_trading.py`
     '''
+    reward_scale = BROKER_FEE * 4.
+
     def __init__(self, max_position=1):
         self.long_inventory = PositionI(side='long', max_position=max_position)
         self.short_inventory = PositionI(side='short', max_position=max_position)
@@ -245,3 +251,6 @@ class Broker(object):
 
         return realized_pnl
 
+    def get_total_trade_count(self):
+        return self.long_inventory.total_trade_count + \
+               self.short_inventory.total_trade_count
