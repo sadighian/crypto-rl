@@ -18,7 +18,10 @@ class Agent(object):
                  frame_stack=False,
                  # Default frame_stack to False when using with keras-rl since
                  #  `rl.memory` stacks frames
-                 env='market-maker-v0', number_of_training_steps=1e5,
+                 env='market-maker-v0',
+                 seed=1,
+                 action_repeats=4,
+                 number_of_training_steps=1e5,
                  visualize=False):
         self.env_name = env
         self.env = gym.make(self.env_name,
@@ -28,6 +31,8 @@ class Agent(object):
                             step_size=step_size,
                             max_position=max_position,
                             window_size=window_size,
+                            seed=seed,
+                            action_repeats=action_repeats,
                             frame_stack=False)
         # Number of frames to stack e.g., 1; Keras-RL uses its own stacker
         self.memory_frame_stack = 4 if frame_stack else 1

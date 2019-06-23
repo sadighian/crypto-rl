@@ -20,6 +20,8 @@ def test_price_jump_python():
         'step_size': 1,
         'max_position': 1,
         'window_size': 5,
+        'seed': 1,
+        'action_repeats': 10,
         'frame_stack': False
     }
     logger.info('test_price_jump_python() configs are {}'.format(config))
@@ -73,6 +75,8 @@ def test_price_jump_gym():
         'step_size': 1,
         'max_position': 1,
         'window_size': 5,
+        'seed': 1,
+        'action_repeats': 10,
         'frame_stack': False
     }
     logger.info('test_price_jump_gym() configs are {}'.format(config))

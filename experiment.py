@@ -59,6 +59,14 @@ parser.add_argument('--number_of_training_steps',
                     help="Number of steps to train the agent "
                          "(does not include action repeats)",
                     type=int)
+parser.add_argument('--seed',
+                    default=1,
+                    help="Random number seed for dataset",
+                    type=int)
+parser.add_argument('--action_repeats',
+                    default=10,
+                    help="Number of steps to pass on between actions",
+                    type=int)
 args = vars(parser.parse_args())
 
 

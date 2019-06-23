@@ -18,7 +18,6 @@ class PriceJump(Env):
 
     metadata = {'render.modes': ['human']}
     id = 'long-short-v0'
-    action_repeats = 4
     inventory_features = ['long_inventory', 'short_inventory',
                           'total_unrealized_and_realized_pnl',
                           'long_unrealized_pnl', 'short_unrealized_pnl']
@@ -36,7 +35,6 @@ class PriceJump(Env):
 
     target_pnl = BROKER_FEE * 10 * 5  # e.g., 5 for max_positions
     fee = BROKER_FEE
-    instance_count = 0
 
     def __init__(self, *,
                  training=True,
@@ -45,11 +43,13 @@ class PriceJump(Env):
                  step_size=1,
                  max_position=5,
                  window_size=4,
+                 seed=1,
+                 action_repeats=4,
                  frame_stack=False):
 
         # properties required for instantiation
-        PriceJump.instance_count += 1
-        self._seed = int(PriceJump.instance_count)  # seed
+        self.action_repeats = action_repeats
+        self._seed = seed
         self._random_state = np.random.RandomState(seed=self._seed)
         self.training = training
         self.step_size = step_size
@@ -99,7 +99,7 @@ class PriceJump(Env):
         self.data = self.data.values
 
         self.max_steps = self.data.shape[0] - self.step_size * \
-                         PriceJump.action_repeats - 1
+                         self.action_repeats - 1
 
         self.normalized_data['coinbase_midpoint'] = \
             np.log(self.normalized_data['coinbase_midpoint'].values)
@@ -141,15 +141,14 @@ class PriceJump(Env):
                                             dtype=np.int)
 
         print('PriceJump #{} instantiated.\nself.observation_space.shape : {}'.format(
-            PriceJump.instance_count,
-            self.observation_space.shape))
+            self._seed, self.observation_space.shape))
 
     def __str__(self):
         return '{} | {}-{}'.format(PriceJump.id, self.sym, self._seed)
 
     def step(self, action):
 
-        for current_step in range(PriceJump.action_repeats):
+        for current_step in range(self.action_repeats):
 
             if self.done:
                 self.reset()

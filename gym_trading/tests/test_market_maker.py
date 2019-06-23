@@ -21,6 +21,8 @@ def test_market_maker_gym():
         'step_size': 1,
         'max_position': 5,
         'window_size': 1,
+        'seed': 1,
+        'action_repeats': 10,
         'frame_stack': False
     }
 
@@ -66,6 +68,8 @@ def test_market_maker_python():
         'step_size': 1,
         'max_position': 1,
         'window_size': 5,
+        'seed': 1,
+        'action_repeats': 10,
         'frame_stack': False
     }
     logger.info('test_market_maker_python() configs are {}'.format(config))
@@ -100,4 +104,4 @@ def test_market_maker_python():
 
 if __name__ == '__main__':
     test_market_maker_gym()
-    # test_market_maker_python()
+    test_market_maker_python()

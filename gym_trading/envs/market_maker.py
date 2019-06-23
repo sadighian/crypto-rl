@@ -20,7 +20,6 @@ class MarketMaker(Env):
     id = 'market-maker-v0'
 
     # constants
-    action_repeats = 10
     inventory_features = ['long_inventory', 'short_inventory',
                           'total_unrealized_and_realized_pnl',
                           'long_unrealized_pnl', 'short_unrealized_pnl',
@@ -40,20 +39,20 @@ class MarketMaker(Env):
 
     target_pnl = BROKER_FEE * 10 * 5  # 5 for max_positions
 
-    instance_count = 0
-
     def __init__(self, *,
                  training=True,
                  fitting_file='ETH-USD_2018-12-31.xz',
                  testing_file='ETH-USD_2019-01-01.xz',
                  step_size=1,
                  max_position=5,
-                 window_size=4,
+                 window_size=92,
+                 seed=1,
+                 action_repeats=10,
                  frame_stack=False):
 
         # properties required for instantiation
-        MarketMaker.instance_count += 1
-        self._seed = int(MarketMaker.instance_count)  # seed
+        self.action_repeats = action_repeats
+        self._seed = seed
         self._random_state = np.random.RandomState(seed=self._seed)
         self.training = training
         self.step_size = step_size
@@ -103,7 +102,7 @@ class MarketMaker(Env):
         self.data = self.data.values
 
         self.max_steps = self.data.shape[0] - self.step_size * \
-                         MarketMaker.action_repeats - 1
+                         self.action_repeats - 1
 
         self.normalized_data['coinbase_midpoint'] = \
             np.log(self.normalized_data['coinbase_midpoint'].values)
@@ -145,15 +144,14 @@ class MarketMaker(Env):
                                             dtype=np.int)
 
         print('MarketMaker #{} instantiated.\nself.observation_space.shape : {}'.format(
-            MarketMaker.instance_count,
-            self.observation_space.shape))
+            self._seed, self.observation_space.shape))
 
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.sym, self._seed)
 
     def step(self, action):
 
-        for current_step in range(MarketMaker.action_repeats):
+        for current_step in range(self.action_repeats):
 
             if self.done:
                 self.reset()
