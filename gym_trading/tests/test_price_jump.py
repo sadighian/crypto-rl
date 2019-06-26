@@ -22,7 +22,7 @@ def test_price_jump_python():
         'window_size': 5,
         'seed': 1,
         'action_repeats': 10,
-        'frame_stack': False
+        'format_3d': True
     }
     logger.info('test_price_jump_python() configs are {}'.format(config))
 
@@ -56,7 +56,7 @@ def test_price_jump_python():
         if done:
             elapsed = (dt.now() - start_time).seconds
             logger.info('Done on step #%i @ %i steps/second' %
-                        (i, i*PriceJump.action_repeats // elapsed))
+                        (i, i*env.action_repeats // elapsed))
             break
 
     logger.info('Total reward: %.4f\nTotal pnl: %.4f' %
@@ -77,7 +77,7 @@ def test_price_jump_gym():
         'window_size': 5,
         'seed': 1,
         'action_repeats': 10,
-        'frame_stack': False
+        'format_3d': False
     }
     logger.info('test_price_jump_gym() configs are {}'.format(config))
 
@@ -107,7 +107,7 @@ def test_price_jump_gym():
         if done:
             elapsed = (dt.now() - start_time).seconds
             logger.info('Done on step #%i @ %i steps/second' %
-                        (i, i*PriceJump.action_repeats // elapsed))
+                        (i, i*env.action_repeats // elapsed))
             break
 
     logger.info('Total reward: %.4f' % total_reward)

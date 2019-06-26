@@ -15,9 +15,7 @@ class Agent(object):
     def __init__(self, step_size=1, window_size=20, train=True, max_position=5,
                  weights=True, fitting_file='ETH-USD_2018-12-31.xz',
                  testing_file='ETH-USD_2018-01-01.xz',
-                 frame_stack=False,
-                 # Default frame_stack to False when using with keras-rl since
-                 #  `rl.memory` stacks frames
+                 format_3d=False,  # add 3rd dimension for CNNs
                  env='market-maker-v0',
                  seed=1,
                  action_repeats=4,
@@ -33,9 +31,9 @@ class Agent(object):
                             window_size=window_size,
                             seed=seed,
                             action_repeats=action_repeats,
-                            frame_stack=False)
+                            format_3d=format_3d)
         # Number of frames to stack e.g., 1; Keras-RL uses its own stacker
-        self.memory_frame_stack = 4 if frame_stack else 1
+        self.memory_frame_stack = 1
         self.model = self.create_model()
         self.memory = SequentialMemory(limit=10000,
                                        window_length=self.memory_frame_stack)

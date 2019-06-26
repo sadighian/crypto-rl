@@ -42,10 +42,10 @@ class PriceJump(Env):
                  testing_file='ETH-USD_2019-01-01.xz',
                  step_size=1,
                  max_position=5,
-                 window_size=4,
+                 window_size=10,
                  seed=1,
-                 action_repeats=4,
-                 frame_stack=False):
+                 action_repeats=10,
+                 format_3d=False):
 
         # properties required for instantiation
         self.action_repeats = action_repeats
@@ -55,8 +55,7 @@ class PriceJump(Env):
         self.step_size = step_size
         self.max_position = max_position
         self.window_size = window_size
-        self.frame_stack = frame_stack
-        self.frames_to_add = 3 if self.frame_stack else 0
+        self.format_3d = format_3d  # e.g., [window, features, *NEW_AXIS*]
 
         self.action = 0
         # derive gym.env properties
@@ -120,17 +119,17 @@ class PriceJump(Env):
         self._render.reset_render_data(
             y_vec=self.prices_[:np.shape(self._render.x_vec)[0]])
 
-        self.data_buffer, self.frame_stacker = list(), list()
+        self.data_buffer = list()
 
         self.action_space = spaces.Discrete(len(self.actions))
 
         variable_features_count = len(self.inventory_features) + len(self.actions) + 1 + \
                                   len(PriceJump.indicator_features)
 
-        if self.frame_stack:
-            shape = (4,
-                     self.window_size,
-                     len(PriceJump.features) + variable_features_count)
+        if self.format_3d:
+            shape = (self.window_size,
+                     len(PriceJump.features) + variable_features_count,
+                     1)
         else:
             shape = (self.window_size,
                      len(PriceJump.features) + variable_features_count)
@@ -188,24 +187,17 @@ class PriceJump(Env):
                 axis=None)
             self.data_buffer.append(step_observation)
 
-            if len(self.data_buffer) >= self.window_size:
-                self.frame_stacker.append(
-                    np.array(self.data_buffer, dtype=np.float32))
+            if len(self.data_buffer) > self.window_size:
                 del self.data_buffer[0]
-
-                if len(self.frame_stacker) > self.frames_to_add + 1:
-                    del self.frame_stacker[0]
 
             self.local_step_number += self.step_size
 
-        self.observation = np.array(self.frame_stacker, dtype=np.float32)
+        self.observation = np.array(self.data_buffer, dtype=np.float32)
 
-        # This removes a dimension to be compatible with the Keras-rl module
-        # because Keras-rl uses its own frame-stacker. There are future
-        # plans to integrate this repository with more reinforcement learning
-        # packages, such as baselines.
-        if self.frame_stack is False:
-            self.observation = np.squeeze(self.observation, axis=0)
+        # Expand the observation space from 2 to 3 dimensions.
+        # This is necessary for conv nets in Baselines.
+        if self.format_3d:
+            self.observation = np.expand_dims(self.observation, axis=-1)
 
         if self.local_step_number > self.max_steps:
             self.done = True
@@ -234,11 +226,10 @@ class PriceJump(Env):
         self.done = False
         self.broker.reset()
         self.data_buffer.clear()
-        self.frame_stacker.clear()
         self.rsi.reset()
         self.tns.reset()
 
-        for step in range(self.window_size + self.frames_to_add + self.tns.window):
+        for step in range(self.window_size + self.tns.window):
 
             self.midpoint = self.prices_[self.local_step_number]
 
@@ -262,22 +253,15 @@ class PriceJump(Env):
             self.data_buffer.append(step_observation)
             self.local_step_number += self.step_size
 
-            if step >= self.window_size - 1:
-                self.frame_stacker.append(
-                    np.array(self.data_buffer, dtype=np.float32))
+            if len(self.data_buffer) > self.window_size:
                 del self.data_buffer[0]
 
-                if len(self.frame_stacker) > self.frames_to_add + 1:
-                    del self.frame_stacker[0]
+        self.observation = np.array(self.data_buffer, dtype=np.float32)
 
-        self.observation = np.array(self.frame_stacker, dtype=np.float32)
-
-        # This removes a dimension to be compatible with the Keras-rl module
-        # because Keras-rl uses its own frame-stacker. There are future plans
-        # to integrate this repository with more reinforcement learning packages,
-        # such as baselines.
-        if self.frame_stack is False:
-            self.observation = np.squeeze(self.observation, axis=0)
+        # Expand the observation space from 2 to 3 dimensions.
+        # This is necessary for conv nets in Baselines.
+        if self.format_3d:
+            self.observation = np.expand_dims(self.observation, axis=-1)
 
         return self.observation
 
@@ -373,8 +357,8 @@ class PriceJump(Env):
              self.broker.long_inventory.get_unrealized_pnl(self.midpoint) /
                 self.broker.reward_scale,
              self.broker.short_inventory.get_unrealized_pnl(self.midpoint) /
-                self.broker.reward_scale)
-        )
+                self.broker.reward_scale),
+            dtype=np.float32)
 
     def _create_action_features(self, action):
         return self.actions[action]

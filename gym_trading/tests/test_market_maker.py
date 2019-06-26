@@ -20,10 +20,10 @@ def test_market_maker_gym():
         'testing_file': 'ETH-USD_2019-01-01.xz',
         'step_size': 1,
         'max_position': 5,
-        'window_size': 1,
+        'window_size': 20,
         'seed': 1,
         'action_repeats': 10,
-        'frame_stack': False
+        'format_3d': True
     }
 
     env = gym.make(MarketMaker.id, **config)
@@ -50,8 +50,8 @@ def test_market_maker_gym():
 
         if done:
             elapsed = (dt.now() - start_time).seconds
-            print('Done on step #%i @ %i ticks/second' % (i, (i // elapsed) *
-                  MarketMaker.action_repeats))
+            print('Done on step #%i @ %i steps/second' % (i, (i // elapsed) *
+                  env.action_repeats))
             break
 
     env.reset()
@@ -70,7 +70,7 @@ def test_market_maker_python():
         'window_size': 5,
         'seed': 1,
         'action_repeats': 10,
-        'frame_stack': False
+        'format_3d': False
     }
     logger.info('test_market_maker_python() configs are {}'.format(config))
 

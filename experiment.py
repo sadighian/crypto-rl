@@ -39,18 +39,20 @@ parser.add_argument('--testing_file',
                     default='ETH-USD_2019-01-01.xz',
                     help="Dataset for training the agent (current day)",
                     type=str)
-parser.add_argument('--frame_stack',
+parser.add_argument('--format_3d',
                     default=False,
-                    help="Stack 4 snapshots as one observation if True, " +
-                         "Otherwise 1 snapshot is the observation",
+                    help="Expand the observation space by one dimension" +
+                    "to be compatible with CNNs. True for Baselines, and False for "
+                    "Keras-RL." +
+                    "E.g., [window, features] --> [window, features, 1]",
                     type=bool)
 parser.add_argument('--visualize',
                     default=False,
                     help="Render midpoint on a screen",
                     type=bool)
 parser.add_argument('--env',
-                    default='market-maker-v0',
-                    # default='long-short-v0',
+                    # default='market-maker-v0',
+                    default='long-short-v0',
                     help="gym_trading environment: 'long-short-v0' or "
                          "'market-maker-v0'",
                     type=str)
