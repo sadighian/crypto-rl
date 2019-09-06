@@ -1,12 +1,12 @@
 from collections import deque
 from configurations.configs import INDICATOR_WINDOW
+from gym_trading.indicators.indicator import Indicator
 
 
-class TnS(object):
+class TnS(Indicator):
 
     def __init__(self, window=INDICATOR_WINDOW):
-        self.window = window
-        self.all_history_queue = deque(maxlen=self.window)
+        super(TnS, self).__init__(window=window)
         self.ups = 0.
         self.downs = 0.
 

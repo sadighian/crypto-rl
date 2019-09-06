@@ -1,11 +1,15 @@
-# Inventory and risk management for the MarketMaker environment
+# mm_broker.py
+#
+#   Inventory and risk management for the MarketMaker environment
+#
+#
 import logging
 from configurations.configs import BROKER_FEE
 import numpy as np
 
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
-logger = logging.getLogger('broker2')
+logger = logging.getLogger('mm_broker')
 
 
 class Order(object):

@@ -1,21 +1,19 @@
-from collections import deque
 import numpy as np
 from configurations.configs import INDICATOR_WINDOW
+from gym_trading.indicators.indicator import Indicator
 
 
-class RSI(object):
+class RSI(Indicator):
 
     def __init__(self, window=INDICATOR_WINDOW):
-        self.window = window
-        self.all_history_queue = deque(maxlen=self.window)
+        super(RSI, self).__init__(window=window)
         self.last_price = np.nan
         self.ups = 0.
         self.downs = 0.
 
     def __str__(self):
-        return "***\nRSI: last_price={} | ups={} | downs={}\n***".format(self.last_price,
-                                                                         self.ups,
-                                                                         self.downs)
+        return "***\nRSI: last_price={} | ups={} | downs={}\n***".format(
+                   self.last_price, self.ups, self.downs)
 
     def reset(self):
         self.all_history_queue.clear()
@@ -33,6 +31,8 @@ class RSI(object):
             return
 
         if price == 0.:
+            price_pct_change = 0.
+        elif self.last_price == 0.:
             price_pct_change = 0.
         else:
             price_pct_change = round((price - self.last_price) / self.last_price, 6)

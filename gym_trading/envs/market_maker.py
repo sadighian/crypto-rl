@@ -1,10 +1,10 @@
 from gym import Env, spaces
 from data_recorder.database.simulator import Simulator as Sim
-from gym_trading.broker2 import Broker, Order
-from gym_trading.render_env import TradingGraph
+from gym_trading.utils.mm_broker import Broker, Order
+from gym_trading.utils.render_env import TradingGraph
 from configurations.configs import BROKER_FEE
-from data_recorder.indicators.rsi import RSI
-from data_recorder.indicators.tns import TnS
+from gym_trading.indicators import RSI
+from gym_trading.indicators import TnS
 import logging
 import numpy as np
 

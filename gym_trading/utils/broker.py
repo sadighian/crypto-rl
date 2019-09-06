@@ -1,4 +1,8 @@
-# Inventory and risk management for the Long-Short environment
+# broker.py
+#
+#   Inventory and risk management for the Long-Short environment
+#
+#
 import logging
 from configurations.configs import BROKER_FEE
 

@@ -2,14 +2,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-plt.style.use('dark_background')
-
-
 class TradingGraph:
     """
     A stock trading visualization using matplotlib
     made to render OpenAI gym environments
     """
+    plt.style.use('dark_background')
 
     def __init__(self, sym=None):
         # attributes for rendering

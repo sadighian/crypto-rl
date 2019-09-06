@@ -59,7 +59,7 @@ def test_extract_features():
 
     sim = Simulator(use_arctic=True)
 
-    for ccy in ['ETH-USD']:  #['BTC-USD', 'ETH-USD', 'LTC-USD']:  #, 'BCH-USD']:
+    for ccy in ['ETH-USD']:  #['BTC-USD', 'ETH-USD', 'LTC-USD']:
     # for ccy, ccy2 in [('LTC-USD', 'tLTCUSD')]:
         query = {
             'ccy': [ccy],  # ccy2],
