@@ -82,6 +82,7 @@ class MarketMaker(Env):
         self.max_steps = self.data.shape[0] - self.step_size * \
                          self.action_repeats - 1
 
+        # normalize midpoint data
         self.normalized_data['coinbase_midpoint'] = \
             np.log(self.normalized_data['coinbase_midpoint'].values)
         self.normalized_data['coinbase_midpoint'] = (
