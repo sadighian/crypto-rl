@@ -20,7 +20,8 @@ class MyTestCase(unittest.TestCase):
             'window_size': 5,
             'seed': 1,
             'action_repeats': 10,
-            'format_3d': False
+            'format_3d': False,
+            'z_score': False,
         }
 
         env = gym.make(PriceJump.id, **config)
