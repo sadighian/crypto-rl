@@ -113,7 +113,7 @@ class PriceJump(Env):
         self.data_buffer = list()
 
         self.action_space = spaces.Discrete(len(self.actions))
-        self.reset()
+        self.reset()  # reset to load observation.shape
         self.observation_space = spaces.Box(low=-10,
                                             high=10,
                                             shape=self.observation.shape,
