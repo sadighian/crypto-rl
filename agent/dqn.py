@@ -27,6 +27,26 @@ class Agent(object):
                  visualize=False,
                  dueling_network=True,
                  double_dqn=True):
+        """
+        Agent constructor
+        :param step_size: int, number of steps to take in env for a given simulation step
+        :param window_size: int, number of lags to include in observation
+        :param max_position: int, maximum number of positions able to be held in inventory
+        :param fitting_file: str, file used for z-score fitting
+        :param testing_file: str,file used for dqn experiment
+        :param env: environment name
+        :param seed: int, random seed number
+        :param action_repeats: int, number of steps to take in environment between actions
+        :param number_of_training_steps: int, number of steps to train agent for
+        :param gamma: float, value between 0 and 1 used to discount future DQN returns
+        :param format_3d: boolean, format observation as matrix or tensor
+        :param train: boolean, train or test agent
+        :param weights: boolean, import existing weights
+        :param z_score: boolean, standardize observation space
+        :param visualize: boolean, visiualize environment
+        :param dueling_network: boolean, use dueling network architecture
+        :param double_dqn: boolean, use double DQN for Q-value approximation
+        """
         self.env_name = env
         self.env = gym.make(self.env_name,
                             fitting_file=fitting_file,
@@ -72,7 +92,10 @@ class Agent(object):
             Agent.name, self.env_name, self.number_of_training_steps)
 
     def create_model(self):
-
+        """
+        Create a Convolutional neural network with dense layer at the end
+        :return: keras model
+        """
         features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
         model = Sequential()
         conv = Conv2D
@@ -94,6 +117,10 @@ class Agent(object):
         return model
 
     def start(self):
+        """
+        Entry point for agent training and testing
+        :return: (void)
+        """
         weights_filename = '{}/dqn_weights/dqn_{}_weights.h5f'.format(
             self.cwd, self.env_name)
 
