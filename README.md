@@ -1,16 +1,12 @@
 # Deep Reinforcement Learning Toolkit for Cryptocurrencies
-As of April 28, 2019, the project has been updated
-and slightly reorganized for simplicity.
-
 
 ## 1. Purpose
 The purpose of this application is to provide a toolkit to:
  - **Record** full limit order book and trade tick data from two 
- exchanges (**Coinbase Pro** and **Bitfinex**) into an Arctic 
+ exchanges (**Coinbase Pro** and **Bitfinex**) into an [Arctic](https://github.com/manahl/arctic) 
  Tickstore database (i.e., MongoDB), 
  - **Replay** recorded historical data to derive feature sets for training
  - **Train** a Dueling Deep Q-Network (DDQN) agent to trade cryptocurrencies.
- More implementations coming soon (WIP).
 
 
 ## 2. Scope
@@ -176,10 +172,10 @@ for persisting data:
  date with the **FULL** branch.
 
 ### 7.2 Assumptions
-- You know how to start up a MongoDB database and have mongoDB installed already
-- You know how to start a python3 program via `terminal`
+- You have mongoDB already installed
+- You know how to use a cli to start python scripts
 - You are running an ubuntu 18+ os
 
-### 7.3 To-dos:
-1. Create DockerFile so that simulations can be rapidly deployed in the cloud 
-(e.g., AWS Fargate)
+### 7.3 Change Log
+- 2019-09-06: Created and implemented `Indicator.py` base class
+- 2019-04-28: Reorganized project structure for simplicity

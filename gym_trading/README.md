@@ -1,13 +1,28 @@
 # GYM_TRADING
-As of May 17th, 2019.
+As of September 07, 2019.
 
-## 1. Overview
-This package is my implementation of an HFT environment using a POMDP framework.
+## Overview
+This package is my implementation of an HFT environment extending a
+POMDP framework from OpenAI.
 
-The classes consist of environments and their respective utility classes:
-1. `broker.py` and `broker2.py` manages orders, executions, 
-position inventories, and PnL calculations generate feature 
-data, and export feature data to a csv,
-2. `price_jump.py` and `market_maker.py` are environment implementations
-using the OpenAI Gym framework. These environments use the recorded limit
-order book data as state space representation.
+## 1. Envs
+Module containing various environment implementations.
+- `price_jump.py` implementation where the agent uses **market orders**
+  to trade crytocurrencies.
+- `market_maker.py` implementation where the agent uses 
+**limit orders** to trade cryptocurrencies
+
+## 2. Indicators
+Module containing indicators that are implemented within environments. 
+
+## 3. Utils
+Module containing utility classes for the `gym_trading` module.
+- `broker.py` manages orders, executions, position inventories, and PnL
+  calculations for `price_jump.py`
+- `broker_mm.py` manages orders, executions, position inventories, and
+  PnL calculations for `market_maker.py`
+- `render_env.py` render's midpoint price data as the agent steps
+  through the environment
+
+## 4. Tests
+Module containing test cases for `gym_trading`'s modules.
