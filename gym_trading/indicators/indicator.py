@@ -98,7 +98,7 @@ class IndicatorManager(object):
         for (name, indicator) in self.indicators:
             getattr(indicator, 'reset')()
 
-    def get_values(self):
+    def get_value(self):
         """
         Get all indicator values in the manager's inventory
         :return: (list of floats) Indicator values for current time step

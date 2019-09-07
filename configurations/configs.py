@@ -2,7 +2,7 @@ import pytz as tz
 
 
 # ./recorder.py
-SNAPSHOT_RATE = 15.  # 0.25 = 4x second
+SNAPSHOT_RATE = 10  # 0.25 = 4x second
 BASKET = [('BTC-USD', 'tBTCUSD'),
           ('ETH-USD', 'tETHUSD'),
           ('LTC-USD', 'tLTCUSD'),
@@ -33,5 +33,8 @@ TIMEZONE = tz.utc
 # ./simulator.py
 BROKER_FEE = 0.003
 
+
 # ./indicators/*
-INDICATOR_WINDOW = 2*60*13
+INDICATOR_WINDOW = [2*60*i for i in [5, 15, 30]]
+INDICATOR_WINDOW_MAX = max(INDICATOR_WINDOW)
+INDICATOR_WINDOW_FEATURES = ['_{}'.format(i) for i in [5, 15, 30]]

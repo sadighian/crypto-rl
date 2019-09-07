@@ -1,6 +1,6 @@
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, Conv2D
-from keras.optimizers import RMSprop
+from keras.optimizers import Adam
 from rl.agents.dqn import DQNAgent
 from rl.memory import SequentialMemory
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
@@ -12,18 +12,23 @@ import gym_trading
 class Agent(object):
     name = 'DQN'
 
-    def __init__(self, step_size=1, window_size=20, train=True, max_position=5,
-                 weights=True, fitting_file='ETH-USD_2018-12-31.xz',
+    def __init__(self, step_size=1, window_size=20, max_position=5,
+                 fitting_file='ETH-USD_2018-12-31.xz',
                  testing_file='ETH-USD_2018-01-01.xz',
-                 format_3d=False,  # add 3rd dimension for CNNs
                  env='market-maker-v0',
                  seed=1,
                  action_repeats=4,
                  number_of_training_steps=1e5,
-                 visualize=False):
+                 gamma=0.999,
+                 format_3d=False,  # add 3rd dimension for CNNs
+                 train=True,
+                 weights=True,
+                 z_score=True,
+                 visualize=False,
+                 dueling_network=True,
+                 double_dqn=True):
         self.env_name = env
         self.env = gym.make(self.env_name,
-                            training=train,
                             fitting_file=fitting_file,
                             testing_file=testing_file,
                             step_size=step_size,
@@ -31,8 +36,11 @@ class Agent(object):
                             window_size=window_size,
                             seed=seed,
                             action_repeats=action_repeats,
+                            training=train,
+                            z_score=z_score,
                             format_3d=format_3d)
-        # Number of frames to stack e.g., 1; Keras-RL uses its own stacker
+        # Number of frames to stack e.g., 1.
+        # NOTE: 'Keras-RL' uses its own frame-stacker
         self.memory_frame_stack = 1
         self.model = self.create_model()
         self.memory = SequentialMemory(limit=10000,
@@ -49,14 +57,13 @@ class Agent(object):
                               memory=self.memory,
                               processor=None,
                               nb_steps_warmup=500,
-                              enable_dueling_network=True,
+                              enable_dueling_network=dueling_network,
                               dueling_type='avg',
-                              enable_double_dqn=True,
-                              gamma=0.999,
+                              enable_double_dqn=double_dqn,
+                              gamma=gamma,
                               target_model_update=1000,
                               delta_clip=1.0)
-
-        self.agent.compile(RMSprop(lr=0.00048), metrics=['mae'])
+        self.agent.compile(Adam(lr=float("3e-4")), metrics=['mae'])
 
     def __str__(self):
         # msg = '\n'
@@ -70,15 +77,15 @@ class Agent(object):
         model = Sequential()
         conv = Conv2D
 
-        model.add(conv(input_shape=features_shape, filters=16, kernel_size=8,
-                       padding='same', activation='relu', strides=4,
-                       data_format='channels_first'))
-        model.add(conv(filters=32, kernel_size=4, padding='same', activation='relu',
-                       strides=2, data_format='channels_first'))
-        model.add(conv(filters=32, kernel_size=2, padding='same', activation='relu',
-                       strides=1, data_format='channels_first'))
+        model.add(conv(input_shape=features_shape,
+                       filters=16, kernel_size=[10, 1], padding='same', activation='relu',
+                       strides=[5, 1], data_format='channels_first'))
+        model.add(conv(filters=16, kernel_size=[6, 1], padding='same', activation='relu',
+                       strides=[3, 1], data_format='channels_first'))
+        model.add(conv(filters=16, kernel_size=[4, 1], padding='same', activation='relu',
+                       strides=[2, 1], data_format='channels_first'))
         model.add(Flatten())
-        model.add(Dense(256))
+        model.add(Dense(512))
         model.add(Activation('linear'))
         model.add(Dense(self.env.action_space.n))
         model.add(Activation('softmax'))
@@ -87,19 +94,20 @@ class Agent(object):
         return model
 
     def start(self):
-        weights_filename = '{}/dqn_weights/dqn_{}_weights.h5f'.format(self.cwd,
-                                                                      self.env_name)
+        weights_filename = '{}/dqn_weights/dqn_{}_weights.h5f'.format(
+            self.cwd, self.env_name)
+
         if self.weights:
             self.agent.load_weights(weights_filename)
             print('...loading weights for {}'.format(self.env_name))
 
         if self.train:
-            checkpoint_weights_filename = 'dqn_' + self.env_name + \
+            checkpoint_weights_filename = 'dqn_{}'.format(self.env_name) + \
                                           '_weights_{step}.h5f'
             checkpoint_weights_filename = '{}/dqn_weights/'.format(self.cwd) + \
                                           checkpoint_weights_filename
-            log_filename = '{}/dqn_weights/dqn_{}_log.json'.format(self.cwd,
-                                                                   self.env_name)
+            log_filename = '{}/dqn_weights/dqn_{}_log.json'.format(
+                self.cwd, self.env_name)
             print('FileLogger: {}'.format(log_filename))
 
             callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename,

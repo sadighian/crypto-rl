@@ -2,9 +2,10 @@ from gym import Env, spaces
 from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.utils.mm_broker import Broker, Order
 from gym_trading.utils.render_env import TradingGraph
-from configurations.configs import BROKER_FEE
+from configurations.configs import BROKER_FEE, INDICATOR_WINDOW, INDICATOR_WINDOW_MAX
 from gym_trading.indicators import RSI
 from gym_trading.indicators import TnS
+from gym_trading.indicators.indicator import IndicatorManager
 import logging
 import numpy as np
 
@@ -19,16 +20,9 @@ class MarketMaker(Env):
     metadata = {'render.modes': ['human']}
     id = 'market-maker-v0'
 
-    # constants
-    inventory_features = ['long_inventory', 'short_inventory',
-                          'total_unrealized_and_realized_pnl',
-                          'long_unrealized_pnl', 'short_unrealized_pnl',
-                          'buy_distance_to_midpoint', 'short_distance_to_midpoint',
-                          'buy_queue_vol', 'short_queue_vol']
     # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
     features = Sim.get_feature_labels(include_system_time=False,
                                       include_bitfinex=False)
-    indicator_features = ['tns', 'rsi']
     best_bid_index = features.index('coinbase-bid-distance-0')
     best_ask_index = features.index('coinbase-ask-distance-0')
     notional_bid_index = features.index('coinbase-bid-notional-0')
@@ -40,7 +34,6 @@ class MarketMaker(Env):
     target_pnl = BROKER_FEE * 10 * 5  # e.g., 5 for max_positions
 
     def __init__(self, *,
-                 training=True,
                  fitting_file='ETH-USD_2018-12-31.xz',
                  testing_file='ETH-USD_2019-01-01.xz',
                  step_size=1,
@@ -48,7 +41,9 @@ class MarketMaker(Env):
                  window_size=10,
                  seed=1,
                  action_repeats=10,
-                 format_3d=False):
+                 training=True,
+                 format_3d=False,
+                 z_score=True):
 
         # properties required for instantiation
         self.action_repeats = action_repeats
@@ -78,23 +73,7 @@ class MarketMaker(Env):
         # get historical data for simulations
         self.sim = Sim(use_arctic=False)
 
-        fitting_data_filepath = '{}/data_exports/{}'.format(self.sim.cwd,
-                                                            fitting_file)
-        data_used_in_environment = '{}/data_exports/{}'.format(self.sim.cwd,
-                                                               testing_file)
-        # print('Fitting data: {}\nTesting Data: {}'.format(fitting_data_filepath,
-        #                                                data_used_in_environment))
-
-        fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
-        fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
-                                                   values)
-        fitting_data['coinbase_midpoint'] = (
-                fitting_data['coinbase_midpoint'] -
-                fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
-        self.sim.fit_scaler(fitting_data)
-        del fitting_data
-
-        self.data = self.sim.import_csv(filename=data_used_in_environment)
+        self.data = self._load_environment_data(fitting_file, testing_file)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
         self.normalized_data = self.data.copy()
@@ -107,49 +86,45 @@ class MarketMaker(Env):
             np.log(self.normalized_data['coinbase_midpoint'].values)
         self.normalized_data['coinbase_midpoint'] = (
                 self.normalized_data['coinbase_midpoint'] -
-                self.normalized_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
+                self.normalized_data['coinbase_midpoint'].shift(1)).fillna(0.)
 
-        self.tns = TnS()
-        self.rsi = RSI()
+        # load indicators into the indicator manager
+        self.tns = IndicatorManager()
+        self.rsi = IndicatorManager()
+        for window in INDICATOR_WINDOW:
+            self.tns.add(('tns_{}'.format(window), TnS(window=window)))
+            self.rsi.add(('rsi_{}'.format(window), RSI(window=window)))
 
-        logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
-        self.normalized_data = self.normalized_data.apply(self.sim.z_score, axis=1).values
-        logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
+        if z_score:
+            logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
+            self.normalized_data = self.normalized_data.apply(
+                self.sim.z_score, axis=1).values
+            logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
+        else:
+            self.normalized_data = self.normalized_data.values
 
         # rendering class
         self._render = TradingGraph(sym=self.sym)
         # graph midpoint prices
         self._render.reset_render_data(
             y_vec=self.prices_[:np.shape(self._render.x_vec)[0]])
-
+        # buffer for appending lags
         self.data_buffer = list()
 
         self.action_space = spaces.Discrete(len(self.actions))
+        self.reset()
+        self.observation_space = spaces.Box(low=-10,
+                                            high=10,
+                                            shape=self.observation.shape,
+                                            dtype=np.float32)
 
-        variable_features_count = len(self.inventory_features) + len(self.actions) + 1 + \
-                                  len(MarketMaker.indicator_features)
-
-        if self.format_3d:
-            shape = (self.window_size,
-                     len(MarketMaker.features) + variable_features_count,
-                     1)
-        else:
-            shape = (self.window_size,
-                     len(MarketMaker.features) + variable_features_count)
-
-        self.observation_space = spaces.Box(low=self.data.min(),
-                                            high=self.data.max(),
-                                            shape=shape,
-                                            dtype=np.int)
-
-        print('MarketMaker #{} instantiated.\nself.observation_space.shape : {}'.format(
-            self._seed, self.observation_space.shape))
+        print('{} MarketMaker #{} instantiated\nself.observation_space.shape: {}'.format(
+            self.sym, self._seed, self.observation_space.shape))
 
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.sym, self._seed)
 
-    def step(self, action):
-
+    def step(self, action: int):
         for current_step in range(self.action_repeats):
 
             if self.done:
@@ -179,23 +154,12 @@ class MarketMaker(Env):
                 ask_price=step_best_ask,
                 buy_volume=buy_volume,
                 sell_volume=sell_volume,
-                step=self.local_step_number
-            )
+                step=self.local_step_number)
 
             self.reward += self._send_to_broker_and_get_reward(step_action)
             self.reward += step_reward
 
-            step_position_features = self._create_position_features()
-            step_action_features = self._create_action_features(action=step_action)
-            step_indicator_features = self._create_indicator_features()
-
-            step_observation = np.concatenate((
-                self.process_data(self.normalized_data[self.local_step_number]),
-                step_indicator_features,
-                step_position_features,
-                step_action_features,
-                np.array([self.reward], dtype=np.float32)),
-                axis=None)
+            step_observation = self._get_step_observation(action=action)
             self.data_buffer.append(step_observation)
 
             if len(self.data_buffer) > self.window_size:
@@ -203,12 +167,7 @@ class MarketMaker(Env):
 
             self.local_step_number += self.step_size
 
-        self.observation = np.array(self.data_buffer, dtype=np.float32)
-
-        # Expand the observation space from 2 to 3 dimensions.
-        # This is necessary for conv nets in Baselines.
-        if self.format_3d:
-            self.observation = np.expand_dims(self.observation, axis=-1)
+        self.observation = self._get_observation()
 
         if self.local_step_number > self.max_steps:
             self.done = True
@@ -228,9 +187,9 @@ class MarketMaker(Env):
             self.sym, self._seed,
             self.broker.get_total_pnl(midpoint=self.midpoint),
             self.broker.get_total_trade_count(),
-            self.local_step_number
-        )
+            self.local_step_number)
         logger.info(msg)
+
         self.reward = 0.0
         self.done = False
         self.broker.reset()
@@ -238,39 +197,22 @@ class MarketMaker(Env):
         self.rsi.reset()
         self.tns.reset()
 
-        for step in range(self.window_size + self.tns.window):
-
+        for step in range(self.window_size + INDICATOR_WINDOW_MAX):
             self.midpoint = self.prices_[self.local_step_number]
 
             step_buy_volume = self._get_book_data(MarketMaker.buy_trade_index)
             step_sell_volume = self._get_book_data(MarketMaker.sell_trade_index)
-
             self.tns.step(buys=step_buy_volume, sells=step_sell_volume)
             self.rsi.step(price=self.midpoint)
 
-            step_position_features = self._create_position_features()
-            step_action_features = self._create_action_features(action=0)
-            step_indicator_features = self._create_indicator_features()
-
-            step_observation = np.concatenate((self.process_data(
-                self.normalized_data[self.local_step_number]),
-                                               step_indicator_features,
-                                               step_position_features,
-                                               step_action_features,
-                                               np.array([self.reward])),
-                axis=None)
+            step_observation = self._get_step_observation(action=0)
             self.data_buffer.append(step_observation)
-            self.local_step_number += self.step_size
 
+            self.local_step_number += self.step_size
             if len(self.data_buffer) > self.window_size:
                 del self.data_buffer[0]
 
-        self.observation = np.array(self.data_buffer, dtype=np.float32)
-
-        # Expand the observation space from 2 to 3 dimensions.
-        # This is necessary for conv nets in Baselines.
-        if self.format_3d:
-            self.observation = np.expand_dims(self.observation, axis=-1)
+        self.observation = self._get_observation()
 
         return self.observation
 
@@ -296,10 +238,10 @@ class MarketMaker(Env):
         return [seed]
 
     @staticmethod
-    def process_data(_next_state):
+    def _process_data(_next_state):
         return np.clip(_next_state.reshape((1, -1)), -10., 10.)
 
-    # def process_data(self, _next_state):
+    # def _process_data(self, _next_state):
     #     # return self.sim.scale_state(_next_state).values.reshape((1, -1))
     #     return np.reshape(_next_state, (1, -1))
 
@@ -425,7 +367,8 @@ class MarketMaker(Env):
         return self.actions[action]
 
     def _create_indicator_features(self):
-        return np.array((self.tns.get_value(), self.rsi.get_value()), dtype=np.float32)
+        return np.array((*self.tns.get_value(), *self.rsi.get_value()),
+                        dtype=np.float32)
 
     def _create_order_at_level(self, reward, discouragement, level=0, side='long'):
         adjustment = 1 if level > 0 else 0
@@ -485,3 +428,38 @@ class MarketMaker(Env):
 
     def _get_book_data(self, index=0):
         return self.data[self.local_step_number][index]
+
+    def _get_step_observation(self, action=0):
+        step_position_features = self._create_position_features()
+        step_action_features = self._create_action_features(action=action)
+        step_indicator_features = self._create_indicator_features()
+        return np.concatenate(
+            (self._process_data(self.normalized_data[self.local_step_number]),
+             step_indicator_features,
+             step_position_features,
+             step_action_features,
+             np.array([self.reward])),
+            axis=None)
+
+    def _get_observation(self):
+        observation = np.array(self.data_buffer, dtype=np.float32)
+        # Expand the observation space from 2 to 3 dimensions.
+        # This is necessary for conv nets in Baselines.
+        if self.format_3d:
+            observation = np.expand_dims(observation, axis=-1)
+        return observation
+
+    def _load_environment_data(self, fitting_file, testing_file):
+        fitting_data_filepath = '{}/data_exports/{}'.format(self.sim.cwd,
+                                                            fitting_file)
+        data_used_in_environment = '{}/data_exports/{}'.format(self.sim.cwd,
+                                                               testing_file)
+        fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
+        fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
+                                                   values)
+        fitting_data['coinbase_midpoint'] = (
+                fitting_data['coinbase_midpoint'] -
+                fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
+        self.sim.fit_scaler(fitting_data)
+        del fitting_data
+        return self.sim.import_csv(filename=data_used_in_environment)

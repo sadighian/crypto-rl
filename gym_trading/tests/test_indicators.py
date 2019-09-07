@@ -64,7 +64,7 @@ class MyTestCase(unittest.TestCase):
         im.step(buys=0, sells=0)
         for buy, sell in zip(buys, sells):
             im.step(buys=buy, sells=sell)
-        indicator_values = im.get_values()
+        indicator_values = im.get_value()
         self.assertEqual([float(-1)]*3, indicator_values,
                          msg='indicator_value is {} and should be {}'.format(
                              indicator_values, float(-1)))

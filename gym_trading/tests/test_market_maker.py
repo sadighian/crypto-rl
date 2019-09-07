@@ -20,7 +20,8 @@ class MyTestCase(unittest.TestCase):
             'window_size': 20,
             'seed': 1,
             'action_repeats': 10,
-            'format_3d': True
+            'format_3d': False,
+            'z_score': False,
         }
 
         env = gym.make(MarketMaker.id, **config)
@@ -33,8 +34,9 @@ class MyTestCase(unittest.TestCase):
         while not done:
             i += 1
 
-            if i % 300 == 0:
+            if i % 30000 == 0:
                 action = np.random.randint(env.action_space.n)
+                break
             else:
                 action = 0
 
