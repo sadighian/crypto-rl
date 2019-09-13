@@ -4,7 +4,7 @@
 #
 #
 import logging
-from configurations.configs import BROKER_FEE
+from configurations.configs import MARKET_ORDER_FEE
 
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
@@ -12,6 +12,8 @@ logger = logging.getLogger('broker')
 
 
 class Order:
+    DEFAULT_SIZE = 1000.
+    _id = 0
 
     def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1):
         self.ccy = ccy
@@ -20,6 +22,7 @@ class Order:
         self.step = step
         self.drawdown_max = 0.0
         self.upside_max = 0.0
+        Order._id += 1
 
     def __str__(self):
         return ' %s | %s | %.3f | %i | %.3f | %.3f' % \
@@ -27,7 +30,11 @@ class Order:
                 self.upside_max)
 
     def update(self, midpoint=100.0):
-
+        """
+        Update specific position metrics per each order.
+        :param midpoint: (float) current midpoint price
+        :return:
+        """
         if self.side == 'long':
             unrealized_pnl = (midpoint - self.price) / self.price
         elif self.side == 'short':
@@ -49,7 +56,7 @@ class PositionI(object):
     and provides stats (e.g., pnl) on all tradself.average_price = es
     '''
 
-    def __init__(self, side='long', max_position=1):
+    def __init__(self, side='long', max_position=1, include_fees=True):
         self.max_position_count = max_position
         self.positions = []
         self.realized_pnl = 0.0
@@ -66,6 +73,14 @@ class PositionI(object):
             'realized_pnl': 0.0
         }
         self.total_trade_count = 0
+        self.include_fees = include_fees
+
+    def __str__(self):
+        msg = 'PositionI-{}: [realized_pnl={:.4f} | unrealized_pnl={:.4f}'.format(
+            self.side, self.realized_pnl, self.unrealized_pnl)
+        msg += ' | total_exposure={:.4f} | total_trade_count={}]'.format(
+            self.total_exposure, self.total_trade_count)
+        return msg
 
     def reset(self):
         self.positions.clear()
@@ -164,21 +179,40 @@ class PositionI(object):
 
 
 class Broker(object):
-    '''
-    Broker class is a wrapper for the PositionI class
-    and is implemented in `gym_trading.py`
-    '''
-    reward_scale = BROKER_FEE * 4.
+    reward_scale = MARKET_ORDER_FEE * 4.
 
-    def __init__(self, max_position=1):
-        self.long_inventory = PositionI(side='long', max_position=max_position)
-        self.short_inventory = PositionI(side='short', max_position=max_position)
+    def __init__(self, max_position=1, include_fees=True):
+        """
+        Broker class is a wrapper for the PositionI class
+        and is implemented in `gym_trading.py`
+        :param max_position: (int) maximum number of positions agent can have open
+                                    at a given time.
+        :param include_fees: (bool) include transaction fees; if TRUE, then include
+        """
+        self.long_inventory = PositionI(side='long', max_position=max_position,
+                                        include_fees=include_fees)
+        self.short_inventory = PositionI(side='short', max_position=max_position,
+                                         include_fees=include_fees)
+
+    def __str__(self):
+        return self.long_inventory.__str__() + "\n" + self.short_inventory.__str__()
 
     def reset(self):
+        """
+        Reset long and short inventories
+        :return: (void)
+        """
         self.long_inventory.reset()
         self.short_inventory.reset()
 
     def add(self, order):
+        """
+        Add / update an order
+        :param order: (Order) New order to be used for updating existing order or
+                        placing a new order
+        :return: (bool) TRUE if order add action successfully completed, FALSE if already
+                        at position_max or unknown order.side
+        """
         if order.side == 'long':
             is_added = self.long_inventory.add(order=order)
         elif order.side == 'short':
@@ -188,7 +222,12 @@ class Broker(object):
             logger.warning('Broker.add() unknown order.side = %s' % order)
         return is_added
 
-    def remove(self, order):
+    def remove(self, order: Order):
+        """
+        Remove position from inventory and return position PnL.
+        :param order: (Order) Market order used to close position.
+        :return: (bool) TRUE if position removed successfully
+        """
         if order.side == 'long':
             is_removed = self.long_inventory.remove(order=order)
         elif order.side == 'short':
@@ -199,36 +238,75 @@ class Broker(object):
         return is_removed
 
     def get_unrealized_pnl(self, midpoint=100.):
+        """
+        Unrealized PnL as a percentage gain
+        :return: (float) PnL %
+        """
         long_pnl = self.long_inventory.get_unrealized_pnl(midpoint=midpoint)
         short_pnl = self.short_inventory.get_unrealized_pnl(midpoint=midpoint)
         return long_pnl + short_pnl
 
     def get_realized_pnl(self):
+        """
+        Realized PnL as a percentage gain
+        :return: (float) PnL %
+        """
         return self.short_inventory.realized_pnl + self.long_inventory.realized_pnl
 
-    def get_total_pnl(self, midpoint):
+    def get_total_pnl(self, midpoint: float):
+        """
+        Unrealized + realized PnL.
+        :param midpoint: (float) current midpoint price
+        :return: (float) total PnL
+        """
         total_pnl = self.get_unrealized_pnl(midpoint=midpoint)
         total_pnl += self.get_realized_pnl()
         return total_pnl
 
     @property
     def long_inventory_count(self):
+        """
+        Number of long positions currently held in inventory.
+        :return: (int) number of positions
+        """
         return self.long_inventory.position_count
 
     @property
     def short_inventory_count(self):
+        """
+        Number of short positions currently held in inventory.
+        :return: (int) number of positions
+        """
         return self.short_inventory.position_count
 
-    def flatten_inventory(self, order):
-        long_pnl = self.long_inventory.flatten_inventory(order=order)
-        short_pnl = self.short_inventory.flatten_inventory(order=order)
-        return long_pnl + short_pnl
+    def flatten_inventory(self, order: Order):
+        """
+        Flatten all positions held in inventory.
+        :param order: (Order) market order used to flatten inventory
+        :return: (float) Scaled [0, ...) PnL from flattening inventory
+        """
+        total_pnl = self.long_inventory.flatten_inventory(order=order)
+        total_pnl += self.short_inventory.flatten_inventory(order=order)
+        if total_pnl != 0.:
+            total_pnl /= Broker.reward_scale
+        return total_pnl
 
     def step(self, midpoint=100.0):
+        """
+        Update PnL and position metrics every time step in environment.
+        :param midpoint: (float) current midpoint price
+        :return: (void)
+        """
+
         self.long_inventory.step(midpoint=midpoint)
         self.short_inventory.step(midpoint=midpoint)
 
     def get_reward(self, side='long'):
+        """
+        Get reward for current time step
+        :param side: (str) 'long' or 'short' position
+        :return: (float) realized PnL
+        """
         if side == 'long':
             realized_pnl = self.long_inventory.last_trade['realized_pnl']
             steps_in_position = self.long_inventory.last_trade['steps_in_position']
@@ -256,5 +334,9 @@ class Broker(object):
         return realized_pnl
 
     def get_total_trade_count(self):
+        """
+        Total number of long and short trades executed
+        :return: (int) number of executed trades
+        """
         return self.long_inventory.total_trade_count + \
-               self.short_inventory.total_trade_count
+            self.short_inventory.total_trade_count

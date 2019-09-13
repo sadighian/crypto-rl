@@ -1,4 +1,4 @@
-from data_recorder.connector_components .client import Client
+from data_recorder.connector_components.client import Client
 
 
 class CoinbaseClient(Client):
@@ -9,7 +9,7 @@ class CoinbaseClient(Client):
     def run(self):
         """
         Handle incoming level 3 data on a separate thread
-        :return: void
+        :return: (void)
         """
         while True:
             msg = self.queue.get()

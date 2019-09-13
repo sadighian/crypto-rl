@@ -29,7 +29,6 @@ class Recorder(Process):
         self.current_time = dt.now()
         self.daemon = False
 
-    # noinspection PyTypeChecker
     def run(self):
         """
         New process created to instantiate limit order books for
@@ -71,8 +70,7 @@ class Recorder(Process):
             logger.info('Recorder: Finally done for %s and %s.' %
                         (coinbase, bitfinex))
 
-    # noinspection PyTypeChecker
-    def timer_worker(self, coinbaseClient, bitfinexClient):
+    def timer_worker(self, coinbaseClient: CoinbaseClient, bitfinexClient: BitfinexClient):
         """
         Thread worker to be invoked every N seconds
         (e.g., configs.SNAPSHOT_RATE)

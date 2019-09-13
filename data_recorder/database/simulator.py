@@ -5,7 +5,7 @@ from arctic.date import DateRange
 from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, \
-    RECORD_DATA, MAX_BOOK_ROWS
+    RECORD_DATA, MAX_BOOK_ROWS, INCLUDE_ORDERFLOW
 from dateutil.parser import parse
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ class Simulator(object):
 
     def __init__(self, use_arctic=False):
         """
-
+        Simulator constructor
         :param use_arctic: If True, Simulator creates a connection to Arctic,
                             Otherwise, no connection is attempted
         """
@@ -83,6 +83,13 @@ class Simulator(object):
         return cursor
 
     def _query_arctic(self, ccy, start_date, end_date):
+        """
+        Query database and return LOB messages starting from LOB reconstruction
+        :param ccy: currency symbol
+        :param start_date: YYYYMMDD
+        :param end_date: YYYYMMDD
+        :return: (pd.DataFrame)
+        """
         start_time = dt.now(tz=TIMEZONE)
 
         if self.library is None:
@@ -114,7 +121,8 @@ class Simulator(object):
         return cursor
 
     @staticmethod
-    def get_feature_labels(include_system_time=True, include_bitfinex=True):
+    def get_feature_labels(include_system_time=True, include_bitfinex=True,
+                           include_order_flow=INCLUDE_ORDERFLOW):
         """
         Function to create the features' labels
         :param include_bitfinex: (boolean) If TRUE, Bitfinex's LOB data
@@ -136,13 +144,31 @@ class Simulator(object):
             exchanges.append('bitfinex')
 
         for exchange in exchanges:
-            for side in ['bid', 'ask']:
-                for feature in ['notional', 'distance']:
-                    for level in range(MAX_BOOK_ROWS):
-                        columns.append(('%s-%s-%s-%i' %
-                                        (exchange, side, feature, level)))
+            for feature in ['notional', 'distance']:
+                for side in ['bid', 'ask']:
+                    if side == 'bid':
+                        for level in reversed(range(MAX_BOOK_ROWS)):
+                            columns.append(('%s_%s_%s_%i' %
+                                            (exchange, side, feature, level)))
+                    else:
+                        for level in range(MAX_BOOK_ROWS):
+                            columns.append(('%s_%s_%s_%i' %
+                                            (exchange, side, feature, level)))
+
             for trade_side in ['buys', 'sells']:
-                columns.append('%s-%s' % (exchange, trade_side))
+                columns.append('%s_%s' % (exchange, trade_side))
+
+            if include_order_flow:
+                for feature in ['cancel_notional', 'limit_notional', 'market_notional']:
+                    for side in ['bid', 'ask']:
+                        if side == 'bid':
+                            for level in reversed(range(MAX_BOOK_ROWS)):
+                                columns.append(('%s_%s_%s_%i' %
+                                                (exchange, side, feature, level)))
+                        else:
+                            for level in range(MAX_BOOK_ROWS):
+                                columns.append(('%s_%s_%s_%i' %
+                                                (exchange, side, feature, level)))
 
         return columns
 
@@ -156,13 +182,12 @@ class Simulator(object):
         """
         start_time = dt.now(tz=TIMEZONE)
 
-        sub_folder = '{}/data_exports/{}'.format(self.cwd, filename)
+        sub_folder = os.path.join(self.cwd, 'data_exports', filename) + '.csv'
 
         if compress:
             sub_folder += '.xz'
             data.to_csv(path_or_buf=sub_folder, index=False, compression='xz')
         else:
-            sub_folder += '.csv'
             data.to_csv(path_or_buf=sub_folder, index=False)
 
         elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds

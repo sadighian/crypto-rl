@@ -1,4 +1,13 @@
 # Deep Reinforcement Learning Toolkit for Cryptocurrencies
+**Table of contents:**
+
+1. Purpose
+2. Scope
+3. Dependencies
+4. Project Structure
+5. Getting started
+6. Citing this project
+7. Appendix 
 
 ## 1. Purpose
 The purpose of this application is to provide a toolkit to:
@@ -177,5 +186,9 @@ for persisting data:
 - You are running an ubuntu 18+ os
 
 ### 7.3 Change Log
+- 2019-09-13: Created and implemented 'order arrival' flow metrics,
+  inspired by
+  [Multi-Level Order-Flow Imbalance in a Limit Order Book](https://arxiv.org/abs/1907.06230v1)
+  by Xu, Ke; Gould, Martin D.; Howison, Sam D.
 - 2019-09-06: Created and implemented `Indicator.py` base class
 - 2019-04-28: Reorganized project structure for simplicity

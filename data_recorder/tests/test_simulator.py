@@ -17,7 +17,6 @@ def test_get_tick_history():
         'end_date': 20190102
     }
     tick_history = sim.get_tick_history(query=query)
-
     print('\n{}\n'.format(tick_history))
 
     elapsed = (dt.now(TIMEZONE) - start_time).seconds
@@ -34,9 +33,9 @@ def test_get_orderbook_snapshot_history():
 
     sim = Simulator(use_arctic=True)
     query = {
-        'ccy': ['BTC-USD', 'tBTCUSD'],
-            'start_date': 20190313,
-            'end_date': 20190315
+        'ccy': ['LTC-USD'],
+        'start_date': 20190406,
+        'end_date': 20190407
     }
     orderbook_snapshot_history = sim.get_orderbook_snapshot_history(query=query)
 
@@ -59,12 +58,12 @@ def test_extract_features():
 
     sim = Simulator(use_arctic=True)
 
-    for ccy in ['ETH-USD']:  #['BTC-USD', 'ETH-USD', 'LTC-USD']:
+    for ccy in ['LTC-USD']:  #['BTC-USD', 'ETH-USD', 'LTC-USD']:
     # for ccy, ccy2 in [('LTC-USD', 'tLTCUSD')]:
         query = {
             'ccy': [ccy],  # ccy2],
-            'start_date': 20190406,
-            'end_date': 20190409
+            'start_date': 20190409,
+            'end_date': 20190416
         }
         sim.extract_features(query)
 

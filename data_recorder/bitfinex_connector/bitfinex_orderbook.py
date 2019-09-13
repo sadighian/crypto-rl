@@ -7,10 +7,7 @@ class BitfinexOrderBook(OrderBook):
 
     def __init__(self, sym):
         super(BitfinexOrderBook, self).__init__(sym, 'bitfinex')
-        self.channel_id = {
-            'book': int(0),
-            'trades': int(0)
-        }
+        self.channel_id = {'book': int(0), 'trades': int(0)}
 
     def _load_book(self, book):
         """
@@ -20,11 +17,10 @@ class BitfinexOrderBook(OrderBook):
         """
         start_time = time()
 
-        self.db.new_tick({'type': 'load_book',
-                          'product_id': self.sym})
+        self.db.new_tick({'type': 'load_book', 'product_id': self.sym})
 
         for row in book[1]:
-            msg = {
+            order = {
                 "order_id": int(row[0]),
                 "price": float(row[1]),
                 "size": float(abs(row[2])),
@@ -32,15 +28,14 @@ class BitfinexOrderBook(OrderBook):
                 "product_id": self.sym,
                 "type": 'preload'
             }
-            self.db.new_tick(msg)
+            self.db.new_tick(order)
 
-            if msg['side'] == 'buy':
-                self.bids.insert_order(msg)
+            if order['side'] == 'buy':
+                self.bids.insert_order(order)
             else:
-                self.asks.insert_order(msg)
+                self.asks.insert_order(order)
 
-        self.db.new_tick({'type': 'book_loaded',
-                          'product_id': self.sym})
+        self.db.new_tick({'type': 'book_loaded', 'product_id': self.sym})
 
         self.bids.warming_up = False
         self.asks.warming_up = False
@@ -146,7 +141,7 @@ class BitfinexOrderBook(OrderBook):
     def _process_book_replay(self, order):
         """
         Internal method to process FULL BOOK market data
-        :param msg: incoming tick
+        :param order: incoming tick
         :return: False if resubscription in required
         """
         # clean up the datatypes
@@ -185,9 +180,11 @@ class BitfinexOrderBook(OrderBook):
         elif order['type'] == 'te':
             trade_notional = order['price'] * order['size']
             if order['side'] == 'upticks':
-                self.trade_tracker['buys'] += trade_notional
+                self.buy_tracker.add(notional=trade_notional)
+                self.asks.match(order)
             else:
-                self.trade_tracker['sells'] += trade_notional
+                self.sell_tracker.add(notional=trade_notional)
+                self.bids.match(order)
 
         else:
             print('\n_process_book_replay() Unhandled list msg %s' % order)
@@ -225,20 +222,15 @@ class BitfinexOrderBook(OrderBook):
             self.db.new_tick(trade)
             # print('%s %f' % (side, msg[2][3]))
 
-        # elif msg_type == 'tu':
-        #     self.trades[side]['size'] += abs(msg[2][3] * msg[2][2])
-        #     self.trades[side]['count'] += 1
-        #     print('tu message %s' % msg)
-
         return True
 
     def _process_trades_replay(self, msg):
         trade_notional = abs(msg['price'] * msg['size'])
 
         if msg['side'] == 'upticks':
-            self.trade_tracker['buys'] += trade_notional
+            self.buy_tracker.add(notional=trade_notional)
         else:
-            self.trade_tracker['sells'] += trade_notional
+            self.sell_tracker.add(notional=trade_notional)
 
         return True
 
@@ -250,8 +242,8 @@ class BitfinexOrderBook(OrderBook):
         """
         if msg['event'] == 'subscribed':
             self.channel_id[msg['channel']] = msg['chanId']
-            print('%s Added channel_id: %i for %s' % (self.sym, msg['chanId'],
-                                                      msg['channel']))
+            print('%s Added channel_id: %i for %s' % (
+                self.sym, msg['chanId'], msg['channel']))
             return True
 
         elif msg['event'] == 'info':
@@ -293,4 +285,3 @@ class BitfinexOrderBook(OrderBook):
             elif code == 10401:
                 print('\nBitfinex - %s: 10401 Not subscribed' % self.sym)
                 return True
-

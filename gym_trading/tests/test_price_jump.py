@@ -6,15 +6,15 @@ from gym_trading.envs.price_jump import PriceJump
 import gym_trading
 
 
-class MyTestCase(unittest.TestCase):
+class PriceJumpTestCases(unittest.TestCase):
 
     def test_price_jump_gym(self):
         start_time = dt.now()
 
         config = {
             'training': True,
-            'fitting_file': 'ETH-USD_2018-12-31.xz',
-            'testing_file': 'ETH-USD_2019-01-01.xz',
+            'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'LTC-USD_2019-04-08.csv.xz',
             'step_size': 1,
             'max_position': 1,
             'window_size': 5,

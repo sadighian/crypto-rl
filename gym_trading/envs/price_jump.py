@@ -2,12 +2,14 @@ from gym import Env, spaces
 from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.utils.broker import Broker, Order
 from gym_trading.utils.render_env import TradingGraph
-from configurations.configs import BROKER_FEE, INDICATOR_WINDOW, INDICATOR_WINDOW_MAX
+from configurations.configs import MARKET_ORDER_FEE, INDICATOR_WINDOW, \
+    INDICATOR_WINDOW_MAX
 from gym_trading.indicators import RSI
 from gym_trading.indicators import TnS
 from gym_trading.indicators.indicator import IndicatorManager
 import logging
 import numpy as np
+import os
 
 
 # logging
@@ -22,20 +24,20 @@ class PriceJump(Env):
     # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
     features = Sim.get_feature_labels(include_system_time=False,
                                       include_bitfinex=False)
-    best_bid_index = features.index('coinbase-bid-distance-0')
-    best_ask_index = features.index('coinbase-ask-distance-0')
-    notional_bid_index = features.index('coinbase-bid-notional-0')
-    notional_ask_index = features.index('coinbase-ask-notional-0')
+    best_bid_index = features.index('coinbase_bid_distance_0')
+    best_ask_index = features.index('coinbase_ask_distance_0')
+    notional_bid_index = features.index('coinbase_bid_notional_0')
+    notional_ask_index = features.index('coinbase_ask_notional_0')
 
-    buy_trade_index = features.index('coinbase-buys')
-    sell_trade_index = features.index('coinbase-sells')
+    buy_trade_index = features.index('coinbase_buys')
+    sell_trade_index = features.index('coinbase_sells')
 
-    target_pnl = BROKER_FEE * 10 * 5  # e.g., 5 for max_positions
-    fee = BROKER_FEE
+    target_pnl = 0.03  # 3.0% gain per episode (i.e., day)
+    fee = MARKET_ORDER_FEE
 
     def __init__(self, *,
-                 fitting_file='ETH-USD_2018-12-31.xz',
-                 testing_file='ETH-USD_2019-01-01.xz',
+                 fitting_file='LTC-USD_2019-04-07.csv.xz',
+                 testing_file='LTC-USD_2019-04-08.csv.xz',
                  step_size=1,
                  max_position=5,
                  window_size=10,
@@ -57,7 +59,7 @@ class PriceJump(Env):
 
         self.action = 0
         # derive gym.env properties
-        self.actions = np.eye(3)
+        self.actions = np.eye(3, dtype=np.float32)
 
         self.sym = testing_file[:7]  # slice the CCY from the filename
 
@@ -73,7 +75,8 @@ class PriceJump(Env):
         # get historical data for simulations
         self.sim = Sim(use_arctic=False)
 
-        self.data = self._load_environment_data(fitting_file, testing_file)
+        self.data = self._load_environment_data(
+            fitting_file, testing_file, z_score=z_score)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
         self.normalized_data = self.data.copy()
@@ -179,7 +182,7 @@ class PriceJump(Env):
         else:
             self.local_step_number = 0
 
-        msg = ' {}-{} reset. Episode pnl: {:.4f} with {} trades | First step: {}'.format(
+        msg = ' {}-{} reset. Episode pnl: {:.4f} with {} trades. First step: {}'.format(
             self.sym, self._seed,
             self.broker.get_total_pnl(midpoint=self.midpoint),
             self.broker.get_total_trade_count(),
@@ -235,13 +238,19 @@ class PriceJump(Env):
 
     @staticmethod
     def _process_data(_next_state):
+        """
+        Reshape observation and clip outliers (values +/- 10)
+        :param _next_state: observation space
+        :return: (np.array) clipped observation space
+        """
         return np.clip(_next_state.reshape((1, -1)), -10., 10.)
 
-    # def _process_data(self, _next_state):
-    #     # return self.sim.scale_state(_next_state).values.reshape((1, -1))
-    #     return np.reshape(_next_state, (1, -1))
-
-    def _send_to_broker_and_get_reward(self, action):
+    def _send_to_broker_and_get_reward(self, action: int):
+        """
+        Create or adjust orders per a specified action and adjust for penalties.
+        :param action: (int) current step's action
+        :return: (float) reward
+        """
         reward = 0.0
         discouragement = 0.000000000001
 
@@ -255,7 +264,8 @@ class PriceJump(Env):
                               price=price_fee_adjusted,
                               step=self.local_step_number)
                 self.broker.remove(order=order)
-                reward += self.broker.get_reward(side=order.side)
+                reward += self.broker.get_reward(side=order.side) / \
+                    self.broker.reward_scale  # scale realized PnL
 
             elif self.broker.long_inventory_count >= 0:
                 order = Order(ccy=self.sym, side='long',
@@ -276,7 +286,8 @@ class PriceJump(Env):
                               price=price_fee_adjusted,
                               step=self.local_step_number)
                 self.broker.remove(order=order)
-                reward += self.broker.get_reward(side=order.side)
+                reward += self.broker.get_reward(side=order.side) / \
+                    self.broker.reward_scale  # scale realized PnL
             elif self.broker.short_inventory_count >= 0:
                 order = Order(ccy=self.sym, side='short',
                               price=price_fee_adjusted,
@@ -285,10 +296,9 @@ class PriceJump(Env):
                     reward -= discouragement
 
             else:
-                logger.info('gym_trading.get_reward() ' +
-                            'Error for action #{} - ' +
-                            'unable to place an order with broker'
-                            .format(action))
+                logger.info(('gym_trading.get_reward() ' +
+                             'Error for action #{} - ' +
+                             'unable to place an order with broker').format(action))
 
         else:
             logger.info(('Unknown action to take in get_reward(): ' +
@@ -297,6 +307,10 @@ class PriceJump(Env):
         return reward
 
     def _create_position_features(self):
+        """
+        Create an array with features related to the agent's inventory
+        :return: (np.array) normalized position features
+        """
         return np.array(
             (self.broker.long_inventory.position_count / self.max_position,
              self.broker.short_inventory.position_count / self.max_position,
@@ -311,10 +325,18 @@ class PriceJump(Env):
         return self.actions[action]
 
     def _create_indicator_features(self):
+        """
+        Create features vector with environment indicators.
+        :return: (np.array) Indicator values for current time step
+        """
         return np.array((*self.tns.get_value(), *self.rsi.get_value()),
                         dtype=np.float32)
 
     def _get_nbbo(self):
+        """
+        Get best bid and offer
+        :return: (tuple) best bid and offer
+        """
         best_bid = round(self.midpoint - self._get_book_data(
             PriceJump.best_bid_index), 2)
         best_ask = round(self.midpoint + self._get_book_data(
@@ -322,9 +344,19 @@ class PriceJump(Env):
         return best_bid, best_ask
 
     def _get_book_data(self, index=0):
+        """
+        Return step 'n' of order book snapshot data
+        :param index: (int) step to look up in order book snapshot history
+        :return: (np.array) order book snapshot vector
+        """
         return self.data[self.local_step_number][index]
 
     def _get_step_observation(self, action=0):
+        """
+        Current step observation, NOT including historical data.
+        :param action: (int) current step action
+        :return: (np.array) Current step observation
+        """
         step_position_features = self._create_position_features()
         step_action_features = self._create_action_features(action=action)
         step_indicator_features = self._create_indicator_features()
@@ -337,24 +369,42 @@ class PriceJump(Env):
             axis=None)
 
     def _get_observation(self):
+        """
+        Current step observation, including historical data.
+
+        If format_3d is TRUE: Expand the observation space from 2 to 3 dimensions.
+        (note: This is necessary for conv nets in Baselines.)
+        :return: (np.array) Observation state for current time step
+        """
         observation = np.array(self.data_buffer, dtype=np.float32)
-        # Expand the observation space from 2 to 3 dimensions.
-        # This is necessary for conv nets in Baselines.
         if self.format_3d:
             observation = np.expand_dims(observation, axis=-1)
         return observation
 
-    def _load_environment_data(self, fitting_file, testing_file):
-        fitting_data_filepath = '{}/data_exports/{}'.format(self.sim.cwd,
-                                                            fitting_file)
-        data_used_in_environment = '{}/data_exports/{}'.format(self.sim.cwd,
-                                                               testing_file)
-        fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
-        fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
-                                                   values)
-        fitting_data['coinbase_midpoint'] = (
-                fitting_data['coinbase_midpoint'] -
-                fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
-        self.sim.fit_scaler(fitting_data)
-        del fitting_data
+    def _load_environment_data(self, fitting_file, testing_file, z_score=True):
+        """
+        Import and scale environment data set with prior day's data.
+
+        Midpoint gets log-normalized:
+            log(price t) - log(price t-1)
+
+        :param fitting_file: prior trading day
+        :param testing_file: current trading day
+        :return: (pd.DataFrame) scaled environment data
+        """
+        data_used_in_environment = os.path.join(
+            self.sim.cwd, 'data_exports', testing_file)
+        if z_score:
+            fitting_data_filepath = os.path.join(
+                self.sim.cwd, 'data_exports', fitting_file)
+
+            fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
+            fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
+                                                       values)
+            fitting_data['coinbase_midpoint'] = (
+                    fitting_data['coinbase_midpoint'] -
+                    fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
+            self.sim.fit_scaler(fitting_data)
+            del fitting_data
+
         return self.sim.import_csv(filename=data_used_in_environment)

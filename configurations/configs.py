@@ -17,6 +17,9 @@ MAX_RECONNECTION_ATTEMPTS = 300
 
 # ./connector_components/book.py
 MAX_BOOK_ROWS = 15
+INCLUDE_ORDERFLOW = True
+BOOK_DIGITS = 2  # Used to aggregate prices
+AGGREGATE = False
 
 
 # ./database/database.py
@@ -31,7 +34,8 @@ TIMEZONE = tz.utc
 
 
 # ./simulator.py
-BROKER_FEE = 0.003
+MARKET_ORDER_FEE = 0.0020
+LIMIT_ORDER_FEE = 0.0010
 
 
 # ./indicators/*

@@ -2,12 +2,13 @@ from gym import Env, spaces
 from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.utils.mm_broker import Broker, Order
 from gym_trading.utils.render_env import TradingGraph
-from configurations.configs import BROKER_FEE, INDICATOR_WINDOW, INDICATOR_WINDOW_MAX
+from configurations.configs import INDICATOR_WINDOW, INDICATOR_WINDOW_MAX
 from gym_trading.indicators import RSI
 from gym_trading.indicators import TnS
 from gym_trading.indicators.indicator import IndicatorManager
 import logging
 import numpy as np
+import os
 
 
 # logging
@@ -23,19 +24,19 @@ class MarketMaker(Env):
     # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
     features = Sim.get_feature_labels(include_system_time=False,
                                       include_bitfinex=False)
-    best_bid_index = features.index('coinbase-bid-distance-0')
-    best_ask_index = features.index('coinbase-ask-distance-0')
-    notional_bid_index = features.index('coinbase-bid-notional-0')
-    notional_ask_index = features.index('coinbase-ask-notional-0')
+    best_bid_index = features.index('coinbase_bid_distance_0')
+    best_ask_index = features.index('coinbase_ask_distance_0')
+    notional_bid_index = features.index('coinbase_bid_notional_0')
+    notional_ask_index = features.index('coinbase_ask_notional_0')
 
-    buy_trade_index = features.index('coinbase-buys')
-    sell_trade_index = features.index('coinbase-sells')
+    buy_trade_index = features.index('coinbase_buys')
+    sell_trade_index = features.index('coinbase_sells')
 
-    target_pnl = BROKER_FEE * 10 * 5  # e.g., 5 for max_positions
+    target_pnl = 0.03  # 3.0% gain per episode (i.e., day)
 
     def __init__(self, *,
-                 fitting_file='ETH-USD_2018-12-31.xz',
-                 testing_file='ETH-USD_2019-01-01.xz',
+                 fitting_file='LTC-USD_2019-04-07.csv.xz',
+                 testing_file='LTC-USD_2019-04-08.csv.xz',
                  step_size=1,
                  max_position=5,
                  window_size=10,
@@ -43,7 +44,7 @@ class MarketMaker(Env):
                  action_repeats=10,
                  training=True,
                  format_3d=False,
-                 z_score=True):
+                 z_score=False):
 
         # properties required for instantiation
         self.action_repeats = action_repeats
@@ -57,7 +58,7 @@ class MarketMaker(Env):
 
         self.action = 0
         # derive gym.env properties
-        self.actions = np.eye(17)
+        self.actions = np.eye(17, dtype=np.float32)
 
         self.sym = testing_file[:7]  # slice the CCY from the filename
 
@@ -73,14 +74,15 @@ class MarketMaker(Env):
         # get historical data for simulations
         self.sim = Sim(use_arctic=False)
 
-        self.data = self._load_environment_data(fitting_file, testing_file)
+        self.data = self._load_environment_data(fitting_file, testing_file,
+                                                z_score=z_score)
         self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
 
         self.normalized_data = self.data.copy()
         self.data = self.data.values
 
         self.max_steps = self.data.shape[0] - self.step_size * \
-                         self.action_repeats - 1
+            self.action_repeats - 1
 
         # normalize midpoint data
         self.normalized_data['coinbase_midpoint'] = \
@@ -157,7 +159,7 @@ class MarketMaker(Env):
                 sell_volume=sell_volume,
                 step=self.local_step_number)
 
-            self.reward += self._send_to_broker_and_get_reward(step_action)
+            self.reward += self._send_to_broker_and_get_reward(action=step_action)
             self.reward += step_reward
 
             step_observation = self._get_step_observation(action=action)
@@ -240,13 +242,19 @@ class MarketMaker(Env):
 
     @staticmethod
     def _process_data(_next_state):
+        """
+        Reshape observation and clip outliers (values +/- 10)
+        :param _next_state: observation space
+        :return: (np.array) clipped observation space
+        """
         return np.clip(_next_state.reshape((1, -1)), -10., 10.)
 
-    # def _process_data(self, _next_state):
-    #     # return self.sim.scale_state(_next_state).values.reshape((1, -1))
-    #     return np.reshape(_next_state, (1, -1))
-
-    def _send_to_broker_and_get_reward(self, action):
+    def _send_to_broker_and_get_reward(self, action: int):
+        """
+        Create or adjust orders per a specified action and adjust for penalties.
+        :param action: (int) current step's action
+        :return: (float) reward
+        """
         reward = 0.0
         discouragement = 0.000000000001
 
@@ -350,6 +358,10 @@ class MarketMaker(Env):
         return reward
 
     def _create_position_features(self):
+        """
+        Create an array with features related to the agent's inventory
+        :return: (np.array) normalized position features
+        """
         return np.array(
             (self.broker.long_inventory.position_count / self.max_position,
              self.broker.short_inventory.position_count / self.max_position,
@@ -365,26 +377,49 @@ class MarketMaker(Env):
             dtype=np.float32)
 
     def _create_action_features(self, action):
+        """
+        Create a features array for the current time step's action.
+        :param action: (int) action number
+        :return: (np.array) One-hot of current action
+        """
         return self.actions[action]
 
     def _create_indicator_features(self):
+        """
+        Create features vector with environment indicators.
+        :return: (np.array) Indicator values for current time step
+        """
         return np.array((*self.tns.get_value(), *self.rsi.get_value()),
                         dtype=np.float32)
 
-    def _create_order_at_level(self, reward, discouragement, level=0, side='long'):
+    def _create_order_at_level(self, reward: float, discouragement: float,
+                               level=0, side='long'):
+        """
+        Create a new order at a specified LOB level
+        :param reward: (float) current step reward
+        :param discouragement: (float) penalty deducted from reward for erroneous actions
+        :param level: (int) level in the limit order book
+        :param side: (str) direction of trade e.g., 'long' or 'short'
+        :return: (float) reward with penalties added
+        """
         adjustment = 1 if level > 0 else 0
 
         if side == 'long':
-            best_bid = self._get_book_data(MarketMaker.best_bid_index + level)
-            above_best_bid = round(self._get_book_data(
-                MarketMaker.best_bid_index + level - adjustment), 2)
-            price_improvement_bid = round(best_bid + 0.01, 2)
+            best = self._get_book_data(MarketMaker.best_bid_index - level)
+            denormalized_best = round(self.midpoint * (best + 1), 2)
+            inside_best = self._get_book_data(
+                MarketMaker.best_bid_index - level + adjustment)
+            denormalized_inside_best = round(self.midpoint * (inside_best + 1), 2)
+            plus_one = denormalized_best + 0.01
 
-            if above_best_bid == price_improvement_bid:
-                bid_price = round(self.midpoint - best_bid, 2)
-                bid_queue_ahead = self._get_book_data(MarketMaker.notional_bid_index)
+            if denormalized_inside_best == plus_one:
+                # stick to best bid
+                bid_price = denormalized_best
+                bid_queue_ahead = self._get_book_data(
+                    MarketMaker.notional_bid_index - level)
             else:
-                bid_price = round(self.midpoint - price_improvement_bid, 2)
+                # insert a cent ahead to jump a queue
+                bid_price = plus_one
                 bid_queue_ahead = 0.
 
             bid_order = Order(ccy=self.sym, side='long', price=bid_price,
@@ -397,16 +432,19 @@ class MarketMaker(Env):
                 reward += discouragement
 
         if side == 'short':
-            best_ask = self._get_book_data(MarketMaker.best_bid_index + level)
-            above_best_ask = round(self._get_book_data(
-                MarketMaker.best_ask_index + level - adjustment), 2)
-            price_improvement_ask = round(best_ask - 0.01, 2)
+            best = self._get_book_data(MarketMaker.best_ask_index + level)
+            denormalized_best = round(self.midpoint * (best + 1), 2)
+            inside_best = self._get_book_data(
+                MarketMaker.best_ask_index + level - adjustment)
+            denormalized_inside_best = round(self.midpoint * (inside_best + 1), 2)
+            plus_one = denormalized_best + 0.01
 
-            if above_best_ask == price_improvement_ask:
-                ask_price = round(self.midpoint + best_ask, 2)
-                ask_queue_ahead = self._get_book_data(MarketMaker.notional_ask_index)
+            if denormalized_inside_best == plus_one:
+                ask_price = denormalized_best
+                ask_queue_ahead = self._get_book_data(
+                    MarketMaker.notional_ask_index + level)
             else:
-                ask_price = round(self.midpoint + price_improvement_ask, 2)
+                ask_price = plus_one
                 ask_queue_ahead = 0.
 
             ask_order = Order(ccy=self.sym, side='short', price=ask_price,
@@ -421,6 +459,10 @@ class MarketMaker(Env):
         return reward
 
     def _get_nbbo(self):
+        """
+        Get best bid and offer
+        :return: (tuple) best bid and offer
+        """
         best_bid = round(self.midpoint - self._get_book_data(
             MarketMaker.best_bid_index), 2)
         best_ask = round(self.midpoint + self._get_book_data(
@@ -428,9 +470,19 @@ class MarketMaker(Env):
         return best_bid, best_ask
 
     def _get_book_data(self, index=0):
+        """
+        Return step 'n' of order book snapshot data
+        :param index: (int) step to look up in order book snapshot history
+        :return: (np.array) order book snapshot vector
+        """
         return self.data[self.local_step_number][index]
 
     def _get_step_observation(self, action=0):
+        """
+        Current step observation, NOT including historical data.
+        :param action: (int) current step action
+        :return: (np.array) Current step observation
+        """
         step_position_features = self._create_position_features()
         step_action_features = self._create_action_features(action=action)
         step_indicator_features = self._create_indicator_features()
@@ -443,24 +495,42 @@ class MarketMaker(Env):
             axis=None)
 
     def _get_observation(self):
+        """
+        Current step observation, including historical data.
+
+        If format_3d is TRUE: Expand the observation space from 2 to 3 dimensions.
+        (note: This is necessary for conv nets in Baselines.)
+        :return: (np.array) Observation state for current time step
+        """
         observation = np.array(self.data_buffer, dtype=np.float32)
-        # Expand the observation space from 2 to 3 dimensions.
-        # This is necessary for conv nets in Baselines.
         if self.format_3d:
             observation = np.expand_dims(observation, axis=-1)
         return observation
 
-    def _load_environment_data(self, fitting_file, testing_file):
-        fitting_data_filepath = '{}/data_exports/{}'.format(self.sim.cwd,
-                                                            fitting_file)
-        data_used_in_environment = '{}/data_exports/{}'.format(self.sim.cwd,
-                                                               testing_file)
-        fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
-        fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
-                                                   values)
-        fitting_data['coinbase_midpoint'] = (
-                fitting_data['coinbase_midpoint'] -
-                fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
-        self.sim.fit_scaler(fitting_data)
-        del fitting_data
+    def _load_environment_data(self, fitting_file, testing_file, z_score=True):
+        """
+        Import and scale environment data set with prior day's data.
+
+        Midpoint gets log-normalized:
+            log(price t) - log(price t-1)
+
+        :param fitting_file: prior trading day
+        :param testing_file: current trading day
+        :return: (pd.DataFrame) scaled environment data
+        """
+        data_used_in_environment = os.path.join(
+            self.sim.cwd, 'data_exports', testing_file)
+        if z_score:
+            fitting_data_filepath = os.path.join(
+                self.sim.cwd, 'data_exports', fitting_file)
+
+            fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
+            fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
+                                                       values)
+            fitting_data['coinbase_midpoint'] = (
+                    fitting_data['coinbase_midpoint'] -
+                    fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
+            self.sim.fit_scaler(fitting_data)
+            del fitting_data
+
         return self.sim.import_csv(filename=data_used_in_environment)

@@ -1,30 +1,50 @@
 from abc import ABC, abstractmethod
 from sortedcontainers import SortedDict
 import numpy as np
-from configurations.configs import MAX_BOOK_ROWS
+from configurations.configs import MAX_BOOK_ROWS, INCLUDE_ORDERFLOW, BOOK_DIGITS, \
+    AGGREGATE
+from data_recorder.connector_components.price_level import PriceLevel
 
 
 class Book(ABC):
+    CLEAR_MAX_ROWS = MAX_BOOK_ROWS + 20
 
     def __init__(self, sym, side):
+        """
+        Book constructor
+        :param sym: currency symbol
+        :param side: 'bids' or 'asks'
+        """
         self.price_dict = SortedDict()
         self.order_map = dict()
         self.side = side
         self.sym = sym
         self.warming_up = True
-        # this value needs to be set within the orderbook class
+        # render order book using numpy for faster performance
+        self._distances = np.empty(MAX_BOOK_ROWS, dtype=np.float32)
+        self._notionals = np.empty(MAX_BOOK_ROWS, dtype=np.float32)
+        self._cancel_notionals = np.empty(MAX_BOOK_ROWS, dtype=np.float32)
+        self._limit_notionals = np.empty(MAX_BOOK_ROWS, dtype=np.float32)
+        self._market_notionals = np.empty(MAX_BOOK_ROWS, dtype=np.float32)
 
     def __str__(self):
         if self.warming_up:
             message = 'warming up'
         elif self.side == 'asks':
-            ask_price, ask_value = self.get_ask()
-            message = '%s x %s' % \
-                      (str(round(ask_price, 3)), str(round(ask_value['size'], 2)))
+            ask_price, ask_price_level = self.get_ask()
+            message = '{:.3f} x {:.4f} | {:.1f} | {:.1f} | {:.1f}'.format(
+                ask_price,
+                ask_price_level.quantity,
+                ask_price_level.cancel_notional,
+                ask_price_level.limit_notional,
+                ask_price_level.market_notional)
         else:
-            bid_price, bid_value = self.get_bid()
-            message = '%s x %s' % \
-                      (str(round(bid_value['size'], 2)), str(round(bid_price, 3)))
+            bid_price, bid_price_level = self.get_bid()
+            message = '{:.1f} | {:.1f} | {:.1f} | {:.4f} x {:.3f}'.format(
+                bid_price_level.market_notional,
+                bid_price_level.limit_notional,
+                bid_price_level.cancel_notional,
+                bid_price_level.quantity, bid_price)
         return message
 
     def clear(self):
@@ -42,7 +62,7 @@ class Book(ABC):
         :param price:
         :return:
         """
-        self.price_dict[price] = {'size': float(0), 'count': int(0)}
+        self.price_dict[price] = PriceLevel(price=price, quantity=0.)
 
     def remove_price(self, price):
         """
@@ -99,54 +119,108 @@ class Book(ABC):
     def get_ask(self):
         """
         Best offer
-        :return: (float) inside ask, (dict) ask size and number of orders
+        :return: (float) inside ask, (PriceLevel) ask size and number of orders
         """
         if len(self.price_dict) > 0:
             return self.price_dict.items()[0]
         else:
-            return 0.0, dict({'size': 0.0, 'count': 0})
+            return 0.0, PriceLevel(price=0., quantity=0.)
 
     def get_bid(self):
         """
         Best bid
-        :return: (float) inside bid, (dict) bid size and number of orders
+        :return: (float) inside bid, (PriceLevel) bid size and number of orders
         """
         if len(self.price_dict) > 0:
             return self.price_dict.items()[-1]
         else:
-            return 0.0, dict({'size': 0.0, 'count': 0})
+            return 0.0, PriceLevel(price=0., quantity=0.)
 
-    def _get_asks_to_list(self, midpoint):
+    def _add_to_book_trackers(self,
+                              price: float,
+                              midpoint: float,
+                              level: PriceLevel,
+                              cumulative_notional: float,
+                              level_number: int):
+        # order book metrics
+        self._distances[level_number] = (price / midpoint) - 1.
+        cumulative_notional += level.notional
+        self._notionals[level_number] = cumulative_notional
+        return cumulative_notional
+
+    def _add_to_order_flow_trackers(self, level: PriceLevel, level_number: int):
+        # order flow metrics
+        self._cancel_notionals[level_number] = level.cancel_notional
+        self._limit_notionals[level_number] = level.limit_notional
+        self._market_notionals[level_number] = level.market_notional
+
+    def get_asks_to_list(self, midpoint: float):
         """
         Source: https://arxiv.org/abs/1810.09965v1
         """
-        notionals = list()
-        cumulative_notional = float(0.0)
-        distances = list()
+        cumulative_notional = 0.
 
-        for k, v in self.price_dict.items()[:MAX_BOOK_ROWS]:
-            distances.append(k - midpoint)
-            cumulative_notional += float(k * v['size'])
-            notionals.append(cumulative_notional)
+        if INCLUDE_ORDERFLOW:
+            for i, (price, level) in enumerate(self.price_dict.items()[:Book.CLEAR_MAX_ROWS]):
+                if i < MAX_BOOK_ROWS:
+                    cumulative_notional = self._add_to_book_trackers(
+                        price, midpoint, level, cumulative_notional, i
+                    )
+                    self._add_to_order_flow_trackers(level, i)
+                level.clear_trackers()  # to prevent orders close to the top-n from
+                # entering the top-n with stale metrics
+            return (
+                self._distances,
+                self._notionals,
+                self._cancel_notionals,
+                self._limit_notionals,
+                self._market_notionals,
+            )
+        else:
+            for i, (price, level) in enumerate(self.price_dict.items()[:MAX_BOOK_ROWS]):
+                cumulative_notional = self._add_to_book_trackers(
+                        price, midpoint, level, cumulative_notional, i
+                )
+            return (
+                self._distances,
+                self._notionals,
+            )
 
-        return np.array((notionals + distances))
-
-    def _get_bids_to_list(self, midpoint):
+    def get_bids_to_list(self, midpoint):
         """
         Source: https://arxiv.org/abs/1810.09965v1
         """
-        notionals = list()
-        cumulative_notional = float(0.0)
-        distances = list()
+        cumulative_notional = 0.
 
-        for k, v in reversed(self.price_dict.items()[-MAX_BOOK_ROWS:]):
-            distances.append(midpoint - k)
-            cumulative_notional += float(k * v['size'])
-            notionals.append(cumulative_notional)
+        if INCLUDE_ORDERFLOW:
+            for i, (price, level) in enumerate(reversed(
+                    self.price_dict.items()[-Book.CLEAR_MAX_ROWS:])):
+                if i < MAX_BOOK_ROWS:
+                    cumulative_notional = self._add_to_book_trackers(
+                        price, midpoint, level, cumulative_notional, MAX_BOOK_ROWS - i - 1
+                    )
+                    self._add_to_order_flow_trackers(level, MAX_BOOK_ROWS - i - 1)
+                level.clear_trackers()  # to prevent orders close to the top-n from
+                # entering the top-n with stale metrics
+            return (
+                self._distances,
+                self._notionals,
+                self._cancel_notionals,
+                self._limit_notionals,
+                self._market_notionals,
+            )
+        else:  # Do NOT include order arrival flow metrics
+            for i, (price, level) in enumerate(reversed(
+                    self.price_dict.items()[-MAX_BOOK_ROWS:])):
+                cumulative_notional = self._add_to_book_trackers(
+                        price, midpoint, level, cumulative_notional, MAX_BOOK_ROWS - i - 1
+                )
+            return (
+                self._distances,
+                self._notionals,
+            )
 
-        return np.array((notionals + distances))
-
-    # def _get_asks_to_list(self):
+    # def get_asks_to_list(self):
     #     """
     #     Transform order book to dictionary with 3 lists:
     #         1- ask prices
@@ -163,7 +237,7 @@ class Book(ABC):
     #     # return dict({'prices': prices, 'sizes': sizes, 'counts': counts})
     #     return list(np.hstack((prices, sizes, counts)))
     #
-    # def _get_bids_to_list(self):
+    # def get_bids_to_list(self):
     #     """
     #     Transform order book to dictionary with 3 lists:
     #         1- bid prices
@@ -179,3 +253,7 @@ class Book(ABC):
     #
     #     # return dict({'prices': prices, 'sizes': sizes, 'counts': counts})
     #     return list(np.hstack((prices, sizes, counts)))
+
+
+def round_price(price=100., digits=BOOK_DIGITS, round_prices=AGGREGATE):
+    return round(price, digits) if round_prices else price

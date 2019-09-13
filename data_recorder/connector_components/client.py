@@ -13,6 +13,11 @@ from configurations.configs import MAX_RECONNECTION_ATTEMPTS, COINBASE_ENDPOINT,
 class Client(Thread):
 
     def __init__(self, ccy, exchange):
+        """
+        Client constructor
+        :param ccy: currency symbol
+        :param exchange: 'bitfinex' or 'coinbase'
+        """
         super(Client, self).__init__(name=ccy, daemon=True)
         self.sym = ccy
         self.exchange = exchange
@@ -52,6 +57,10 @@ class Client(Thread):
             self.ws_endpoint = BITFINEX_ENDPOINT
 
     async def unsubscribe(self):
+        """
+        Unsubscribe limit order book websocket from exchange
+        :return:
+        """
         if self.exchange == 'coinbase':
             await self.ws.send(self.request_unsubscribe)
             output = json.loads(await self.ws.recv())
