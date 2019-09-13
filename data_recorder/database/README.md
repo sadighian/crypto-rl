@@ -23,12 +23,16 @@ This is a utility class to plot the features data exported from
 
 Example diagrams are below:
 
-![plot_lob_overlay](../../design_patterns/plot_lob_overlay.PNG)
+`plot_lob_overlay`
+![plot_lob_overlay](../../design_patterns/plot_lob_overlay.png)
 
-![plot_lob_levels](../../design_patterns/plot_lob_levels.PNG)
+`plot_lob_levels`
+![plot_lob_levels](../../design_patterns/plot_lob_levels.png)
 
-![plot_transactions](../../design_patterns/plot_transactions.PNG)
+`plot_transactions`
+![plot_transactions](../../design_patterns/plot_transactions.png)
 
-![plot_order_arrivals](../../design_patterns/plot_order_arrivals.PNG)
+`plot_order_arrivals`
+![plot_order_arrivals](../../design_patterns/plot_order_arrivals.png)
  
 
