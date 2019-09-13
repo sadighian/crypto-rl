@@ -22,20 +22,20 @@ parser.add_argument('--max_position',
                          "able to be held in a broker's inventory",
                     type=int)
 parser.add_argument('--fitting_file',
-                    default='ETH-USD_2018-12-31.xz',
+                    default='LTC-USD_2019-04-07.csv.xz',
                     help="Data set for fitting the z-score scaler (previous day)",
                     type=str)
 parser.add_argument('--testing_file',
-                    default='ETH-USD_2019-01-01.xz',
+                    default='LTC-USD_2019-04-08.csv.xz',
                     help="Data set for training the agent (current day)",
                     type=str)
 parser.add_argument('--env',
-                    default='market-maker-v0',
-                    # default='long-short-v0',
+                    # default='market-maker-v0',
+                    default='long-short-v0',
                     help="Either 'long-short-v0' or 'market-maker-v0'",
                     type=str)
 parser.add_argument('--number_of_training_steps',
-                    default=1e5,
+                    default=1e4,
                     help="Number of steps to train the agent "
                          "(does not include action repeats)",
                     type=int)
@@ -51,9 +51,9 @@ parser.add_argument('--action_repeats',
                     default=10,
                     help="Number of steps to pass on between actions",
                     type=int)
-parser.add_argument('--weights',
+parser.add_argument('--load_weights',
                     default=False,
-                    help="Load saved weights if TRUE, otherwise start from scratch",
+                    help="Load saved load_weights if TRUE, otherwise start from scratch",
                     type=bool)
 parser.add_argument('--visualize',
                     default=False,
@@ -73,7 +73,7 @@ parser.add_argument('--format_3d',
                     "E.g., [window, features] --> [window, features, 1]",
                     type=bool)
 parser.add_argument('--z_score',
-                    default=True,
+                    default=False,
                     help="If TRUE, normalize data with z-score",
                     type=bool)
 parser.add_argument('--dueling_network',

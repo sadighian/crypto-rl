@@ -1,5 +1,5 @@
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten, Conv2D
+from keras.layers import Dense, Activation, Flatten, Conv2D, CuDNNLSTM
 from keras.optimizers import Adam
 from rl.agents.dqn import DQNAgent
 from rl.memory import SequentialMemory
@@ -12,9 +12,10 @@ import gym_trading
 class Agent(object):
     name = 'DQN'
 
-    def __init__(self, step_size=1, window_size=20, max_position=5,
-                 fitting_file='ETH-USD_2018-12-31.xz',
-                 testing_file='ETH-USD_2018-01-01.xz',
+    def __init__(self, *,
+                 step_size=1, window_size=20, max_position=5,
+                 fitting_file='LTC-USD_2019-04-07.csv.xz',
+                 testing_file='LTC-USD_2019-04-08.csv.xz',
                  env='market-maker-v0',
                  seed=1,
                  action_repeats=4,
@@ -22,8 +23,8 @@ class Agent(object):
                  gamma=0.999,
                  format_3d=False,  # add 3rd dimension for CNNs
                  train=True,
-                 weights=True,
-                 z_score=True,
+                 load_weights=False,
+                 z_score=False,
                  visualize=False,
                  dueling_network=True,
                  double_dqn=True):
@@ -41,7 +42,7 @@ class Agent(object):
         :param gamma: float, value between 0 and 1 used to discount future DQN returns
         :param format_3d: boolean, format observation as matrix or tensor
         :param train: boolean, train or test agent
-        :param weights: boolean, import existing weights
+        :param load_weights: boolean, import existing weights
         :param z_score: boolean, standardize observation space
         :param visualize: boolean, visiualize environment
         :param dueling_network: boolean, use dueling network architecture
@@ -67,7 +68,7 @@ class Agent(object):
                                        window_length=self.memory_frame_stack)
         self.train = train
         self.number_of_training_steps = number_of_training_steps
-        self.weights = weights
+        self.load_weights = load_weights
         self.cwd = os.path.dirname(os.path.realpath(__file__))
         self.visualize = visualize
 
@@ -108,10 +109,8 @@ class Agent(object):
         model.add(conv(filters=16, kernel_size=[4, 1], padding='same', activation='relu',
                        strides=[2, 1], data_format='channels_first'))
         model.add(Flatten())
-        model.add(Dense(512))
-        model.add(Activation('linear'))
-        model.add(Dense(self.env.action_space.n))
-        model.add(Activation('softmax'))
+        model.add(Dense(512, activation='relu'))
+        model.add(Dense(self.env.action_space.n, activation='softmax'))
 
         print(model.summary())
         return model
@@ -121,21 +120,24 @@ class Agent(object):
         Entry point for agent training and testing
         :return: (void)
         """
-        weights_filename = '{}/dqn_weights/dqn_{}_weights.h5f'.format(
-            self.cwd, self.env_name)
+        weight_name = 'dqn_{}_weights.h5f'.format(self.env_name)
+        weights_filename = os.path.join(self.cwd, 'dqn_weights', weight_name)
+        print("weights_filename: {}".format(weights_filename))
 
-        if self.weights:
+        if self.load_weights:
             self.agent.load_weights(weights_filename)
             print('...loading weights for {}'.format(self.env_name))
 
         if self.train:
-            checkpoint_weights_filename = 'dqn_{}'.format(self.env_name) + \
-                                          '_weights_{step}.h5f'
-            checkpoint_weights_filename = '{}/dqn_weights/'.format(self.cwd) + \
-                                          checkpoint_weights_filename
-            log_filename = '{}/dqn_weights/dqn_{}_log.json'.format(
-                self.cwd, self.env_name)
-            print('FileLogger: {}'.format(log_filename))
+            step_chkpt = '{step}.h5f'
+            step_chkpt = 'dqn_{}_weights_{}'.format(self.env_name, step_chkpt)
+            checkpoint_weights_filename = os.path.join(self.cwd,
+                                                       'dqn_weights',
+                                                       step_chkpt)
+            print("checkpoint_weights_filename: {}".format(checkpoint_weights_filename))
+            log_filename = os.path.join(self.cwd, 'dqn_weights',
+                                        'dqn_{}_log.json'.format(self.env_name))
+            print('log_filename: {}'.format(log_filename))
 
             callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename,
                                                  interval=250000)]

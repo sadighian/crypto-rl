@@ -20,5 +20,5 @@ class BitfinexClient(Client):
                 self.book.clear_book()
                 print('\n[Bitfinex - %s] ...going to try and reload the order book\n'
                       % self.sym)
-                raise websockets.ConnectionClosed(1006, 'no reason')
+                raise websockets.ConnectionClosed(1006, 'BitfinexClient: no explanation')
                 # raise an exception to invoke reconnecting

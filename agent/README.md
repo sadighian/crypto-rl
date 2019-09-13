@@ -8,5 +8,8 @@ this directory is a different type of reinforcement learning algo.
 
 ## Neural Networks
 ### DQN Architecture
+- Dueling architecture
+- Double Q-learning
+- Experience replay
 - 3x convolutional layers
 - 1x dense mlp

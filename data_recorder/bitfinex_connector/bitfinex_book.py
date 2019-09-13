@@ -1,4 +1,4 @@
-from data_recorder.connector_components .book import Book
+from data_recorder.connector_components.book import Book, round_price
 from configurations.configs import RECORD_DATA
 
 
@@ -11,29 +11,41 @@ class BitfinexBook(Book):
         """
         Create new node
         :param msg: incoming new order
-        :return:
+        :return: (void)
         """
         self.order_map[msg['order_id']] = msg
+        adj_price = round_price(msg['price'])
+        if adj_price not in self.price_dict:
+            self.create_price(adj_price)
 
-        if msg['price'] not in self.price_dict:
-            self.create_price(msg['price'])
-
-        self.price_dict[msg['price']]['size'] += abs(msg['size'])
-        self.price_dict[msg['price']]['count'] += 1
+        quantity = abs(msg['size'])
+        self.price_dict[adj_price].add_limit(quantity=quantity, price=msg['price'])
+        self.price_dict[adj_price].add_quantity(quantity=quantity, price=msg['price'])
+        self.price_dict[adj_price].add_count()
 
     def match(self, msg):
         """
-        This method is not implemented for Bitfinex
-        :param msg:
-        :return:
+        This method is not implemented within Bitfinex's API.
+
+        However, I've implemented it to capture order arrival flows (i.e., incoming
+        market orders.) and to be consistent with the overarching design pattern.
+
+        Note: this event handler does not impact the LOB in any other way than updating
+        the number of market orders received at a given price level.
+
+        :param msg: buy or sell transaction message from Bitfinex
+        :return: (void)
         """
-        pass
+        adj_price = round_price(msg['price'])
+        if adj_price in self.price_dict:
+            self.price_dict[adj_price].add_market(quantity=msg['size'],
+                                                  price=msg['price'])
 
     def change(self, msg):
         """
         Update inventory
-        :param msg:
-        :return:
+        :param msg: order update message from Bitfinex
+        :return: (void)
         """
         old_order = self.order_map[msg['order_id']]
         diff = msg['size'] - old_order['size']
@@ -50,30 +62,38 @@ class BitfinexBook(Book):
 
         elif vol_change:
             old_order['size'] = msg['size']
+            adj_price = round_price(old_order['price'])
             self.order_map[msg['order_id']] = old_order
-            self.price_dict[msg['price']]['size'] += diff
+            self.price_dict[adj_price].remove_quantity(quantity=diff,
+                                                       price=old_order['price'])
             assert px_change is False
 
     def remove_order(self, msg):
         """
         Done messages result in the order being removed from map
-        :param msg:
-        :return:
+        :param msg: remove order message from Bitfinex
+        :return: (void)
         """
         if msg['order_id'] in self.order_map:
 
             old_order = self.order_map[msg['order_id']]
+            adj_price = round_price(old_order['price'])
 
-            if old_order['price'] not in self.price_dict:
-                print('remove_order: price not in msg...')
+            if adj_price not in self.price_dict:
+                print('remove_order: price not in msg...adj_price = {} '.format(
+                    adj_price))
                 print('Incoming order: %s' % msg)
                 print('Old order: %s' % old_order)
 
-            self.price_dict[old_order['price']]['size'] -= abs(old_order['size'])
-            self.price_dict[old_order['price']]['count'] -= 1
+            order_size = abs(old_order['size'])
+            self.price_dict[adj_price].add_cancel(quantity=order_size,
+                                                  price=old_order['price'])
+            self.price_dict[adj_price].remove_quantity(quantity=order_size,
+                                                       price=old_order['price'])
+            self.price_dict[adj_price].remove_count()
 
-            if self.price_dict[old_order['price']]['count'] == 0:
-                self.remove_price(old_order['price'])
+            if self.price_dict[adj_price].count == 0:
+                self.remove_price(adj_price)
 
             del self.order_map[old_order['order_id']]
 

@@ -5,7 +5,7 @@ from gym_trading.indicators.rsi import RSI
 from gym_trading.indicators.tns import TnS
 
 
-class MyTestCase(unittest.TestCase):
+class IndicatorTestCases(unittest.TestCase):
 
     def test_rsi_up(self):
         indicator = RSI(window=10)

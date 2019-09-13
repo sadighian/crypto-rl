@@ -2,7 +2,7 @@ import unittest
 from gym_trading.utils.broker import Broker, Order
 
 
-class MyTestCase(unittest.TestCase):
+class PriceJumpBrokerTestCases(unittest.TestCase):
 
     def test_case_one(self):
         print('\nTest_Case_One')
