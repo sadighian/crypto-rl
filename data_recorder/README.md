@@ -36,3 +36,5 @@ for the following reasons:
 with **O(log n)**
 - **Getting / setting** values are performed with **O(1)**
 - **SortedDict** interface is intuitive, thus making implementation easier
+
+![plot_order_arrivals](../design_patterns/plot_order_arrivals.png)

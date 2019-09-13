@@ -77,6 +77,8 @@ Refer to each individual's module for design pattern specifications
 - [POMDP / Environment](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/gym_trading)
 - [Learning Algorithms and Neural Networks](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/agent)
 
+Sample snapshot of Limit Order Book:
+![plot_lob_overlay](./design_patterns/plot_lob_overlay.png)
 
 ## 5. Getting Started
 ### 5.1 Record limit order book data from exchanges
