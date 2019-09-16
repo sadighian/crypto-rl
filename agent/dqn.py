@@ -27,7 +27,8 @@ class Agent(object):
                  z_score=False,
                  visualize=False,
                  dueling_network=True,
-                 double_dqn=True):
+                 double_dqn=True,
+                 nn_type='mlp'):
         """
         Agent constructor
         :param step_size: int, number of steps to take in env for a given simulation step
@@ -63,7 +64,8 @@ class Agent(object):
         # Number of frames to stack e.g., 1.
         # NOTE: 'Keras-RL' uses its own frame-stacker
         self.memory_frame_stack = 1
-        self.model = self.create_model()
+        self.neural_network_type = nn_type
+        self.model = self.create_model(name=self.neural_network_type)
         self.memory = SequentialMemory(limit=10000,
                                        window_length=self.memory_frame_stack)
         self.train = train
@@ -92,7 +94,14 @@ class Agent(object):
         return 'Agent = {} | env = {} | number_of_training_steps = {}'.format(
             Agent.name, self.env_name, self.number_of_training_steps)
 
-    def create_model(self):
+    def create_model(self, name='cnn'):
+        print("creating model for {}".format(name))
+        if name == 'cnn':
+            return self._create_cnn_model()
+        elif name == 'mlp':
+            return self._create_mlp_model()
+
+    def _create_cnn_model(self):
         """
         Create a Convolutional neural network with dense layer at the end
         :return: keras model
@@ -115,13 +124,33 @@ class Agent(object):
         print(model.summary())
         return model
 
+    def _create_mlp_model(self):
+        """
+        Create a LSTM neural network with dense layer at the end
+        :return: keras model
+        """
+        features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
+        model = Sequential()
+        model.add(Dense(units=512, input_shape=features_shape, activation='relu'))
+        model.add(Dense(units=256, activation='relu'))
+        model.add(Flatten())
+        model.add(Dense(self.env.action_space.n, activation='softmax'))
+        print(model.summary())
+        return model
+
     def start(self):
         """
         Entry point for agent training and testing
         :return: (void)
         """
-        weight_name = 'dqn_{}_weights.h5f'.format(self.env_name)
-        weights_filename = os.path.join(self.cwd, 'dqn_weights', weight_name)
+        output_directory = os.path.join(self.cwd, 'dqn_weights')
+        if not os.path.exists(output_directory):
+            print('{} does not exist. Creating Directory.'.format(output_directory))
+            os.mkdir(output_directory)
+
+        weight_name = 'dqn_{}_{}_weights.h5f'.format(
+            self.env_name, self.neural_network_type)
+        weights_filename = os.path.join(output_directory, weight_name)
         print("weights_filename: {}".format(weights_filename))
 
         if self.load_weights:
@@ -151,6 +180,7 @@ class Agent(object):
                            verbose=0,
                            visualize=self.visualize)
             print('Saving AGENT weights...')
+
             self.agent.save_weights(weights_filename, overwrite=True)
         else:
             print('Starting TEST...')

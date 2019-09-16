@@ -10,20 +10,21 @@ from dateutil.parser import parse
 import numpy as np
 import pandas as pd
 import os
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 class Simulator(object):
 
-    def __init__(self, use_arctic=False):
+    def __init__(self, use_arctic=False, z_score=True):
         """
         Simulator constructor
-        :param use_arctic: If True, Simulator creates a connection to Arctic,
+        :param use_arctic: If TRUE, Simulator creates a connection to Arctic,
                             Otherwise, no connection is attempted
+        :param z_score: If TRUE, normalize data with z-score,
+                        ELSE use min-max scaler
         """
-        self._avg = None
-        self._std = None
+        self._scaler = StandardScaler() if z_score else MinMaxScaler()
         self.cwd = os.path.dirname(os.path.realpath(__file__))
-        self.z_score = lambda x: (x - self._avg) / self._std
         try:
             if use_arctic:
                 print('Attempting to connect to Arctic...')
@@ -42,17 +43,6 @@ class Simulator(object):
     def __str__(self):
         return 'Simulator() connection={}, library={}, avg={}, std={}' \
             .format(self.arctic, self.library, self._avg, self._std)
-
-    def scale_state(self, next_state):
-        return (next_state - self._avg) / self._std
-
-    def reset(self):
-        """
-        Sets averages and standard deviations to NONE
-        :return: void
-        """
-        self._avg = None
-        self._std = None
 
     def get_tick_history(self, query):
         """
@@ -220,13 +210,62 @@ class Simulator(object):
 
     def fit_scaler(self, orderbook_snapshot_history):
         """
-        Fit scalers for z-score using previous day's data
+        Scale limit order book data for the neural network
         :param orderbook_snapshot_history: Limit order book data
                 from the previous day
-        :return: void
+        :return: (void)
         """
-        self._avg = np.mean(orderbook_snapshot_history, axis=0)
-        self._std = np.std(orderbook_snapshot_history, axis=0)
+        self._scaler.fit(orderbook_snapshot_history)
+
+    def transform_scaler(self, data: np.array):
+        """
+        Normalize data
+        :param data: (np.array) all data in environment
+        :return: (np.array) normalized observation space
+        """
+        return self._scaler.transform(data)
+
+    @staticmethod
+    def _midpoint_diff(data: pd.DataFrame):
+        """
+        Take log difference of midpoint prices
+                log(price t) - log(price t-1)
+        :param data: (pd.DataFrame) raw data from LOB snapshots
+        :return: (pd.DataFrame) with midpoint prices normalized
+        """
+        data['coinbase_midpoint'] = np.log(data['coinbase_midpoint'].values)
+        data['coinbase_midpoint'] = (
+                data['coinbase_midpoint'] - data['coinbase_midpoint'].shift(1)).fillna(
+            method='bfill')
+        return data
+
+    def load_environment_data(self, fitting_file: str, testing_file: str):
+        """
+        Import and scale environment data set with prior day's data.
+
+        Midpoint gets log-normalized:
+            log(price t) - log(price t-1)
+
+        :param fitting_file: prior trading day
+        :param testing_file: current trading day
+        :return: (pd.DataFrame) scaled environment data
+        """
+        # import data used to fit scaler
+        fitting_data_filepath = os.path.join(self.cwd, 'data_exports', fitting_file)
+        fitting_data = self.import_csv(filename=fitting_data_filepath)
+        fitting_data = self._midpoint_diff(data=fitting_data)  # normalize midpoint
+        self.fit_scaler(fitting_data)
+        del fitting_data
+
+        # import data to normalize and use in environment
+        data_used_in_environment = os.path.join(self.cwd, 'data_exports', testing_file)
+        data = self.import_csv(filename=data_used_in_environment)
+        midpoint_prices = data['coinbase_midpoint'].values
+        normalized_data = self._midpoint_diff(data.copy())
+        normalized_data = self.transform_scaler(normalized_data)
+        normalized_data = np.clip(normalized_data, -10, 10)
+
+        return midpoint_prices, data.values, normalized_data
 
     def extract_features(self, query):
         """
@@ -400,3 +439,4 @@ class Simulator(object):
         orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
 
         return orderbook_snapshot_history
+

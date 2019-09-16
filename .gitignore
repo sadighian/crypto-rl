@@ -9,3 +9,5 @@ build
 dist
 
 .pytest_cache
+
+agent/dqn_weights/*

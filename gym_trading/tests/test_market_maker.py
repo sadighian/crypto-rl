@@ -20,7 +20,7 @@ class MarketMakerTestCases(unittest.TestCase):
             'seed': 1,
             'action_repeats': 10,
             'format_3d': False,
-            'z_score': False,
+            'z_score': True,
         }
 
         env = gym.make(MarketMaker.id, **config)

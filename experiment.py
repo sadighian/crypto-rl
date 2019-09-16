@@ -30,8 +30,8 @@ parser.add_argument('--testing_file',
                     help="Data set for training the agent (current day)",
                     type=str)
 parser.add_argument('--env',
-                    # default='market-maker-v0',
-                    default='long-short-v0',
+                    default='market-maker-v0',
+                    # default='long-short-v0',
                     help="Either 'long-short-v0' or 'market-maker-v0'",
                     type=str)
 parser.add_argument('--number_of_training_steps',
@@ -73,9 +73,13 @@ parser.add_argument('--format_3d',
                     "E.g., [window, features] --> [window, features, 1]",
                     type=bool)
 parser.add_argument('--z_score',
-                    default=False,
+                    default=True,
                     help="If TRUE, normalize data with z-score",
                     type=bool)
+parser.add_argument('--nn_type',
+                    default='cnn',
+                    help="Type of neural network to use: 'cnn' or 'mlp' ",
+                    type=str)
 parser.add_argument('--dueling_network',
                     default=True,
                     help="If TRUE, use Dueling architecture in DQN",

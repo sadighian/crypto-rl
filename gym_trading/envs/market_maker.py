@@ -8,7 +8,6 @@ from gym_trading.indicators import TnS
 from gym_trading.indicators.indicator import IndicatorManager
 import logging
 import numpy as np
-import os
 
 
 # logging
@@ -44,7 +43,7 @@ class MarketMaker(Env):
                  action_repeats=10,
                  training=True,
                  format_3d=False,
-                 z_score=False):
+                 z_score=True):
 
         # properties required for instantiation
         self.action_repeats = action_repeats
@@ -72,24 +71,13 @@ class MarketMaker(Env):
         # get Broker class to keep track of PnL and orders
         self.broker = Broker(max_position=max_position)
         # get historical data for simulations
-        self.sim = Sim(use_arctic=False)
+        self.sim = Sim(use_arctic=False, z_score=z_score)
 
-        self.data = self._load_environment_data(fitting_file, testing_file,
-                                                z_score=z_score)
-        self.prices_ = self.data['coinbase_midpoint'].values  # used to calculate PnL
-
-        self.normalized_data = self.data.copy()
-        self.data = self.data.values
+        self.prices_, self.data, self.normalized_data = self.sim.load_environment_data(
+            fitting_file, testing_file)
 
         self.max_steps = self.data.shape[0] - self.step_size * \
             self.action_repeats - 1
-
-        # normalize midpoint data
-        self.normalized_data['coinbase_midpoint'] = \
-            np.log(self.normalized_data['coinbase_midpoint'].values)
-        self.normalized_data['coinbase_midpoint'] = (
-                self.normalized_data['coinbase_midpoint'] -
-                self.normalized_data['coinbase_midpoint'].shift(1)).fillna(0.)
 
         # load indicators into the indicator manager
         self.tns = IndicatorManager()
@@ -98,19 +86,13 @@ class MarketMaker(Env):
             self.tns.add(('tns_{}'.format(window), TnS(window=window)))
             self.rsi.add(('rsi_{}'.format(window), RSI(window=window)))
 
-        if z_score:
-            logger.info("Pre-scaling {}-{} data...".format(self.sym, self._seed))
-            self.normalized_data = self.normalized_data.apply(
-                self.sim.z_score, axis=1).values
-            logger.info("...{}-{} pre-scaling complete.".format(self.sym, self._seed))
-        else:
-            self.normalized_data = self.normalized_data.values
-
         # rendering class
         self._render = TradingGraph(sym=self.sym)
+
         # graph midpoint prices
         self._render.reset_render_data(
             y_vec=self.prices_[:np.shape(self._render.x_vec)[0]])
+
         # buffer for appending lags
         self.data_buffer = list()
 
@@ -472,7 +454,7 @@ class MarketMaker(Env):
     def _get_book_data(self, index=0):
         """
         Return step 'n' of order book snapshot data
-        :param index: (int) step to look up in order book snapshot history
+        :param index: (int) step 'n' to look up in order book snapshot history
         :return: (np.array) order book snapshot vector
         """
         return self.data[self.local_step_number][index]
@@ -506,31 +488,3 @@ class MarketMaker(Env):
         if self.format_3d:
             observation = np.expand_dims(observation, axis=-1)
         return observation
-
-    def _load_environment_data(self, fitting_file, testing_file, z_score=True):
-        """
-        Import and scale environment data set with prior day's data.
-
-        Midpoint gets log-normalized:
-            log(price t) - log(price t-1)
-
-        :param fitting_file: prior trading day
-        :param testing_file: current trading day
-        :return: (pd.DataFrame) scaled environment data
-        """
-        data_used_in_environment = os.path.join(
-            self.sim.cwd, 'data_exports', testing_file)
-        if z_score:
-            fitting_data_filepath = os.path.join(
-                self.sim.cwd, 'data_exports', fitting_file)
-
-            fitting_data = self.sim.import_csv(filename=fitting_data_filepath)
-            fitting_data['coinbase_midpoint'] = np.log(fitting_data['coinbase_midpoint'].
-                                                       values)
-            fitting_data['coinbase_midpoint'] = (
-                    fitting_data['coinbase_midpoint'] -
-                    fitting_data['coinbase_midpoint'].shift(1)).fillna(method='bfill')
-            self.sim.fit_scaler(fitting_data)
-            del fitting_data
-
-        return self.sim.import_csv(filename=data_used_in_environment)
