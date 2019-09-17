@@ -397,8 +397,11 @@ class MarketMaker(Env):
             if denormalized_inside_best == plus_one:
                 # stick to best bid
                 bid_price = denormalized_best
+                # since LOB is rendered as cumulative notional, deduct the prior price
+                # level to derive the notional value of orders ahead in the queue
                 bid_queue_ahead = self._get_book_data(
-                    MarketMaker.notional_bid_index - level)
+                    MarketMaker.notional_bid_index - level) - self._get_book_data(
+                    MarketMaker.notional_bid_index - level + adjustment)
             else:
                 # insert a cent ahead to jump a queue
                 bid_price = plus_one
@@ -423,8 +426,11 @@ class MarketMaker(Env):
 
             if denormalized_inside_best == plus_one:
                 ask_price = denormalized_best
+                # since LOB is rendered as cumulative notional, deduct the prior price
+                # level to derive the notional value of orders ahead in the queue
                 ask_queue_ahead = self._get_book_data(
-                    MarketMaker.notional_ask_index + level)
+                    MarketMaker.notional_ask_index + level) - self._get_book_data(
+                    MarketMaker.notional_ask_index + level - adjustment)
             else:
                 ask_price = plus_one
                 ask_queue_ahead = 0.

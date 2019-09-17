@@ -16,8 +16,7 @@ class Order(object):
     DEFAULT_SIZE = 1000.
     _id = 0
 
-    def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1,
-                 queue_ahead=100.):
+    def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1, queue_ahead=100.):
         self.ccy = ccy
         self.side = side
         self.price = price
@@ -73,14 +72,13 @@ class Order(object):
                 partial fills at many different prices.
         :return: (float) average execution price
         """
-        total_volume = sum([notional_volume / price
-                            for price, notional_volume in self.executions.items()])
+        total_volume = sum([notional_volume / price for price, notional_volume in
+                            self.executions.items()])
 
         self.average_execution_price = 0.
         for price, notional_volume in self.executions.items():
             self.average_execution_price += price * (
-                    (notional_volume / price) / total_volume
-            )
+                    (notional_volume / price) / total_volume)
 
         self.average_execution_price = round(self.average_execution_price, 2)
         return self.average_execution_price
@@ -99,6 +97,7 @@ class PositionI(object):
     Position class keeps track the agent's trades
     and provides stats (e.g., pnl)
     """
+
     def __init__(self, side='long', max_position=1, include_fees=True):
         self.max_position_count = max_position
         self.positions = []
@@ -115,12 +114,9 @@ class PositionI(object):
 
     def __str__(self):
         msg = 'PositionI-{}: [realized_pnl={:.4f} | unrealized_pnl={:.4f}'.format(
-            self.side, self.realized_pnl, self.unrealized_pnl
-        )
+            self.side, self.realized_pnl, self.unrealized_pnl)
         msg += ' | total_exposure={:.4f} | total_trade_count={}]'.format(
-            self.total_exposure,
-            self.total_trade_count
-        )
+            self.total_exposure, self.total_trade_count)
         return msg
 
     def reset(self):
@@ -138,23 +134,23 @@ class PositionI(object):
         return len(self.positions)
 
     def add_order(self, order: Order):
-        if not self.full_inventory:
-            if self.order is None:
-                self.order = order
-                logger.debug('\nOpened new order={}'.format(order))
-            elif self.order.price != order.price:
-                self.order.price = np.copy(order.price)
-                self.order.queue_ahead = np.copy(order.queue_ahead)
-                self.order.id = np.copy(order.id)
-                logger.debug('\nUpdating order{} --> \n{}'.format(order, self.order))
-            else:
-                logger.debug("\nNothing to update about the order {}".format(self.order))
+        if self.order is None:
+            if self.full_inventory:
+                logger.info(("{} order rejected. Already at max position limit "
+                             "({})").format(self.side, self.max_position_count))
+                return False
+            self.order = order
+            logger.debug('\nOpened new order={}'.format(order))
 
-            return True
+        elif self.order.price != order.price:
+            self.order.price = order.price
+            self.order.queue_ahead = order.queue_ahead
+            self.order.id = order.id
+            logger.debug('\nUpdating order{} --> \n{}'.format(order, self.order))
         else:
-            logger.info("{} order rejected. Already at max position limit ({})".format(
-                self.side, self.max_position_count))
-            return False
+            logger.debug("\nNothing to update about the order {}".format(self.order))
+
+        return True
 
     def cancel_order(self):
         if self.order is None:
@@ -164,8 +160,8 @@ class PositionI(object):
         self.order = None
         return True
 
-    def step(self, bid_price=100., ask_price=100.,
-             buy_volume=1000., sell_volume=1000., step=100):
+    def step(self, bid_price=100., ask_price=100., buy_volume=1000., sell_volume=1000.,
+             step=100):
         if self.order is None:
             return False
 
@@ -192,11 +188,10 @@ class PositionI(object):
             steps_to_fill = step - self.order.step
             if self.include_fees:
                 self.realized_pnl -= LIMIT_ORDER_FEE
-            logger.debug('FILLED %s order #%i at %.3f after %i steps on %i.' %
-                         (self.order.side, self.order.id, avg_execution_px,
-                          steps_to_fill, step))
-            print('FILLED %s order #%i at %.3f after %i steps on %i.' % (
-                self.order.side, self.order.id, avg_execution_px, steps_to_fill, step))
+            logger.debug('FILLED %s order #%i at %.3f after %i steps on %i.' % (
+            self.order.side, self.order.id, avg_execution_px, steps_to_fill, step))
+            # print('FILLED %s order #%i at %.3f after %i steps on %i.' % (
+            #     self.order.side, self.order.id, avg_execution_px, steps_to_fill, step))
             self.order = None  # set the slot back to no open orders
             return True
 
@@ -241,16 +236,16 @@ class PositionI(object):
                 self.average_price = 0
             self.full_inventory = self.position_count >= self.max_position_count
             self.total_trade_count += 1  # entry and exit = two trades
-            logger.debug('Netted %s position #%i. PnL=%.4f\n' %
-                         (self.side, order.id, pnl))
+            print(
+                'Netted {} position #{} with PnL={:.4f}'.format(self.side, order.id, pnl))
             return pnl
         else:
             logger.info('Error. No {} positions to remove.'.format(self.side))
             return pnl
 
     def flatten_inventory(self, midpoint=100.):
-        logger.debug('{} is flattening inventory of {}'.format(self.side,
-                                                               self.position_count))
+        logger.debug(
+            '{} is flattening inventory of {}'.format(self.side, self.position_count))
         prev_realized_pnl = self.realized_pnl
         if self.position_count < 1:
             return -0.00000000001
@@ -329,7 +324,7 @@ class Broker(object):
             return self.short_inventory.add_order(order=order)
         else:
             logger.warning(('Error. Broker trying to add to '
-                           'the wrong side [{}]').format(order.side))
+                            'the wrong side [{}]').format(order.side))
             return False
 
     def remove(self, side='long', midpoint=100.):
@@ -346,7 +341,7 @@ class Broker(object):
             return self.short_inventory.remove_position(midpoint=midpoint)
         else:
             logger.warning(('Error. Broker trying to add to '
-                           'the wrong side [{}]').format(side))
+                            'the wrong side [{}]').format(side))
             return False
 
     def get_unrealized_pnl(self, midpoint=100.):
@@ -371,8 +366,7 @@ class Broker(object):
         :param midpoint: (float) current midpoint price
         :return: (float) total PnL
         """
-        total_pnl = self.get_unrealized_pnl(midpoint=midpoint) + \
-                    self.get_realized_pnl()
+        total_pnl = self.get_unrealized_pnl(midpoint=midpoint) + self.get_realized_pnl()
         return total_pnl
 
     @property
@@ -404,8 +398,8 @@ class Broker(object):
             total_pnl /= Broker.reward_scale
         return total_pnl
 
-    def step(self, bid_price=100., ask_price=100.,
-             buy_volume=1000., sell_volume=1000., step=100):
+    def step(self, bid_price=100., ask_price=100., buy_volume=1000., sell_volume=1000.,
+             step=100):
         """
         Update PnL & positions every time step in the environment.
         :param bid_price: (float) current time step bid price
@@ -425,10 +419,9 @@ class Broker(object):
                 # net out the inventory
                 new_position = self.long_inventory.pop_position()
                 pnl += self.short_inventory.remove_position(
-                    midpoint=new_position.price)
-                # if pnl != 0.:
-                #     pnl /= Broker.reward_scale
-                #     logger.debug("step() pnl --> {:.4f}".format(pnl))
+                    midpoint=new_position.price)  # if pnl != 0.:  #     pnl /=
+                # Broker.reward_scale  #     logger.debug("step() pnl --> {
+                # :.4f}".format(pnl))
         if self.short_inventory.step(bid_price=bid_price, ask_price=ask_price,
                                      buy_volume=buy_volume, sell_volume=sell_volume,
                                      step=step):
@@ -437,10 +430,9 @@ class Broker(object):
                 # net out the inventory
                 new_position = self.short_inventory.pop_position()
                 pnl += self.long_inventory.remove_position(
-                    midpoint=new_position.price)
-                # if pnl != 0.:
-                #     pnl /= Broker.reward_scale
-                #     logger.debug("step() pnl --> {:.4f}".format(pnl))
+                    midpoint=new_position.price)  # if pnl != 0.:  #     pnl /=
+                # Broker.reward_scale  #     logger.debug("step() pnl --> {
+                # :.4f}".format(pnl))
         scaled_pnl = pnl / Broker.reward_scale  # scale to [-1, 1] with 2x profit ratio
         return scaled_pnl
 
@@ -452,8 +444,8 @@ class Broker(object):
         :param midpoint: (float) current midpoint of crypto currency
         :return: (float) scaled distance between open order and midpoint price
         """
-        return self.short_inventory.get_distance_to_midpoint(midpoint=midpoint) / \
-               Broker.reward_scale
+        return self.short_inventory.get_distance_to_midpoint(
+            midpoint=midpoint) / Broker.reward_scale
 
     def get_long_order_distance_to_midpoint(self, midpoint=100.):
         """
@@ -463,8 +455,8 @@ class Broker(object):
         :param midpoint: (float) current midpoint of crypto currency
         :return: (float) scaled distance between open order and midpoint price
         """
-        return self.long_inventory.get_distance_to_midpoint(midpoint=midpoint) / \
-               Broker.reward_scale
+        return self.long_inventory.get_distance_to_midpoint(
+            midpoint=midpoint) / Broker.reward_scale
 
     def get_queues_ahead_features(self):
         """
@@ -497,4 +489,4 @@ class Broker(object):
         :return: (int) total trade count
         """
         return self.long_inventory.total_trade_count + \
-            self.short_inventory.total_trade_count
+               self.short_inventory.total_trade_count

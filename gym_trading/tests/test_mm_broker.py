@@ -158,9 +158,9 @@ class MarketMakerBrokerTestCases(unittest.TestCase):
                            step=step, queue_ahead=0)
         order_open_short = Order(ccy='BTC-USD', side='short', price=ask_price,
                                  step=step, queue_ahead=2000)
-        print('opening long position')
+        print('opening long position = {}'.format(order_open_long))
         test_position.add(order=order_open_long)
-        print('opening short position')
+        print('opening short position = {}'.format(order_open_short))
         test_position.add(order=order_open_short)
 
         print('\ntaking first step...')
