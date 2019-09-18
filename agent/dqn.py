@@ -25,6 +25,8 @@ class Agent(object):
                  train=True,
                  load_weights=False,
                  z_score=False,
+                 reward_type='trade_completion',
+                 scale_rewards=True,
                  visualize=False,
                  dueling_network=True,
                  double_dqn=True,
@@ -60,7 +62,9 @@ class Agent(object):
                             action_repeats=action_repeats,
                             training=train,
                             z_score=z_score,
-                            format_3d=format_3d)
+                            format_3d=format_3d,
+                            reward_type=reward_type,
+                            scale_rewards=scale_rewards)
         # Number of frames to stack e.g., 1.
         # NOTE: 'Keras-RL' uses its own frame-stacker
         self.memory_frame_stack = 1
@@ -126,7 +130,7 @@ class Agent(object):
 
     def _create_mlp_model(self):
         """
-        Create a LSTM neural network with dense layer at the end
+        Create a DENSE neural network with dense layer at the end
         :return: keras model
         """
         features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)

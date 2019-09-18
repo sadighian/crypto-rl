@@ -1,5 +1,5 @@
 # GYM_TRADING
-As of September 07, 2019.
+As of September 18, 2019.
 
 ## Overview
 This package is my implementation of an HFT environment extending a
@@ -18,9 +18,7 @@ Module containing indicators that are implemented within environments.
 ## 3. Utils
 Module containing utility classes for the `gym_trading` module.
 - `broker.py` manages orders, executions, position inventories, and PnL
-  calculations for `price_jump.py`
-- `broker_mm.py` manages orders, executions, position inventories, and
-  PnL calculations for `market_maker.py`
+  calculations for `price_jump.py` and `market_maker.py`
 - `render_env.py` render's midpoint price data as the agent steps
   through the environment
 
