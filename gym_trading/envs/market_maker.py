@@ -1,51 +1,35 @@
 from gym import spaces
-from gym_trading.utils.mm_broker import Broker, Order
-from configurations.configs import INDICATOR_WINDOW_MAX
+from configurations.configs import LIMIT_ORDER_FEE
 from gym_trading.envs.base_env import BaseEnvironment
-import logging
+from gym_trading.utils.broker import LimitOrder, Broker
 import numpy as np
-
-
-# logging
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
-logger = logging.getLogger('MarketMaker')
 
 
 class MarketMaker(BaseEnvironment):
     id = 'market-maker-v0'
 
-    def __init__(self, *,
-                 fitting_file='LTC-USD_2019-04-07.csv.xz',
-                 testing_file='LTC-USD_2019-04-08.csv.xz',
-                 step_size=1,
-                 max_position=5,
-                 window_size=10,
-                 seed=1,
-                 action_repeats=10,
-                 training=True,
-                 format_3d=False,
-                 z_score=True):
-        super(MarketMaker, self).__init__(
-            fitting_file=fitting_file,
-            testing_file=testing_file,
-            step_size=step_size,
-            max_position=max_position,
-            window_size=window_size,
-            seed=seed,
-            action_repeats=action_repeats,
-            training=training,
-            format_3d=format_3d,
-            z_score=z_score
-        )
+    def __init__(self, *, fitting_file='LTC-USD_2019-04-07.csv.xz',
+                 testing_file='LTC-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
+                 window_size=10, seed=1, action_repeats=10, training=True,
+                 format_3d=False, z_score=True, reward_type='trade_completion',
+                 scale_rewards=True):
+        super(MarketMaker, self).__init__(fitting_file=fitting_file,
+                                          testing_file=testing_file, step_size=step_size,
+                                          max_position=max_position,
+                                          window_size=window_size, seed=seed,
+                                          action_repeats=action_repeats,
+                                          training=training, format_3d=format_3d,
+                                          z_score=z_score, reward_type=reward_type,
+                                          scale_rewards=scale_rewards)
+
         self.actions = np.eye(17, dtype=np.float32)
 
         # get Broker class to keep track of PnL and orders
-        self.broker = Broker(max_position=max_position)
+        self.broker = Broker(max_position=max_position, transaction_fee=LIMIT_ORDER_FEE)
 
         self.action_space = spaces.Discrete(len(self.actions))
         self.reset()  # reset to load observation.shape
-        self.observation_space = spaces.Box(low=-10,
-                                            high=10,
+        self.observation_space = spaces.Box(low=-10, high=10,
                                             shape=self.observation.shape,
                                             dtype=np.float32)
 
@@ -55,139 +39,135 @@ class MarketMaker(BaseEnvironment):
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.sym, self._seed)
 
-    def get_step_reward(self, **kwargs):
-        self.broker.step(bid_price=step_best_bid, ask_price=step_best_ask,
-            buy_volume=buy_volume, sell_volume=sell_volume, step=self.local_step_number)
-
-    def _create_position_features(self):
-        """
-        Create an array with features related to the agent's inventory
-        :return: (np.array) normalized position features
-        """
-        return np.array(
-            (self.broker.long_inventory.position_count / self.max_position,
-             self.broker.short_inventory.position_count / self.max_position,
-             self.broker.get_total_pnl(midpoint=self.midpoint) /
-             BaseEnvironment.target_pnl,
-             self.broker.long_inventory.get_unrealized_pnl(self.midpoint) /
-             self.broker.reward_scale,
-             self.broker.short_inventory.get_unrealized_pnl(self.midpoint) /
-             self.broker.reward_scale,
-             self.broker.get_long_order_distance_to_midpoint(midpoint=self.midpoint),
-             self.broker.get_short_order_distance_to_midpoint(midpoint=self.midpoint),
-             *self.broker.get_queues_ahead_features()),
-            dtype=np.float32)
-
-    def _send_to_broker(self, action: int):
+    def map_action_to_broker(self, action: int):
         """
         Create or adjust orders per a specified action and adjust for penalties.
         :param action: (int) current step's action
         :return: (float) reward
         """
-        reward = 0.0
+        reward = pnl = 0.0
         discouragement = 0.000000000001
 
         if action == 0:  # do nothing
             reward += discouragement
 
         elif action == 1:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=0, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=0,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='short')
 
         elif action == 2:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=0, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=0,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='short')
         elif action == 3:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=0, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=0,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='short')
 
         elif action == 4:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=0, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=0,
+                                                  side='short')
 
         elif action == 5:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='short')
 
         elif action == 6:
 
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='short')
         elif action == 7:
 
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='short')
 
         elif action == 8:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=0, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=0,
+                                                  side='short')
 
         elif action == 9:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='short')
 
         elif action == 10:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='short')
 
         elif action == 11:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='short')
 
         elif action == 12:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=0, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=0,
+                                                  side='short')
 
         elif action == 13:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=4, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=4,
+                                                  side='short')
 
         elif action == 14:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=9, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=9,
+                                                  side='short')
 
         elif action == 15:
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='long')
-            reward += self._create_order_at_level(reward, discouragement,
-                                                  level=14, side='short')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='long')
+            reward += self._create_order_at_level(reward, discouragement, level=14,
+                                                  side='short')
         elif action == 16:
-            reward += self.broker.flatten_inventory(*self._get_nbbo())
+            reward += self.broker.flatten_inventory(self.best_bid, self.best_ask)
         else:
-            logger.info("L'action n'exist pas ! Il faut faire attention !")
+            print("L'action n'exist pas ! Il faut faire attention !!!")
 
-        return reward
+        return reward, pnl
 
-    def _create_order_at_level(self, reward: float, discouragement: float,
-                               level=0, side='long'):
+    def _create_position_features(self):
+        """
+        Create an array with features related to the agent's inventory
+        :return: (np.array) normalized position features
+        """
+        return np.array((self.broker.long_inventory.position_count / self.max_position,
+                         self.broker.short_inventory.position_count / self.max_position,
+                         self.broker.get_total_pnl(
+                             self.best_bid, self.best_ask) / BaseEnvironment.target_pnl,
+                         self.broker.long_inventory.get_unrealized_pnl(self.best_bid)
+                         / self.broker.reward_scale,
+                         self.broker.short_inventory.get_unrealized_pnl(self.best_ask)
+                         / self.broker.reward_scale,
+                         self.broker.get_long_order_distance_to_midpoint(
+                             midpoint=self.midpoint),
+                         self.broker.get_short_order_distance_to_midpoint(
+                             midpoint=self.midpoint),
+                         *self.broker.get_queues_ahead_features()), dtype=np.float32)
+
+    def _create_order_at_level(self, reward: float, discouragement: float, level=0,
+                               side='long'):
         """
         Create a new order at a specified LOB level
         :param reward: (float) current step reward
@@ -219,9 +199,9 @@ class MarketMaker(BaseEnvironment):
                 bid_price = plus_one
                 bid_queue_ahead = 0.
 
-            bid_order = Order(ccy=self.sym, side='long', price=bid_price,
-                              step=self.local_step_number,
-                              queue_ahead=bid_queue_ahead)
+            bid_order = LimitOrder(ccy=self.sym, side='long', price=bid_price,
+                                   step=self.local_step_number,
+                                   queue_ahead=bid_queue_ahead)
 
             if self.broker.add(order=bid_order) is False:
                 reward -= discouragement
@@ -247,9 +227,9 @@ class MarketMaker(BaseEnvironment):
                 ask_price = plus_one
                 ask_queue_ahead = 0.
 
-            ask_order = Order(ccy=self.sym, side='short', price=ask_price,
-                              step=self.local_step_number,
-                              queue_ahead=ask_queue_ahead)
+            ask_order = LimitOrder(ccy=self.sym, side='short', price=ask_price,
+                                   step=self.local_step_number,
+                                   queue_ahead=ask_queue_ahead)
 
             if self.broker.add(order=ask_order) is False:
                 reward -= discouragement

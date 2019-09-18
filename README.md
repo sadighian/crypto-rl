@@ -4,10 +4,11 @@
 1. Purpose
 2. Scope
 3. Dependencies
-4. Project Structure
-5. Getting started
-6. Citing this project
-7. Appendix 
+4. Project structure
+5. Design patterns
+6. Getting started
+7. Citing this project
+8. Appendix 
 
 ## 1. Purpose
 The purpose of this application is to provide a toolkit to:
@@ -46,6 +47,7 @@ tensorflow-estimator==1.13.0
 tensorflow-gpu==1.13.1
 ```
 
+
 ## 4. Project Structure
 The key elements in this project and brief descriptions.
 ```
@@ -70,7 +72,7 @@ crypto-rl/
 ```
 
 
-## 4. Design Patterns
+## 5. Design Patterns
 Refer to each individual's module for design pattern specifications
 - [Limit Order Book, Data Recorder, and Database](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/data_recorder)
 - [Stationary LOB Features](https://arxiv.org/abs/1810.09965v1)
@@ -83,8 +85,9 @@ Sample snapshot of Limit Order Book levels:
 Sample snapshot of Order Arrival flow metrics:
 ![plot_order_arrivals](./design_patterns/plot_order_arrivals.png)
 
-## 5. Getting Started
-### 5.1 Record limit order book data from exchanges
+
+## 6. Getting Started
+### 6.1 Record limit order book data from exchanges
 
 **Step 1:**
 Go to the `configurations.configs.py` and define the crypto currencies which
@@ -109,7 +112,7 @@ full limit order book and trade data.
  python3 recorder.py
  ```
 
-### 5.2 Replay recorded data to export stationary feature set
+### 6.2 Replay recorded data to export stationary feature set
 
 **Step 1:**
 Ensure that you have data in your database. 
@@ -133,7 +136,7 @@ Example to export features to a compressed csv:
 python3 data_recorder/tests/test_extract_features.py
 ```
 
-### 5.3 Train an agent
+### 6.3 Train an agent
 
 **Step 1:**
 Ensure you have data in the `data_recorder/database/data_exports/` folder.
@@ -149,7 +152,9 @@ python3 experiment.py --window_size=50 --weights=False --fitting_file=...
 Refer to `experiment.py` to see all the keyword arguments.
 
 
-## 6. Please remember to cite this repository if used in your research:
+## 7. Citing this project
+
+Please remember to cite this repository if used in your research:
 ```
     @misc{Crypto-RL,
         author = {Jonathan Sadighian},
@@ -162,8 +167,8 @@ Refer to `experiment.py` to see all the keyword arguments.
 ```
 
 
-## 7. Appendix
-### 7.1 Branches
+## 8. Appendix
+### 8.1 Branches
 There are multiple branches of this project, each with a different implementation pattern 
 for persisting data:
  - **FULL** branch is intended to be the foundation for a fully automated trading system 
@@ -185,12 +190,14 @@ for persisting data:
  This branch was originally used to benchmark Arctic's performance and is not up to 
  date with the **FULL** branch.
 
-### 7.2 Assumptions
+### 8.2 Assumptions
 - You have mongoDB already installed
 - You know how to use a cli to start python scripts
 - You are running an ubuntu 18+ os
 
-### 7.3 Change Log
+### 8.3 Change Log
+- 2019-09-18: Refactored `env`s and `broker`s for simplification and
+  added different `reward` approaches.
 - 2019-09-13: Created and implemented 'order arrival' flow metrics,
   inspired by
   [Multi-Level Order-Flow Imbalance in a Limit Order Book](https://arxiv.org/abs/1907.06230v1)

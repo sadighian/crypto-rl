@@ -76,6 +76,25 @@ parser.add_argument('--z_score',
                     default=True,
                     help="If TRUE, normalize data with z-score",
                     type=bool)
+parser.add_argument('--reward_type',
+                    default='continuous_total_pnl',
+                    choices=['trade_completion', 'continuous_total_pnl',
+                             'continuous_realized_pnl', 'continuous_unrealized_pnl'],
+                    help="""
+                    reward_type: method for calculating the environment's reward:
+                    1) 'trade_completion' --> reward is generated per trade's round trip
+                    2) 'continuous_total_pnl' --> change in realized & unrealized pnl  
+                        betweentime steps
+                    3) 'continuous_realized_pnl' --> change in realized pnl between 
+                        time steps
+                    4) 'continuous_unrealized_pnl' --> change in unrealized pnl 
+                        between time steps
+                    """,
+                    type=str)
+parser.add_argument('--scale_rewards',
+                    default=True,
+                    help="If TRUE, scale PnL by a scalar defined in `broker.py`",
+                    type=bool)
 parser.add_argument('--nn_type',
                     default='cnn',
                     help="Type of neural network to use: 'cnn' or 'mlp' ",
