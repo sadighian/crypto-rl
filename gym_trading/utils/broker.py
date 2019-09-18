@@ -190,8 +190,8 @@ class Position(ABC):
 
     def reset(self):
         """
-
-        :return:
+        Reset broker metrics / inventories.
+        :return: (void)
         """
         self.positions.clear()
         self.realized_pnl = 0.0
@@ -204,16 +204,16 @@ class Position(ABC):
     @property
     def position_count(self):
         """
-
-        :return:
+        Number of positions held in inventory.
+        :return: (int) number of positions in inventory
         """
         return len(self.positions)
 
     def _process_transaction_volume(self, volume: float):
         """
-
-        :param volume:
-        :return:
+        Handle order executions in LOB queue.
+        :param volume: unsigned notional value of trades (either buy or sell)
+        :return:(void)
         """
         if self.order.is_first_in_queue:
             self.order.process_executions(volume)
@@ -223,13 +223,13 @@ class Position(ABC):
     def _step_limit_order(self, bid_price: float, ask_price: float, buy_volume: float,
                           sell_volume: float, step: int):
         """
-
-        :param bid_price:
-        :param ask_price:
-        :param buy_volume:
-        :param sell_volume:
-        :param step:
-        :return:
+        Step in environment and update LIMIT order inventories.
+        :param bid_price: best bid price
+        :param ask_price: best ask price
+        :param buy_volume: executions initiated by buyers (in notional terms)
+        :param sell_volume: executions initiated by sellers (in notional terms)
+        :param step: current time step
+        :return: (bool) TRUE if a limit order was filled, otherwise FALSE
         """
         if self.order is None:
             return False
@@ -259,11 +259,11 @@ class Position(ABC):
 
     def _step_position_metrics(self, bid_price: float, ask_price: float, step: int):
         """
-
-        :param bid_price:
-        :param ask_price:
-        :param step:
-        :return:
+        Step in environment and update position metrics.
+        :param bid_price: best bid price
+        :param ask_price: best ask price
+        :param step: current time step
+        :return: (void)
         """
         price = bid_price if self.side == 'long' else ask_price
         if self.order:
@@ -275,13 +275,13 @@ class Position(ABC):
     def step(self, bid_price: float, ask_price: float, buy_volume: float,
              sell_volume: float, step: int):
         """
-
-        :param bid_price:
-        :param ask_price:
-        :param buy_volume:
-        :param sell_volume:
-        :param step:
-        :return:
+        Step in environment and update broker inventories.
+        :param bid_price: best bid price
+        :param ask_price: best ask price
+        :param buy_volume: executions initiated by buyers (in notional terms)
+        :param sell_volume: executions initiated by sellers (in notional terms)
+        :param step: current time step
+        :return: (bool) TRUE if a limit order was filled, otherwise FALSE
         """
         is_filled = self._step_limit_order(bid_price=bid_price, ask_price=ask_price,
                                            buy_volume=buy_volume, sell_volume=sell_volume,
@@ -291,8 +291,8 @@ class Position(ABC):
 
     def cancel_limit_order(self):
         """
-
-        :return:
+        Cancel a limit order
+        :return: (bool) TRUE if cancel was successful
         """
         if self.order is None:
             logger.debug('No {} open orders to cancel.'.format(self.side))
@@ -304,9 +304,9 @@ class Position(ABC):
 
     def _add_market_order(self, order: Order):
         """
-
-        :param order:
-        :return:
+        Add a MARKET order
+        :param order: (Order) New order to be used for updating existing order or
+                        placing a new order
         """
         if self.full_inventory:
             logger.debug('  %s inventory max' % order.side)
@@ -331,9 +331,9 @@ class Position(ABC):
 
     def _add_limit_order(self, order: Order):
         """
-
-        :param order:
-        :return:
+        Add / update a LIMIT order
+        :param order: (Order) New order to be used for updating existing order or
+                        placing a new order
         """
         if self.order is None:
             if self.full_inventory:
@@ -355,6 +355,13 @@ class Position(ABC):
         return True
 
     def add(self, order: Order):
+        """
+        Add / update an order
+        :param order: (Order) New order to be used for updating existing order or
+                        placing a new order
+        :return: (bool) TRUE if order add action successfully completed, FALSE if already
+                        at position_max or unknown order.side
+        """
         if order.order_type == 'market':
             return self._add_market_order(order=order)
         elif order.order_type == 'limit':
@@ -365,9 +372,9 @@ class Position(ABC):
 
     def remove(self, price: float):
         """
-
-        :param price:
-        :return:
+        Remove position from inventory and return position PnL.
+        :param price: (float) Price to use for the PnL calculation
+        :return: (bool) TRUE if position removed successfully
         """
         pnl = 0.
         if self.position_count < 1:
@@ -400,8 +407,8 @@ class Position(ABC):
 
     def pop_position(self):
         """
-
-        :return:
+        Remove LIMIT order position from inventory when netted out.
+        :return: (LimitOrder) position being netted out
         """
         if self.position_count > 0:
             position = self.positions.pop(0)
@@ -423,9 +430,8 @@ class Position(ABC):
 
     def get_unrealized_pnl(self, price: float):
         """
-
-        :param price:
-        :return:
+        Unrealized PnL as a percentage gain
+        :return: (float) PnL %
         """
         if self.position_count == 0:
             return 0.0
@@ -447,9 +453,9 @@ class Position(ABC):
 
     def flatten_inventory(self, price: float):
         """
-
-        :param price:
-        :return:
+        Flatten all positions held in inventory.
+        :param price: (float) current bid or ask price
+        :return: (float) PnL from flattening inventory
         """
         logger.debug(
             '{} is flattening inventory of {}'.format(self.side, self.position_count))
@@ -465,9 +471,10 @@ class Position(ABC):
 
     def get_distance_to_midpoint(self, midpoint: float):
         """
-
-        :param midpoint:
-        :return:
+        Distance percentage between current midpoint price and the open order's
+        posted price.
+        :param midpoint: (float) current midpoint of crypto currency
+        :return: (float) distance between open order and midpoint price
         """
         if self.order is None:
             return 0.
@@ -510,7 +517,6 @@ class Broker(object):
         :return: (bool) TRUE if order add action successfully completed, FALSE if already
                         at position_max or unknown order.side
         """
-
         if order.side == 'long':
             is_added = self.long_inventory.add(order=order)
         elif order.side == 'short':
@@ -631,9 +637,8 @@ class Broker(object):
 
     def get_short_order_distance_to_midpoint(self, midpoint=100.):
         """
-        Scaled [0, ...) distance between current midpoint price and the open order's
-        posted price. The distance is scaled by the Broker's 'reward scale', which is a
-        user input setting.
+        Distance percentage between current midpoint price and the open order's
+        posted price.
         :param midpoint: (float) current midpoint of crypto currency
         :return: (float) distance between open order and midpoint price
         """
@@ -641,9 +646,8 @@ class Broker(object):
 
     def get_long_order_distance_to_midpoint(self, midpoint=100.):
         """
-        Scaled [0, ...) distance between current midpoint price and the open order's
-        posted price. The distance is scaled by the Broker's 'reward scale', which is a
-        user input setting.
+        Distance percentage between current midpoint price and the open order's
+        posted price.
         :param midpoint: (float) current midpoint of crypto currency
         :return: (float) distance between open order and midpoint price
         """

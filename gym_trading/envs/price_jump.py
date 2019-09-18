@@ -97,7 +97,7 @@ class PriceJump(BaseEnvironment):
         """
         return np.array((self.broker.long_inventory.position_count / self.max_position,
                          self.broker.short_inventory.position_count / self.max_position,
-                         self.broker.realized_pnl / PriceJump.target_pnl,
-                         self.broker.get_unrealized_pnl(
-                             self.best_bid, self.best_ask) / self.broker.reward_scale),
+                         self.broker.realized_pnl / self.broker.reward_scale,
+                         self.broker.get_unrealized_pnl(self.best_bid, self.best_ask)
+                         / self.broker.reward_scale),
                         dtype=np.float32)
