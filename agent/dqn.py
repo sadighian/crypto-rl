@@ -158,8 +158,9 @@ class Agent(object):
         print("weights_filename: {}".format(weights_filename))
 
         if self.load_weights:
+            print('...loading weights for {} from\n{}'.format(
+                self.env_name, weights_filename))
             self.agent.load_weights(weights_filename)
-            print('...loading weights for {}'.format(self.env_name))
 
         if self.train:
             step_chkpt = '{step}.h5f'
