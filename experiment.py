@@ -13,7 +13,7 @@ parser.add_argument('--step_size',
                     help="Increment for looping through historical data",
                     type=int)
 parser.add_argument('--window_size',
-                    default=40,
+                    default=1,
                     help="Number of lags to include in the observation",
                     type=int)
 parser.add_argument('--max_position',

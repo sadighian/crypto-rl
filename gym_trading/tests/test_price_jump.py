@@ -24,6 +24,7 @@ class PriceJumpTestCases(unittest.TestCase):
             'z_score': False,
             'reward_type': 'trade_completion',
             'scale_rewards': True,
+            'alpha': [0.999, 0.9999],
         }
 
         env = gym.make(PriceJump.id, **config)
@@ -74,6 +75,7 @@ class PriceJumpTestCases(unittest.TestCase):
             'z_score': False,
             'reward_type': 'continuous_total_pnl',
             'scale_rewards': True,
+            'alpha': 0.999,
         }
 
         env = gym.make(PriceJump.id, **config)

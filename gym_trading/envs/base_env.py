@@ -3,8 +3,7 @@ from abc import ABC, abstractmethod
 from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.utils.render_env import TradingGraph
 from configurations.configs import INDICATOR_WINDOW, INDICATOR_WINDOW_MAX
-from gym_trading.indicators import RSI, TnS
-from gym_trading.indicators.indicator import IndicatorManager
+from indicators import RSI, TnS, IndicatorManager
 import numpy as np
 
 
@@ -28,7 +27,7 @@ class BaseEnvironment(Env, ABC):
                  testing_file='LTC-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
                  window_size=10, seed=1, action_repeats=10, training=True,
                  format_3d=False, z_score=True, reward_type='trade_completion',
-                 scale_rewards=True):
+                 scale_rewards=True, alpha=None):
         """
         Base class for creating environments extending OpenAI's GYM framework.
 
@@ -51,6 +50,8 @@ class BaseEnvironment(Env, ABC):
                                             time steps
             3) 'continuous_realized_pnl' --> change in realized pnl between time steps
             4) 'continuous_unrealized_pnl' --> change in unrealized pnl between time steps
+        :param alpha: decay factor for EMA, usually between 0.9 and 0.9999; if NONE,
+            raw values are returned in place of smoothed values
         """
         # properties required for instantiation
         self.action_repeats = action_repeats
@@ -81,7 +82,7 @@ class BaseEnvironment(Env, ABC):
         self.observation_space = None
 
         # get historical data for simulations
-        self.sim = Sim(use_arctic=False, z_score=z_score)
+        self.sim = Sim(use_arctic=False, z_score=z_score, alpha=alpha)
 
         self.prices_, self.data, self.normalized_data = self.sim.load_environment_data(
             fitting_file, testing_file)
@@ -93,8 +94,8 @@ class BaseEnvironment(Env, ABC):
         self.tns = IndicatorManager()
         self.rsi = IndicatorManager()
         for window in INDICATOR_WINDOW:
-            self.tns.add(('tns_{}'.format(window), TnS(window=window)))
-            self.rsi.add(('rsi_{}'.format(window), RSI(window=window)))
+            self.tns.add(('tns_{}'.format(window), TnS(window=window, alpha=alpha)))
+            self.rsi.add(('rsi_{}'.format(window), RSI(window=window, alpha=alpha)))
 
         # rendering class
         self._render = TradingGraph(sym=self.sym)
@@ -239,7 +240,7 @@ class BaseEnvironment(Env, ABC):
         self.rsi.reset()
         self.tns.reset()
 
-        for step in range(self.window_size + INDICATOR_WINDOW_MAX):
+        for step in range(self.window_size + INDICATOR_WINDOW_MAX + 1):
             self.midpoint = self.prices_[self.local_step_number]
             self.best_bid, self.best_ask = self._get_nbbo()
 
@@ -313,7 +314,8 @@ class BaseEnvironment(Env, ABC):
         Create features vector with environment indicators.
         :return: (np.array) Indicator values for current time step
         """
-        return np.array((*self.tns.get_value(), *self.rsi.get_value()), dtype=np.float32)
+        return np.array((*self.tns.get_value(), *self.rsi.get_value()),
+                        dtype=np.float32).reshape(1, -1)
 
     def _get_nbbo(self):
         """

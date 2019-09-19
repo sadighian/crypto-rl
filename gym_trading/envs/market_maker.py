@@ -12,7 +12,7 @@ class MarketMaker(BaseEnvironment):
                  testing_file='LTC-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
                  window_size=10, seed=1, action_repeats=10, training=True,
                  format_3d=False, z_score=True, reward_type='trade_completion',
-                 scale_rewards=True):
+                 scale_rewards=True, alpha=None):
         super(MarketMaker, self).__init__(fitting_file=fitting_file,
                                           testing_file=testing_file, step_size=step_size,
                                           max_position=max_position,
@@ -20,7 +20,7 @@ class MarketMaker(BaseEnvironment):
                                           action_repeats=action_repeats,
                                           training=training, format_3d=format_3d,
                                           z_score=z_score, reward_type=reward_type,
-                                          scale_rewards=scale_rewards)
+                                          scale_rewards=scale_rewards, alpha=alpha)
 
         self.actions = np.eye(17, dtype=np.float32)
 

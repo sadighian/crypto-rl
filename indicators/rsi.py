@@ -1,12 +1,12 @@
 import numpy as np
 from configurations.configs import INDICATOR_WINDOW
-from gym_trading.indicators.indicator import Indicator
+from indicators.indicator import Indicator
 
 
 class RSI(Indicator):
 
-    def __init__(self, window=INDICATOR_WINDOW):
-        super(RSI, self).__init__(window=window)
+    def __init__(self, window=INDICATOR_WINDOW, alpha=None):
+        super(RSI, self).__init__(window=window, alpha=alpha)
         self.last_price = np.nan
         self.ups = 0.
         self.downs = 0.
@@ -20,6 +20,7 @@ class RSI(Indicator):
         self.last_price = np.nan
         self.ups = 0.
         self.downs = 0.
+        super(RSI, self).reset()
 
     def step(self, price=100.):
         if np.isnan(self.last_price):
@@ -57,7 +58,11 @@ class RSI(Indicator):
             elif price_to_remove < 0.:
                 self.downs -= price_to_remove
 
-    def get_value(self):
+        # Save current time step value for EMA, in case smoothing is enabled
+        self._value = self.calculate()
+        super(RSI, self).step(value=self._value)
+
+    def calculate(self):
         abs_downs = abs(self.downs)
         nom = self.ups - abs_downs
         denom = self.ups + abs_downs

@@ -1,5 +1,6 @@
+from configurations.configs import EMA_ALPHA
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten, Conv2D, CuDNNLSTM
+from keras.layers import Dense, Flatten, Conv2D, CuDNNLSTM
 from keras.optimizers import Adam
 from rl.agents.dqn import DQNAgent
 from rl.memory import SequentialMemory
@@ -26,7 +27,7 @@ class Agent(object):
                  load_weights=False,
                  z_score=False,
                  reward_type='trade_completion',
-                 scale_rewards=True,
+                 scale_rewards=True, alpha=EMA_ALPHA,
                  visualize=False,
                  dueling_network=True,
                  double_dqn=True,
@@ -64,7 +65,8 @@ class Agent(object):
                             z_score=z_score,
                             format_3d=format_3d,
                             reward_type=reward_type,
-                            scale_rewards=scale_rewards)
+                            scale_rewards=scale_rewards,
+                            alpha=alpha)
         # Number of frames to stack e.g., 1.
         # NOTE: 'Keras-RL' uses its own frame-stacker
         self.memory_frame_stack = 1
@@ -122,7 +124,7 @@ class Agent(object):
         model.add(conv(filters=16, kernel_size=[4, 1], padding='same', activation='relu',
                        strides=[2, 1], data_format='channels_first'))
         model.add(Flatten())
-        model.add(Dense(512, activation='relu'))
+        model.add(Dense(256, activation='relu'))
         model.add(Dense(self.env.action_space.n, activation='softmax'))
 
         print(model.summary())
@@ -135,7 +137,7 @@ class Agent(object):
         """
         features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
         model = Sequential()
-        model.add(Dense(units=512, input_shape=features_shape, activation='relu'))
+        model.add(Dense(units=256, input_shape=features_shape, activation='relu'))
         model.add(Dense(units=256, activation='relu'))
         model.add(Flatten())
         model.add(Dense(self.env.action_space.n, activation='softmax'))
@@ -184,9 +186,10 @@ class Agent(object):
                            log_interval=10000,
                            verbose=0,
                            visualize=self.visualize)
+            print("training over.")
             print('Saving AGENT weights...')
-
             self.agent.save_weights(weights_filename, overwrite=True)
+            print("AGENT weights saved.")
         else:
             print('Starting TEST...')
             self.agent.test(self.env, nb_episodes=2, visualize=self.visualize)

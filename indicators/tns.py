@@ -1,12 +1,11 @@
-from collections import deque
 from configurations.configs import INDICATOR_WINDOW
-from gym_trading.indicators.indicator import Indicator
+from indicators.indicator import Indicator
 
 
 class TnS(Indicator):
 
-    def __init__(self, window=INDICATOR_WINDOW):
-        super(TnS, self).__init__(window=window)
+    def __init__(self, window=INDICATOR_WINDOW, alpha=None):
+        super(TnS, self).__init__(window=window, alpha=alpha)
         self.ups = 0.
         self.downs = 0.
 
@@ -28,11 +27,15 @@ class TnS(Indicator):
             self.ups -= buys_
             self.downs -= sells_
 
-    def get_value(self):
+        self._value = self.calculate()
+        super(TnS, self).step(value=self._value)
+
+    def calculate(self):
         nom = round(self.ups - self.downs, 6)
         denom = round(self.ups + self.downs, 6)
-
         if denom == 0.:
+            return 0.
+        elif nom == 0.:
             return 0.
         else:
             return nom / denom
