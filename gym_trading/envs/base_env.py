@@ -1,9 +1,10 @@
-from gym import Env
-from abc import ABC, abstractmethod
 from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.utils.render_env import TradingGraph
-from configurations.configs import INDICATOR_WINDOW, INDICATOR_WINDOW_MAX
+from configurations.configs import INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA,  \
+    MARKET_ORDER_FEE
 from indicators import RSI, TnS, IndicatorManager
+from gym import Env
+from abc import ABC, abstractmethod
 import numpy as np
 
 
@@ -27,7 +28,7 @@ class BaseEnvironment(Env, ABC):
                  testing_file='LTC-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
                  window_size=10, seed=1, action_repeats=10, training=True,
                  format_3d=False, z_score=True, reward_type='trade_completion',
-                 scale_rewards=True, alpha=None):
+                 scale_rewards=True, alpha=EMA_ALPHA):
         """
         Base class for creating environments extending OpenAI's GYM framework.
 
@@ -124,6 +125,27 @@ class BaseEnvironment(Env, ABC):
         """
         return np.array([np.nan], dtype=np.float32)
 
+    @staticmethod
+    def _trade_completion_reward(step_pnl: float):
+        """
+        Alternate approach for reward calculation which places greater importance on
+        trades that have returned at least a 1:1 profit-to-loss ratio after
+        transaction fees.
+        :param step_pnl: limit order pnl and any penalties for bad actions
+        :return: normalized reward (-0.1 to 0.1) range, which can be scaled to
+            (-1, 1) in self._get_step_reward() method
+        """
+        reward = 0.0
+        if step_pnl > MARKET_ORDER_FEE:
+            reward += 0.1
+        elif step_pnl > 0.0:
+            reward += step_pnl
+        elif step_pnl < -MARKET_ORDER_FEE:
+            reward -= 0.1
+        else:
+            reward -= step_pnl
+        return reward
+
     def _get_step_reward(self, step_pnl: float):
         """
         Get reward for current time step.
@@ -131,13 +153,15 @@ class BaseEnvironment(Env, ABC):
         :param step_pnl: (float) PnL accrued from order fills at current time step
         :return: (float) reward
         """
-        reward = 0.
+        reward = 0.0
         if self.reward_type == 'trade_completion':
-            reward += step_pnl
+            reward += self._trade_completion_reward(step_pnl=step_pnl)
             # Note: we do not need to update last_pnl for this reward approach
         elif self.reward_type == 'continuous_total_pnl':
             new_pnl = self.broker.get_total_pnl(self.best_bid, self.best_ask)
-            reward += new_pnl - self.last_pnl  # Difference in PnL
+            difference = new_pnl - self.last_pnl  # Difference in PnL over time step
+            # include step_pnl to net out drops in unrealized PnL from position closing
+            reward += difference + step_pnl
             self.last_pnl = new_pnl
         elif self.reward_type == 'continuous_realized_pnl':
             new_pnl = self.broker.realized_pnl
@@ -145,7 +169,9 @@ class BaseEnvironment(Env, ABC):
             self.last_pnl = new_pnl
         elif self.reward_type == 'continuous_unrealized_pnl':
             new_pnl = self.broker.get_unrealized_pnl(self.best_bid, self.best_ask)
-            reward += new_pnl - self.last_pnl  # Difference in PnL
+            difference = new_pnl - self.last_pnl  # Difference in PnL over time step
+            # include step_pnl to net out drops in unrealized PnL from position closing
+            reward += difference + step_pnl
             self.last_pnl = new_pnl
         else:
             print("_get_step_reward() Unknown reward_type: {}".format(self.reward_type))

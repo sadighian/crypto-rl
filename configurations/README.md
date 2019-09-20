@@ -1,5 +1,5 @@
 # Configurations
-As of September 09, 2019.
+As of September 20, 2019.
 
 ## 1. Overview
 The `configurations` module contains the settings implemented throughout the project.
@@ -53,18 +53,30 @@ into the `Arctic Tick Store`
 ### 2.14 TIMEZONE
 (`pytz.tz`) Timezone for making `datetime.now()` calls (e.g., UTC)
 
-### 2.15 BROKER_FEE
-(`float`) Percentage of trade notional value that broker charges
-as a fee
+### 2.15 MARKET_ORDER_FEE
+(`float`) Percentage of trade notional value that broker charges as a
+fee for a market order
 
-### 2.16 INDICATOR_WINDOW
+### 2.16 LIMIT_ORDER_FEE
+(`float`) Percentage of trade notional value that broker charges as a
+fee for a limit order
+
+### 2.17 INDICATOR_WINDOW
 (`list of int`) Rolling windows used by indicators (note: actual numbers
 are calculated taking the $lob_snapshot_rate * 60_seconds_per_min *
 num_of_mins = window_size$
 
-### 2.17 INDICATOR_WINDOW_MAX
+### 2.18 INDICATOR_WINDOW_MAX
 (`int`) The largest rolling window in `INDICATOR_WINDOW`
 
-### 2.18 INDICATOR_WINDOW_FEATURES
+### 2.19 INDICATOR_WINDOW_FEATURES
 (`list of str`) Feature label stubs to indentify the rolling window
 lengths specified within `INDICATOR_WINDOW`
+
+### 2.20 EMA_ALPHA
+(`None`, `float`, or `list`) Flag to use Exponential Moving Average for
+smoothing indicator and observation space values. If `None` is provide,
+raw data is used; if a `float` is provided, the raw data values are
+smoothed using the alpha number provided; if `list` is provided, the raw
+data values are smoothed for each alpha in the list (i.e., if 3 alphas
+are in the list, then the feature space dimension is multiplied by 3).

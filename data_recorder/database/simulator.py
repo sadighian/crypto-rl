@@ -120,6 +120,8 @@ class Simulator(object):
                 is included in the dataset, in addition to Coinbase-Pro
         :param include_system_time: True/False
                 (False removes the system_time column)
+        :param include_order_flow: True/False
+                if TRUE, order arrival metrics are included in the feature set
         :return:
         """
         columns = list()
@@ -397,7 +399,7 @@ class Simulator(object):
                                 bitfinex_order_book_snapshot = \
                                     bitfinex_order_book.render_book()
                                 midpoint_delta = coinbase_order_book.midpoint - \
-                                                 bitfinex_order_book.midpoint
+                                    bitfinex_order_book.midpoint
                                 snapshot_list.append(list(np.hstack((
                                     new_tick_time,  # tick time
                                     coinbase_order_book.midpoint,  # midpoint price

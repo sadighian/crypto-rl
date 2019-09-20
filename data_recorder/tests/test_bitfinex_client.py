@@ -7,7 +7,7 @@ if __name__ == "__main__":
     This __main__ function is used for testing the
     BitfinexClient class in isolation.
     """
-    symbols = ['tBTCUSD']  #, 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
+    symbols = ['tBTCUSD']  # , 'tBCHUSD', 'tETHUSD', 'tLTCUSD']
     print('Initializing...%s' % symbols)
     loop = asyncio.get_event_loop()
     p = dict()

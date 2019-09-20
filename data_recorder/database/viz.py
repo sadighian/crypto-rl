@@ -77,11 +77,12 @@ def plot_transactions(data: pd.DataFrame):
     plt.show()
 
 
-def plot_lob_levels(data: pd.DataFrame, window=1, levels=range(1, 15), plot_transactions=True):
+def plot_lob_levels(data: pd.DataFrame, window=1, levels=range(1, 15),
+                    plot_transactions=True):
     def ma(a, n=window):
         if isinstance(a, list) or isinstance(a, np.ndarray):
             a = pd.DataFrame(a)
-        return a.rolling(window).mean().values
+        return a.rolling(n).mean().values
 
     midpoint_prices = data['coinbase_midpoint'].values
     bids, asks, transactions = _get_transaction_plot_values(data)

@@ -1,5 +1,6 @@
 import unittest
-from gym_trading.utils.broker import Broker, MarketOrder, LimitOrder
+from gym_trading.utils.broker import Broker
+from gym_trading.utils.order import MarketOrder, LimitOrder
 
 
 class MarketOrderTestCases(unittest.TestCase):

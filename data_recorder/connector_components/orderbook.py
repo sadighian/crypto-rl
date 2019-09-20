@@ -18,10 +18,10 @@ class OrderBook(ABC):
         """
         self.sym = ccy
         self.db = Database(ccy, exchange)
-        self.bids = CoinbaseBook(ccy, 'bids') if exchange == 'coinbase' else \
-            BitfinexBook(ccy, 'bids')
-        self.asks = CoinbaseBook(ccy, 'asks') if exchange == 'coinbase' else \
-            BitfinexBook(ccy, 'asks')
+        self.bids = CoinbaseBook(ccy, 'bids') if exchange == 'coinbase' else BitfinexBook(
+            ccy, 'bids')
+        self.asks = CoinbaseBook(ccy, 'asks') if exchange == 'coinbase' else BitfinexBook(
+            ccy, 'asks')
         self.midpoint = float()
         self.buy_tracker = TradeTracker()
         self.sell_tracker = TradeTracker()
@@ -73,7 +73,7 @@ class OrderBook(ABC):
         """
         Create stationary feature set for limit order book
 
-        Source: https://arxiv.org/abs/1810.09965v1
+        Inspired by: https://arxiv.org/abs/1810.09965v1
 
         :return: numpy array
         """
@@ -91,34 +91,26 @@ class OrderBook(ABC):
 
         if INCLUDE_ORDERFLOW:
             bid_distances, bid_notionals, bid_cancel_notionals, bid_limit_notionals, \
-            bid_market_notionals = bid_data
+                bid_market_notionals = bid_data
 
             ask_distances, ask_notionals, ask_cancel_notionals, ask_limit_notionals, \
-            ask_market_notionals = ask_data
+                ask_market_notionals = ask_data
 
-            return np.hstack((bid_notionals,
-                              ask_notionals,
-                              bid_distances,
-                              ask_distances,
-                              buy_trades,
-                              sell_trades,
-                              bid_cancel_notionals,
-                              ask_cancel_notionals,
-                              bid_limit_notionals,
-                              ask_limit_notionals,
-                              bid_market_notionals,
-                              ask_market_notionals))
+            return np.hstack((bid_notionals, ask_notionals,
+                              bid_distances, ask_distances,
+                              buy_trades, sell_trades,
+                              bid_cancel_notionals, ask_cancel_notionals,
+                              bid_limit_notionals, ask_limit_notionals,
+                              bid_market_notionals, ask_market_notionals)
+                             )
         else:
             bid_distances, bid_notionals = bid_data
-
             ask_distances, ask_notionals = ask_data
 
-            return np.hstack((bid_notionals,
-                              ask_notionals,
-                              bid_distances,
-                              ask_distances,
-                              buy_trades,
-                              sell_trades))
+            return np.hstack((bid_notionals, ask_notionals,
+                              bid_distances, ask_distances,
+                              buy_trades, sell_trades)
+                             )
 
     # def render_book(self):
     #     """

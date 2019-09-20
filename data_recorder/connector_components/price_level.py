@@ -28,9 +28,11 @@ class PriceLevel(object):
     def __str__(self):
         level_info = 'PriceLevel: [price={} | quantity={} | notional={}] \n'.format(
             self._price, self._quantity, self.notional)
-        order_flow_info = '_limit_count={} | _limit_quantity={} | _market_count={} | '.format(
+        order_flow_info = ('_limit_count={} | _limit_quantity={} | _'
+                           'market_count={} | ').format(
             self._limit_count, self._limit_quantity, self._market_count)
-        order_flow_info += '_market_quantity={} | _cancel_count={} | _cancel_quantity={}'.format(
+        order_flow_info += ('_market_quantity={} | _cancel_count={} | _'
+                            'cancel_quantity={}').format(
             self._market_quantity, self._cancel_count, self._cancel_quantity)
         return level_info + order_flow_info
 

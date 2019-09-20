@@ -31,8 +31,8 @@ class IndicatorTestCases(unittest.TestCase):
 
     def test_tns_up(self):
         indicator = TnS(window=10)
-        buys = [10]*3 + [0]*7
-        sells = [0]*10
+        buys = [10] * 3 + [0] * 7
+        sells = [0] * 10
         indicator.step(buys=0, sells=0)
         for buy, sell in zip(buys, sells):
             indicator.step(buys=buy, sells=sell)
@@ -43,8 +43,8 @@ class IndicatorTestCases(unittest.TestCase):
 
     def test_tns_down(self):
         indicator = TnS(window=10)
-        buys = [0]*10
-        sells = [0]*7 + [10]*3
+        buys = [0] * 10
+        sells = [0] * 7 + [10] * 3
         indicator.step(buys=0, sells=0)
         for buy, sell in zip(buys, sells):
             indicator.step(buys=buy, sells=sell)
@@ -59,13 +59,13 @@ class IndicatorTestCases(unittest.TestCase):
             name = 'tns_{}'.format(i)
             print("adding {}".format(name))
             im.add((name, TnS(window=i)))
-        buys = [0]*10
-        sells = [0]*7 + [10]*3
+        buys = [0] * 10
+        sells = [0] * 7 + [10] * 3
         im.step(buys=0, sells=0)
         for buy, sell in zip(buys, sells):
             im.step(buys=buy, sells=sell)
         indicator_values = im.get_value()
-        self.assertEqual([float(-1)]*3, indicator_values,
+        self.assertEqual([float(-1)] * 3, indicator_values,
                          msg='indicator_value is {} and should be {}'.format(
                              indicator_values, float(-1)))
 
@@ -81,21 +81,20 @@ class IndicatorTestCases(unittest.TestCase):
             indicator_ema.step(price=price)
         indicator_value = indicator.value
         indicator_ema_value = indicator_ema.value
-        print("indicator_value: {:.6f} | ema: {:.6f}".format(
-            indicator_value, indicator_ema_value))
+        print("indicator_value: {:.6f} | ema: {:.6f}".format(indicator_value,
+                                                             indicator_ema_value))
 
-        self.assertNotAlmostEqual(
-            indicator_value, indicator_ema_value,
-            msg='indicator_value is {} and should be {}'.format(
-                indicator_value, indicator_ema_value))
+        self.assertNotAlmostEqual(indicator_value, indicator_ema_value,
+                                  msg='indicator_value is {} and should be {}'.format(
+                                      indicator_value, indicator_ema_value))
 
-        self.assertNotAlmostEqual(
-            1., indicator_ema_value,
-            msg='indicator_ema_value is {} and should be {}'.format(
-                indicator_ema_value, 1.))
+        self.assertNotAlmostEqual(1., indicator_ema_value,
+                                  msg='indicator_ema_value is {} and should be {}'.format(
+                                      indicator_ema_value, 1.))
 
         self.assertAlmostEqual(1., indicator_value,
-            msg='indicator_value is {} and should be {}'.format(indicator_value, 1.))
+                               msg='indicator_value is {} and should be {}'.format(
+                                   indicator_value, 1.))
 
 
 if __name__ == '__main__':

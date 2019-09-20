@@ -22,8 +22,16 @@ def load_ema(alpha=None):
 
 
 def apply_ema_all_data(ema, data: np.array):
+    """
+    Apply exponential moving average to entire data set in a single batch
+    :param ema: EMA handler; if None, no EMA is applied
+    :param data: data set to smooth
+    :return: smoothed data set, if ema is provided
+    """
     smoothed_data = []
-    if isinstance(ema, ExponentialMovingAverage):
+    if ema is None:
+        return data
+    elif isinstance(ema, ExponentialMovingAverage):
         for row in data:
             ema.step(value=row)
             smoothed_data.append(ema.value)
@@ -37,8 +45,6 @@ def apply_ema_all_data(ema, data: np.array):
             smoothed_data.append(tmp_row)
         return np.asarray(smoothed_data, dtype=np.float32).reshape(
             data.shape[0], -1)
-    elif ema is None:
-        return data
     else:
         print("_apply_ema() --> unknown ema type: {}".format(type(ema)))
         return None
