@@ -30,7 +30,8 @@ class MarketMaker(BaseEnvironment):
                                             dtype=np.float32)
 
         print('{} MarketMaker #{} instantiated\nself.observation_space.shape: {}'.format(
-            self.sym, self._seed, self.observation_space.shape))
+            self.sym, self._seed, self.observation_space.shape),
+            'reward_type = {}'.format(self.reward_type))
 
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.sym, self._seed)

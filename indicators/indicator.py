@@ -28,6 +28,7 @@ class Indicator(ABC):
         :return: (void)
         """
         self._value = None
+        self.all_history_queue.clear()
 
     @abstractmethod
     def step(self, **kwargs):
@@ -68,6 +69,23 @@ class Indicator(ABC):
             return self._value
         else:
             return 0.
+
+    @property
+    def raw_value(self):
+        """
+        Guaranteed raw value, if EMA is enabled
+        :return: (float) raw indicator value
+        """
+        return self._value
+
+    @staticmethod
+    def _divide(nom, denom):
+        if denom == 0.:
+            return 0.
+        elif nom == 0.:
+            return 0.
+        else:
+            return nom / denom
 
 
 class IndicatorManager(object):

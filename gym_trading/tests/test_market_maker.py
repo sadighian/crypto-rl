@@ -14,8 +14,8 @@ class MarketMakerTestCases(unittest.TestCase):
             'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
             'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
-            'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
-            'scale_rewards': True, 'alpha': [0.999, 0.9999],
+            'format_3d': False, 'z_score': False, 'reward_type': 'normed',
+            'scale_rewards': False, 'alpha': [0.999, 0.9999],
         }
 
         env = gym.make(MarketMaker.id, **config)
@@ -30,6 +30,7 @@ class MarketMakerTestCases(unittest.TestCase):
 
             if i % 3000 == 0:
                 action = 10  # np.random.randint(env.action_space.n)  # break
+                print('reward = ', reward)
             else:
                 action = 0
 

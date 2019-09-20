@@ -79,7 +79,8 @@ parser.add_argument('--z_score',
 parser.add_argument('--reward_type',
                     default='continuous_total_pnl',
                     choices=['trade_completion', 'continuous_total_pnl',
-                             'continuous_realized_pnl', 'continuous_unrealized_pnl'],
+                             'continuous_realized_pnl', 'continuous_unrealized_pnl',
+                             'normed', 'div'],
                     help="""
                     reward_type: method for calculating the environment's reward:
                     1) 'trade_completion' --> reward is generated per trade's round trip
@@ -89,6 +90,10 @@ parser.add_argument('--reward_type',
                         time steps
                     4) 'continuous_unrealized_pnl' --> change in unrealized pnl 
                         between time steps
+                    5) 'normed' --> refer to https://arxiv.org/abs/1804.04216v1
+                    6) 'div' --> reward is generated per trade's round trip divided by
+                        inventory count (again, refer to 
+                        https://arxiv.org/abs/1804.04216v1)
                     """,
                     type=str)
 parser.add_argument('--scale_rewards',

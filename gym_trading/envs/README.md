@@ -1,5 +1,5 @@
 # Environments
-As of September 18, 2019.
+As of September 20, 2019.
 
 ## 1. Overview
 Each python file is an extension to OpenAI's GYM module 
@@ -20,6 +20,8 @@ with all mandatory abstract methods are implemented.
        steps
   4.   'continuous_unrealized_pnl' : change in unrealized pnl between
        time steps
+  5.   'normed' : refer to https://arxiv.org/abs/1804.04216v1
+  6.   'div' : reward is generated per trade's round trip divided by
 - `observation space` can be normalized via: 
     1.  z-score
     2. min-max (e.g., range [0,1])
@@ -31,10 +33,7 @@ with all mandatory abstract methods are implemented.
 ### 2.2 price_jump.py
 - This environment is designed for MARKET orders only with the objective
   being able to identify a "price jump"
-- Rewards in this environment are realized PnL in FIFO order
-- Each time the Agent creates a new market order, 
-the "stop loss" and "take profit" levels are a predefined 
-distance from the position entry price 
+- Rewards in this environment are realized PnL in FIFO order 
 (i.e., current midpoint)
 - The `../agent/dqn.py` Agent implements this class
  

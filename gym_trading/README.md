@@ -14,8 +14,8 @@ Module containing various environment implementations.
 
 ## 2. Utils
 Module containing utility classes for the `gym_trading` module.
-- `broker.py` manages orders, executions, position inventories, and PnL
-  calculations for `price_jump.py` and `market_maker.py`
+- `broker.py`, `position.py`, and `order.py` manages orders &
+  executions, position inventories, and PnL calculations for `envs`
 - `render_env.py` render's midpoint price data as the agent steps
   through the environment
 

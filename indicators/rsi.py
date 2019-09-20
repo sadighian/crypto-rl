@@ -8,18 +8,15 @@ class RSI(Indicator):
     def __init__(self, window=INDICATOR_WINDOW, alpha=None):
         super(RSI, self).__init__(window=window, alpha=alpha)
         self.last_price = np.nan
-        self.ups = 0.
-        self.downs = 0.
+        self.ups = self.downs = 0.
 
     def __str__(self):
         return "***\nRSI: last_price={} | ups={} | downs={}\n***".format(
                    self.last_price, self.ups, self.downs)
 
     def reset(self):
-        self.all_history_queue.clear()
         self.last_price = np.nan
-        self.ups = 0.
-        self.downs = 0.
+        self.ups = self.downs = 0.
         super(RSI, self).reset()
 
     def step(self, price=100.):
@@ -66,9 +63,4 @@ class RSI(Indicator):
         abs_downs = abs(self.downs)
         nom = self.ups - abs_downs
         denom = self.ups + abs_downs
-        if denom == 0.:
-            return 0.
-        elif nom == 0.:
-            return 0.
-        else:
-            return nom / denom
+        return self._divide(nom=nom, denom=denom)

@@ -1,8 +1,8 @@
 from data_recorder.database.simulator import Simulator as Sim
 from gym_trading.utils.render_env import TradingGraph
-from configurations.configs import INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA,  \
-    MARKET_ORDER_FEE
-from indicators import RSI, TnS, IndicatorManager
+from configurations.configs import (INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA,
+                                    MARKET_ORDER_FEE)
+from indicators import RSI, TnS, IndicatorManager, PnlNorm
 from gym import Env
 from abc import ABC, abstractmethod
 import numpy as np
@@ -51,6 +51,9 @@ class BaseEnvironment(Env, ABC):
                                             time steps
             3) 'continuous_realized_pnl' --> change in realized pnl between time steps
             4) 'continuous_unrealized_pnl' --> change in unrealized pnl between time steps
+            5) 'normed' --> refer to https://arxiv.org/abs/1804.04216v1
+            6) 'div' --> reward is generated per trade's round trip divided by
+                inventory count (again, refer to https://arxiv.org/abs/1804.04216v1)
         :param alpha: decay factor for EMA, usually between 0.9 and 0.9999; if NONE,
             raw values are returned in place of smoothed values
         """
@@ -97,6 +100,10 @@ class BaseEnvironment(Env, ABC):
         for window in INDICATOR_WINDOW:
             self.tns.add(('tns_{}'.format(window), TnS(window=window, alpha=alpha)))
             self.rsi.add(('rsi_{}'.format(window), RSI(window=window, alpha=alpha)))
+
+        # conditionally load PnlNorm, since it calculates in O(n) time complexity
+        self.pnl_norm = PnlNorm(window=INDICATOR_WINDOW[0],
+                                alpha=None) if self.reward_type == 'normed' else None
 
         # rendering class
         self._render = TradingGraph(sym=self.sym)
@@ -155,8 +162,9 @@ class BaseEnvironment(Env, ABC):
         """
         reward = 0.0
         if self.reward_type == 'trade_completion':
-            reward += self._trade_completion_reward(step_pnl=step_pnl)
-            # Note: we do not need to update last_pnl for this reward approach
+            reward += self._trade_completion_reward(
+                step_pnl=step_pnl)  # Note: we do not need to update last_pnl for this
+            # reward approach
         elif self.reward_type == 'continuous_total_pnl':
             new_pnl = self.broker.get_total_pnl(self.best_bid, self.best_ask)
             difference = new_pnl - self.last_pnl  # Difference in PnL over time step
@@ -173,6 +181,11 @@ class BaseEnvironment(Env, ABC):
             # include step_pnl to net out drops in unrealized PnL from position closing
             reward += difference + step_pnl
             self.last_pnl = new_pnl
+        elif self.reward_type == 'normed':
+            reward += self.pnl_norm.raw_value
+        elif self.reward_type == 'div':
+            reward += step_pnl / max(self.broker.long_inventory_count +
+                                     self.broker.short_inventory_count, 1)
         else:
             print("_get_step_reward() Unknown reward_type: {}".format(self.reward_type))
 
@@ -224,6 +237,12 @@ class BaseEnvironment(Env, ABC):
             # actions made by the agent for future discouragement
             step_reward, market_pnl = self.map_action_to_broker(action=step_action)
             step_pnl = limit_pnl + step_reward + market_pnl
+
+            # step thru pnl_norm if not None
+            if self.pnl_norm:
+                self.pnl_norm.step(pnl=self.broker.get_unrealized_pnl(
+                    bid_price=self.best_bid, ask_price=self.best_ask))
+
             self.reward += self._get_step_reward(step_pnl=step_pnl)
 
             step_observation = self._get_step_observation(action=action)
@@ -265,6 +284,8 @@ class BaseEnvironment(Env, ABC):
         self.data_buffer.clear()
         self.rsi.reset()
         self.tns.reset()
+        if self.pnl_norm:
+            self.pnl_norm.reset()
 
         for step in range(self.window_size + INDICATOR_WINDOW_MAX + 1):
             self.midpoint = self.prices_[self.local_step_number]
@@ -274,6 +295,11 @@ class BaseEnvironment(Env, ABC):
             step_sell_volume = self._get_book_data(BaseEnvironment.sell_trade_index)
             self.tns.step(buys=step_buy_volume, sells=step_sell_volume)
             self.rsi.step(price=self.midpoint)
+
+            # step thru pnl_norm if not None
+            if self.pnl_norm:
+                self.pnl_norm.step(pnl=self.broker.get_unrealized_pnl(
+                    bid_price=self.best_bid, ask_price=self.best_ask))
 
             step_observation = self._get_step_observation(action=0)
             self.data_buffer.append(step_observation)
@@ -307,6 +333,7 @@ class BaseEnvironment(Env, ABC):
         self.data_buffer = None
         self.tns = None
         self.rsi = None
+        self.pnl_norm = None
 
     def seed(self, seed=1):
         """

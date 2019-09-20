@@ -6,16 +6,14 @@ class TnS(Indicator):
 
     def __init__(self, window=INDICATOR_WINDOW, alpha=None):
         super(TnS, self).__init__(window=window, alpha=alpha)
-        self.ups = 0.
-        self.downs = 0.
+        self.ups = self.downs = 0.
 
     def __str__(self):
         return "TNS: ups={} | downs={}".format(self.ups, self.downs)
 
     def reset(self):
-        self.all_history_queue.clear()
-        self.ups = 0.
-        self.downs = 0.
+        self.ups = self.downs = 0.
+        super(TnS, self).reset()
 
     def step(self, buys=0., sells=0.):
         self.ups += buys
@@ -33,9 +31,4 @@ class TnS(Indicator):
     def calculate(self):
         nom = round(self.ups - self.downs, 6)
         denom = round(self.ups + self.downs, 6)
-        if denom == 0.:
-            return 0.
-        elif nom == 0.:
-            return 0.
-        else:
-            return nom / denom
+        return self._divide(nom=nom, denom=denom)

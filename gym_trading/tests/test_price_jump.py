@@ -18,7 +18,7 @@ class PriceJumpTestCases(unittest.TestCase):
             'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
             'scale_rewards': True, 'alpha': [0.999, 0.9999],
         }
-
+        print("**********\n{}\n**********".format(config))
         env = gym.make(PriceJump.id, **config)
         total_reward = 0.0
 
@@ -37,8 +37,8 @@ class PriceJumpTestCases(unittest.TestCase):
             state, reward, done, _ = env.step(action)
             total_reward += reward
 
-            # if reward != 0.0:
-            #     print('reward = %.4f' % reward)
+            if abs(reward) > 0.00001:
+                print('reward = %.4f' % reward)
 
             if done:
                 elapsed = (dt.now() - start_time).seconds
