@@ -200,6 +200,7 @@ class Position(object):
             self.order.price = order.price
             self.order.queue_ahead = order.queue_ahead
             self.order.id = order.id
+            self.order.step = order.step
             logger.debug('\nUpdating order{} --> \n{}'.format(order, self.order))
 
         else:
