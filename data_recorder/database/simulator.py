@@ -2,6 +2,7 @@ from datetime import datetime as dt
 from datetime import timedelta
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
+from indicators import apply_ema_all_data, load_ema
 from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, \
@@ -15,7 +16,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 class Simulator(object):
 
-    def __init__(self, use_arctic=False, z_score=True):
+    def __init__(self, use_arctic=False, z_score=True, alpha=None):
         """
         Simulator constructor
         :param use_arctic: If TRUE, Simulator creates a connection to Arctic,
@@ -25,6 +26,7 @@ class Simulator(object):
         """
         self._scaler = StandardScaler() if z_score else MinMaxScaler()
         self.cwd = os.path.dirname(os.path.realpath(__file__))
+        self.ema = load_ema(alpha=alpha)
         try:
             if use_arctic:
                 print('Attempting to connect to Arctic...')
@@ -33,16 +35,15 @@ class Simulator(object):
                 self.library = self.arctic[ARCTIC_NAME]
                 print('Connected to Arctic.')
             else:
-                print('Not connecting to Arctic')
-                self.arctic, self.library = None, None
+                self.arctic = self.library = None
         except Exception as ex:
-            self.arctic, self.library = None, None
+            self.arctic = self.library = None
             print('Unable to connect to Arctic database')
             print(ex)
 
     def __str__(self):
-        return 'Simulator() connection={}, library={}, avg={}, std={}' \
-            .format(self.arctic, self.library, self._avg, self._std)
+        return 'Simulator() connection={}, library={}' \
+            .format(self.arctic, self.library)
 
     def get_tick_history(self, query):
         """
@@ -60,7 +61,7 @@ class Simulator(object):
         """
         start_time = dt.now(tz=TIMEZONE)
 
-        assert RECORD_DATA is False
+        assert RECORD_DATA is False, "RECORD_DATA must be set to FALSE to replay data"
         cursor = self._query_arctic(**query)
         if cursor is None:
             print('\nNothing returned from Arctic for the query: %s\n...Exiting...'
@@ -119,6 +120,8 @@ class Simulator(object):
                 is included in the dataset, in addition to Coinbase-Pro
         :param include_system_time: True/False
                 (False removes the system_time column)
+        :param include_order_flow: True/False
+                if TRUE, order arrival metrics are included in the feature set
         :return:
         """
         columns = list()
@@ -217,7 +220,7 @@ class Simulator(object):
         """
         self._scaler.fit(orderbook_snapshot_history)
 
-    def transform_scaler(self, data: np.array):
+    def scale_data(self, data: np.array):
         """
         Normalize data
         :param data: (np.array) all data in environment
@@ -237,7 +240,7 @@ class Simulator(object):
         data['coinbase_midpoint'] = (
                 data['coinbase_midpoint'] - data['coinbase_midpoint'].shift(1)).fillna(
             method='bfill')
-        return data
+        return data.values
 
     def load_environment_data(self, fitting_file: str, testing_file: str):
         """
@@ -254,6 +257,7 @@ class Simulator(object):
         fitting_data_filepath = os.path.join(self.cwd, 'data_exports', fitting_file)
         fitting_data = self.import_csv(filename=fitting_data_filepath)
         fitting_data = self._midpoint_diff(data=fitting_data)  # normalize midpoint
+        fitting_data = apply_ema_all_data(ema=self.ema, data=fitting_data)
         self.fit_scaler(fitting_data)
         del fitting_data
 
@@ -261,8 +265,11 @@ class Simulator(object):
         data_used_in_environment = os.path.join(self.cwd, 'data_exports', testing_file)
         data = self.import_csv(filename=data_used_in_environment)
         midpoint_prices = data['coinbase_midpoint'].values
+
         normalized_data = self._midpoint_diff(data.copy())
-        normalized_data = self.transform_scaler(normalized_data)
+        normalized_data = apply_ema_all_data(ema=self.ema, data=normalized_data)
+
+        normalized_data = self.scale_data(normalized_data)
         normalized_data = np.clip(normalized_data, -10, 10)
 
         return midpoint_prices, data.values, normalized_data
@@ -392,7 +399,7 @@ class Simulator(object):
                                 bitfinex_order_book_snapshot = \
                                     bitfinex_order_book.render_book()
                                 midpoint_delta = coinbase_order_book.midpoint - \
-                                                 bitfinex_order_book.midpoint
+                                    bitfinex_order_book.midpoint
                                 snapshot_list.append(list(np.hstack((
                                     new_tick_time,  # tick time
                                     coinbase_order_book.midpoint,  # midpoint price

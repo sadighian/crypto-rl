@@ -1,5 +1,5 @@
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten, Conv2D, CuDNNLSTM
+from keras.layers import Dense, Flatten, Conv2D
 from keras.optimizers import Adam
 from rl.agents.dqn import DQNAgent
 from rl.memory import SequentialMemory
@@ -12,25 +12,9 @@ import gym_trading
 class Agent(object):
     name = 'DQN'
 
-    def __init__(self, *,
-                 step_size=1, window_size=20, max_position=5,
-                 fitting_file='LTC-USD_2019-04-07.csv.xz',
-                 testing_file='LTC-USD_2019-04-08.csv.xz',
-                 env='market-maker-v0',
-                 seed=1,
-                 action_repeats=4,
-                 number_of_training_steps=1e5,
-                 gamma=0.999,
-                 format_3d=False,  # add 3rd dimension for CNNs
-                 train=True,
-                 load_weights=False,
-                 z_score=False,
-                 reward_type='trade_completion',
-                 scale_rewards=True,
-                 visualize=False,
-                 dueling_network=True,
-                 double_dqn=True,
-                 nn_type='mlp'):
+    def __init__(self, number_of_training_steps=1e5, gamma=0.999, load_weights=False,
+                 visualize=False, dueling_network=True, double_dqn=True, nn_type='mlp',
+                 **kwargs):
         """
         Agent constructor
         :param step_size: int, number of steps to take in env for a given simulation step
@@ -51,32 +35,25 @@ class Agent(object):
         :param dueling_network: boolean, use dueling network architecture
         :param double_dqn: boolean, use double DQN for Q-value approximation
         """
-        self.env_name = env
-        self.env = gym.make(self.env_name,
-                            fitting_file=fitting_file,
-                            testing_file=testing_file,
-                            step_size=step_size,
-                            max_position=max_position,
-                            window_size=window_size,
-                            seed=seed,
-                            action_repeats=action_repeats,
-                            training=train,
-                            z_score=z_score,
-                            format_3d=format_3d,
-                            reward_type=reward_type,
-                            scale_rewards=scale_rewards)
-        # Number of frames to stack e.g., 1.
-        # NOTE: 'Keras-RL' uses its own frame-stacker
-        self.memory_frame_stack = 1
+        # Agent arguments
+        # self.env_name = id
         self.neural_network_type = nn_type
+        self.load_weights = load_weights
+        self.number_of_training_steps = number_of_training_steps
+        self.visualize = visualize
+
+        # Create environment
+        self.env = gym.make(**kwargs)
+        self.env_name = self.env.env.id
+
+        # Create agent
+        # NOTE: 'Keras-RL' uses its own frame-stacker
+        self.memory_frame_stack = 1  # Number of frames to stack e.g., 1.
         self.model = self.create_model(name=self.neural_network_type)
         self.memory = SequentialMemory(limit=10000,
                                        window_length=self.memory_frame_stack)
-        self.train = train
-        self.number_of_training_steps = number_of_training_steps
-        self.load_weights = load_weights
+        self.train = self.env.env.training
         self.cwd = os.path.dirname(os.path.realpath(__file__))
-        self.visualize = visualize
 
         # create the agent
         self.agent = DQNAgent(model=self.model,
@@ -113,7 +90,6 @@ class Agent(object):
         features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
         model = Sequential()
         conv = Conv2D
-
         model.add(conv(input_shape=features_shape,
                        filters=16, kernel_size=[10, 1], padding='same', activation='relu',
                        strides=[5, 1], data_format='channels_first'))
@@ -122,9 +98,8 @@ class Agent(object):
         model.add(conv(filters=16, kernel_size=[4, 1], padding='same', activation='relu',
                        strides=[2, 1], data_format='channels_first'))
         model.add(Flatten())
-        model.add(Dense(512, activation='relu'))
+        model.add(Dense(256, activation='relu'))
         model.add(Dense(self.env.action_space.n, activation='softmax'))
-
         print(model.summary())
         return model
 
@@ -135,7 +110,7 @@ class Agent(object):
         """
         features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
         model = Sequential()
-        model.add(Dense(units=512, input_shape=features_shape, activation='relu'))
+        model.add(Dense(units=256, input_shape=features_shape, activation='relu'))
         model.add(Dense(units=256, activation='relu'))
         model.add(Flatten())
         model.add(Dense(self.env.action_space.n, activation='softmax'))
@@ -184,9 +159,10 @@ class Agent(object):
                            log_interval=10000,
                            verbose=0,
                            visualize=self.visualize)
+            print("training over.")
             print('Saving AGENT weights...')
-
             self.agent.save_weights(weights_filename, overwrite=True)
+            print("AGENT weights saved.")
         else:
             print('Starting TEST...')
             self.agent.test(self.env, nb_episodes=2, visualize=self.visualize)

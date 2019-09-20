@@ -13,7 +13,7 @@ parser.add_argument('--step_size',
                     help="Increment for looping through historical data",
                     type=int)
 parser.add_argument('--window_size',
-                    default=40,
+                    default=1,
                     help="Number of lags to include in the observation",
                     type=int)
 parser.add_argument('--max_position',
@@ -29,18 +29,18 @@ parser.add_argument('--testing_file',
                     default='LTC-USD_2019-04-08.csv.xz',
                     help="Data set for training the agent (current day)",
                     type=str)
-parser.add_argument('--env',
-                    default='market-maker-v0',
-                    # default='long-short-v0',
-                    help="Either 'long-short-v0' or 'market-maker-v0'",
+parser.add_argument('--id',
+                    # default='market-maker-v0',
+                    default='long-short-v0',
+                    help="Environment ID; Either 'long-short-v0' or 'market-maker-v0'",
                     type=str)
 parser.add_argument('--number_of_training_steps',
-                    default=1e4,
+                    default=1e5,
                     help="Number of steps to train the agent "
                          "(does not include action repeats)",
                     type=int)
 parser.add_argument('--gamma',
-                    default=0.999,
+                    default=0.995,
                     help="Discount for future rewards",
                     type=float)
 parser.add_argument('--seed',
@@ -59,7 +59,7 @@ parser.add_argument('--visualize',
                     default=False,
                     help="Render midpoint on a screen",
                     type=bool)
-parser.add_argument('--train',
+parser.add_argument('--training',
                     default=True,
                     help="Training or testing mode. " +
                     "If TRUE, then agent starts learning, " +
@@ -84,7 +84,7 @@ parser.add_argument('--reward_type',
                     reward_type: method for calculating the environment's reward:
                     1) 'trade_completion' --> reward is generated per trade's round trip
                     2) 'continuous_total_pnl' --> change in realized & unrealized pnl  
-                        betweentime steps
+                        between time steps
                     3) 'continuous_realized_pnl' --> change in realized pnl between 
                         time steps
                     4) 'continuous_unrealized_pnl' --> change in unrealized pnl 
@@ -96,7 +96,7 @@ parser.add_argument('--scale_rewards',
                     help="If TRUE, scale PnL by a scalar defined in `broker.py`",
                     type=bool)
 parser.add_argument('--nn_type',
-                    default='cnn',
+                    default='mlp',
                     help="Type of neural network to use: 'cnn' or 'mlp' ",
                     type=str)
 parser.add_argument('--dueling_network',

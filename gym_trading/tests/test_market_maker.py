@@ -11,18 +11,11 @@ class MarketMakerTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': False,
-            'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz',
-            'step_size': 1,
-            'max_position': 5,
-            'window_size': 20,
-            'seed': 1,
-            'action_repeats': 10,
-            'format_3d': False,
-            'z_score': False,
-            'reward_type': 'trade_completion',
-            'scale_rewards': True,
+            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
+            'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
+            'scale_rewards': True, 'alpha': [0.999, 0.9999],
         }
 
         env = gym.make(MarketMaker.id, **config)
@@ -36,8 +29,7 @@ class MarketMakerTestCases(unittest.TestCase):
             i += 1
 
             if i % 3000 == 0:
-                action = 10  # np.random.randint(env.action_space.n)
-                # break
+                action = 10  # np.random.randint(env.action_space.n)  # break
             else:
                 action = 0
 
@@ -47,8 +39,8 @@ class MarketMakerTestCases(unittest.TestCase):
 
             if done:
                 elapsed = (dt.now() - start_time).seconds
-                print('Done on step #%i @ %i steps/second' % (i, (i // elapsed) *
-                      env.action_repeats))
+                print('Done on step #%i @ %i steps/second' % (
+                    i, (i // elapsed) * env.action_repeats))
                 break
 
         env.reset()
@@ -59,18 +51,11 @@ class MarketMakerTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': False,
-            'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz',
-            'step_size': 1,
-            'max_position': 5,
-            'window_size': 20,
-            'seed': 1,
-            'action_repeats': 10,
-            'format_3d': False,
-            'z_score': False,
-            'reward_type': 'continuous_total_pnl',
-            'scale_rewards': True,
+            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
+            'format_3d': False, 'z_score': False, 'reward_type': 'continuous_total_pnl',
+            'scale_rewards': True, 'alpha': [0.999, 0.9999],
         }
 
         env = gym.make(MarketMaker.id, **config)
@@ -84,8 +69,7 @@ class MarketMakerTestCases(unittest.TestCase):
             i += 1
 
             if i % 3000 == 0:
-                action = 10  # np.random.randint(env.action_space.n)
-                # break
+                action = 10  # np.random.randint(env.action_space.n)  # break
             else:
                 action = 0
 
@@ -95,8 +79,8 @@ class MarketMakerTestCases(unittest.TestCase):
 
             if done:
                 elapsed = (dt.now() - start_time).seconds
-                print('Done on step #%i @ %i steps/second' % (i, (i // elapsed) *
-                      env.action_repeats))
+                print('Done on step #%i @ %i steps/second' % (
+                    i, (i // elapsed) * env.action_repeats))
                 break
 
         env.reset()
@@ -107,18 +91,17 @@ class MarketMakerTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': False,
-            'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz',
-            'step_size': 1, 'max_position': 5, 'window_size': 20, 'seed': 1,
-            'action_repeats': 10, 'format_3d': False, 'z_score': False,
-            'reward_type': 'trade_completion', 'scale_rewards': True,
+            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
+            'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
+            'scale_rewards': True, 'alpha': [0.99, 0.999],
         }
 
         env = gym.make(MarketMaker.id, **config)
         env.reset()
 
-        def take_step(action:int, total_reward:float):
+        def take_step(action: int, total_reward: float):
             # print("[TEST] take_step: action={}, total_reward={:.2f}".format(
             #     action, total_reward))
             state, reward, done, _ = env.step(action)

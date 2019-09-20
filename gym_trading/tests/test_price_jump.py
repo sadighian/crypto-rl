@@ -12,18 +12,11 @@ class PriceJumpTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': True,
-            'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz',
-            'step_size': 1,
-            'max_position': 1,
-            'window_size': 5,
-            'seed': 1,
-            'action_repeats': 10,
-            'format_3d': False,
-            'z_score': False,
-            'reward_type': 'trade_completion',
-            'scale_rewards': True,
+            'training': True, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'max_position': 1, 'window_size': 5, 'seed': 1, 'action_repeats': 10,
+            'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
+            'scale_rewards': True, 'alpha': [0.999, 0.9999],
         }
 
         env = gym.make(PriceJump.id, **config)
@@ -49,8 +42,8 @@ class PriceJumpTestCases(unittest.TestCase):
 
             if done:
                 elapsed = (dt.now() - start_time).seconds
-                print('Done on step #%i @ %i steps/second' %
-                            (i, i*env.action_repeats // elapsed))
+                print('Done on step #%i @ %i steps/second' % (
+                    i, i * env.action_repeats // elapsed))
                 break
 
         print('Total reward: %.4f' % total_reward)
@@ -62,18 +55,11 @@ class PriceJumpTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': True,
-            'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz',
-            'step_size': 1,
-            'max_position': 1,
-            'window_size': 5,
-            'seed': 1,
-            'action_repeats': 10,
-            'format_3d': False,
-            'z_score': False,
-            'reward_type': 'continuous_total_pnl',
-            'scale_rewards': True,
+            'training': True, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'max_position': 1, 'window_size': 5, 'seed': 1, 'action_repeats': 10,
+            'format_3d': False, 'z_score': False, 'reward_type': 'continuous_total_pnl',
+            'scale_rewards': True, 'alpha': 0.999,
         }
 
         env = gym.make(PriceJump.id, **config)
@@ -99,8 +85,8 @@ class PriceJumpTestCases(unittest.TestCase):
 
             if done:
                 elapsed = (dt.now() - start_time).seconds
-                print('Done on step #%i @ %i steps/second' %
-                            (i, i*env.action_repeats // elapsed))
+                print('Done on step #%i @ %i steps/second' % (
+                    i, i * env.action_repeats // elapsed))
                 break
 
         print('Total reward: %.4f' % total_reward)

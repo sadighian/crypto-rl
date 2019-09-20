@@ -39,6 +39,8 @@ LIMIT_ORDER_FEE = 0.0010
 
 
 # ./indicators/*
-INDICATOR_WINDOW = [2*60*i for i in [5, 15, 30]]
+window_intervals = [5, 15, 30]
+INDICATOR_WINDOW = [2*60*i for i in window_intervals]
 INDICATOR_WINDOW_MAX = max(INDICATOR_WINDOW)
-INDICATOR_WINDOW_FEATURES = ['_{}'.format(i) for i in [5, 15, 30]]
+INDICATOR_WINDOW_FEATURES = ['_{}'.format(i) for i in window_intervals]
+EMA_ALPHA = [0.9, 0.99, 0.999, 0.9999]

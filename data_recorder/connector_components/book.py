@@ -156,12 +156,13 @@ class Book(ABC):
 
     def get_asks_to_list(self, midpoint: float):
         """
-        Source: https://arxiv.org/abs/1810.09965v1
+        Inspired by: https://arxiv.org/abs/1810.09965v1
         """
         cumulative_notional = 0.
 
         if INCLUDE_ORDERFLOW:
-            for i, (price, level) in enumerate(self.price_dict.items()[:Book.CLEAR_MAX_ROWS]):
+            for i, (price, level) in enumerate(
+                    self.price_dict.items()[:Book.CLEAR_MAX_ROWS]):
                 if i < MAX_BOOK_ROWS:
                     cumulative_notional = self._add_to_book_trackers(
                         price, midpoint, level, cumulative_notional, i

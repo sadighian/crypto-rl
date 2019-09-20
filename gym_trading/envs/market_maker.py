@@ -1,31 +1,27 @@
-from gym import spaces
 from configurations.configs import LIMIT_ORDER_FEE
 from gym_trading.envs.base_env import BaseEnvironment
-from gym_trading.utils.broker import LimitOrder, Broker
+from gym_trading.utils.order import LimitOrder
+from gym_trading.utils.broker import Broker
+from gym import spaces
 import numpy as np
 
 
 class MarketMaker(BaseEnvironment):
     id = 'market-maker-v0'
 
-    def __init__(self, *, fitting_file='LTC-USD_2019-04-07.csv.xz',
-                 testing_file='LTC-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
-                 window_size=10, seed=1, action_repeats=10, training=True,
-                 format_3d=False, z_score=True, reward_type='trade_completion',
-                 scale_rewards=True):
-        super(MarketMaker, self).__init__(fitting_file=fitting_file,
-                                          testing_file=testing_file, step_size=step_size,
-                                          max_position=max_position,
-                                          window_size=window_size, seed=seed,
-                                          action_repeats=action_repeats,
-                                          training=training, format_3d=format_3d,
-                                          z_score=z_score, reward_type=reward_type,
-                                          scale_rewards=scale_rewards)
+    def __init__(self, **kwargs):
+        """
+        Environment designed for automated market making.
+        :param kwargs: refer to BaseEnvironment.py
+        """
+        super(MarketMaker, self).__init__(**kwargs)
 
+        # environment attributes to override in sub-class
         self.actions = np.eye(17, dtype=np.float32)
 
         # get Broker class to keep track of PnL and orders
-        self.broker = Broker(max_position=max_position, transaction_fee=LIMIT_ORDER_FEE)
+        self.broker = Broker(max_position=self.max_position,
+                             transaction_fee=LIMIT_ORDER_FEE)
 
         self.action_space = spaces.Discrete(len(self.actions))
         self.reset()  # reset to load observation.shape

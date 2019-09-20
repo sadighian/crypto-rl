@@ -70,7 +70,8 @@ class Recorder(Process):
             logger.info('Recorder: Finally done for %s and %s.' %
                         (coinbase, bitfinex))
 
-    def timer_worker(self, coinbaseClient: CoinbaseClient, bitfinexClient: BitfinexClient):
+    def timer_worker(self, coinbaseClient: CoinbaseClient,
+                     bitfinexClient: BitfinexClient):
         """
         Thread worker to be invoked every N seconds
         (e.g., configs.SNAPSHOT_RATE)
