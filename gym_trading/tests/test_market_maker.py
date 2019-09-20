@@ -17,6 +17,7 @@ class MarketMakerTestCases(unittest.TestCase):
             'format_3d': False, 'z_score': False, 'reward_type': 'normed',
             'scale_rewards': False, 'alpha': [0.999, 0.9999],
         }
+        print("**********\n{}\n**********".format(config))
 
         env = gym.make(MarketMaker.id, **config)
         total_reward = 0.0
@@ -58,6 +59,7 @@ class MarketMakerTestCases(unittest.TestCase):
             'format_3d': False, 'z_score': False, 'reward_type': 'continuous_total_pnl',
             'scale_rewards': True, 'alpha': [0.999, 0.9999],
         }
+        print("**********\n{}\n**********".format(config))
 
         env = gym.make(MarketMaker.id, **config)
         total_reward = 0.0
@@ -98,6 +100,7 @@ class MarketMakerTestCases(unittest.TestCase):
             'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
             'scale_rewards': True, 'alpha': [0.99, 0.999],
         }
+        print("**********\n{}\n**********".format(config))
 
         env = gym.make(MarketMaker.id, **config)
         env.reset()

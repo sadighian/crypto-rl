@@ -9,7 +9,7 @@ import numpy as np
 class MarketMaker(BaseEnvironment):
     id = 'market-maker-v0'
 
-    def __init__(self, **kwargs):
+    def __init__(self, transaction_fee=LIMIT_ORDER_FEE, **kwargs):
         """
         Environment designed for automated market making.
         :param kwargs: refer to BaseEnvironment.py
@@ -21,7 +21,7 @@ class MarketMaker(BaseEnvironment):
 
         # get Broker class to keep track of PnL and orders
         self.broker = Broker(max_position=self.max_position,
-                             transaction_fee=LIMIT_ORDER_FEE)
+                             transaction_fee=transaction_fee)
 
         self.action_space = spaces.Discrete(len(self.actions))
         self.reset()  # reset to load observation.shape

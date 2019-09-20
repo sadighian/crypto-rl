@@ -23,11 +23,11 @@ class Broker(object):
         :param transaction_fee: (float) fee to use for add/remove order transactions;
                 If NONE, then transaction fees are omitted.
         """
-        self.long_inventory = Position(side='long', max_position=max_position,
-                                       transaction_fee=transaction_fee)
-        self.short_inventory = Position(side='short', max_position=max_position,
-                                        transaction_fee=transaction_fee)
         self.transaction_fee = transaction_fee
+        self.long_inventory = Position(side='long', max_position=max_position,
+                                       transaction_fee=self.transaction_fee)
+        self.short_inventory = Position(side='short', max_position=max_position,
+                                        transaction_fee=self.transaction_fee)
 
     def __str__(self):
         return self.long_inventory.__str__() + "\n" + self.short_inventory.__str__()

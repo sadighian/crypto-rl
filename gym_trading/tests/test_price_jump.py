@@ -19,6 +19,7 @@ class PriceJumpTestCases(unittest.TestCase):
             'scale_rewards': True, 'alpha': [0.999, 0.9999],
         }
         print("**********\n{}\n**********".format(config))
+
         env = gym.make(PriceJump.id, **config)
         total_reward = 0.0
 
@@ -61,6 +62,7 @@ class PriceJumpTestCases(unittest.TestCase):
             'format_3d': False, 'z_score': False, 'reward_type': 'continuous_total_pnl',
             'scale_rewards': True, 'alpha': 0.999,
         }
+        print("**********\n{}\n**********".format(config))
 
         env = gym.make(PriceJump.id, **config)
         total_reward = 0.0
