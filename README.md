@@ -60,7 +60,7 @@ crypto-rl/
 		...tools to connect, download, and retrieve limit order book data
 	gym_trading/
 		...extended openai.gym environment to observe limit order book data
-    indicators/
+	indicators/
         ...technical indicators with O(1) calculation times
 	design-patterns/
 		...visual diagrams module architecture
