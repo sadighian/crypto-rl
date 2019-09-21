@@ -14,13 +14,14 @@ class BitfinexBook(Book):
         :return: (void)
         """
         self.order_map[msg['order_id']] = msg
-        adj_price = round_price(msg['price'])
+        price = msg.get('price', None)
+        adj_price = round_price(price)
         if adj_price not in self.price_dict:
             self.create_price(adj_price)
 
         quantity = abs(msg['size'])
-        self.price_dict[adj_price].add_limit(quantity=quantity, price=msg['price'])
-        self.price_dict[adj_price].add_quantity(quantity=quantity, price=msg['price'])
+        self.price_dict[adj_price].add_limit(quantity=quantity, price=price)
+        self.price_dict[adj_price].add_quantity(quantity=quantity, price=price)
         self.price_dict[adj_price].add_count()
 
     def match(self, msg):
@@ -36,10 +37,11 @@ class BitfinexBook(Book):
         :param msg: buy or sell transaction message from Bitfinex
         :return: (void)
         """
-        adj_price = round_price(msg['price'])
+        price = msg.get('price', None)
+        adj_price = round_price(price)
         if adj_price in self.price_dict:
             self.price_dict[adj_price].add_market(quantity=msg['size'],
-                                                  price=msg['price'])
+                                                  price=price)
 
     def change(self, msg):
         """
@@ -74,9 +76,10 @@ class BitfinexBook(Book):
         :param msg: remove order message from Bitfinex
         :return: (void)
         """
-        if msg['order_id'] in self.order_map:
+        msg_order_id = msg.get('order_id', None)
+        if msg_order_id in self.order_map:
 
-            old_order = self.order_map[msg['order_id']]
+            old_order = self.order_map[msg_order_id]
             adj_price = round_price(old_order['price'])
 
             if adj_price not in self.price_dict:
@@ -85,11 +88,15 @@ class BitfinexBook(Book):
                 print('Incoming order: %s' % msg)
                 print('Old order: %s' % old_order)
 
-            order_size = abs(old_order['size'])
+            order_size = abs(old_order.get('size', None))
+            order_price = old_order.get('price', None)
+            # Note: Bitfinex does not have 'canceled' message types, thus it is not
+            # possible to distinguish filled orders from canceled orders with the order
+            # arrival trackers.
             self.price_dict[adj_price].add_cancel(quantity=order_size,
-                                                  price=old_order['price'])
+                                                  price=order_price)
             self.price_dict[adj_price].remove_quantity(quantity=order_size,
-                                                       price=old_order['price'])
+                                                       price=order_price)
             self.price_dict[adj_price].remove_count()
 
             if self.price_dict[adj_price].count == 0:

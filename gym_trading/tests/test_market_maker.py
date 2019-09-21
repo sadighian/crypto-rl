@@ -15,7 +15,7 @@ class MarketMakerTestCases(unittest.TestCase):
             'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'normed',
-            'scale_rewards': False, 'alpha': [0.999, 0.9999],
+            'scale_rewards': False, 'alpha': 0.99, 'transaction_fee': None,
         }
         print("**********\n{}\n**********".format(config))
 
