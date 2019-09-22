@@ -29,7 +29,7 @@ class MarketMaker(BaseEnvironment):
                                             shape=self.observation.shape,
                                             dtype=np.float32)
 
-        print('{} MarketMaker #{} instantiated\nself.observation_space.shape: {}'.format(
+        print('{} MarketMaker #{} instantiated\nobservation_space: {}'.format(
             self.sym, self._seed, self.observation_space.shape),
             'reward_type = {}'.format(self.reward_type))
 

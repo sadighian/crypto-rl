@@ -1,4 +1,5 @@
 from data_recorder.database.simulator import Simulator as Sim
+from gym_trading.utils import Order
 from gym_trading.utils.render_env import TradingGraph
 from configurations.configs import (INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA,
                                     MARKET_ORDER_FEE)
@@ -27,7 +28,7 @@ class BaseEnvironment(Env, ABC):
     def __init__(self, fitting_file='LTC-USD_2019-04-07.csv.xz',
                  testing_file='LTC-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
                  window_size=10, seed=1, action_repeats=10, training=True,
-                 format_3d=False, z_score=True, reward_type='trade_completion',
+                 format_3d=False, z_score=True, reward_type='default',
                  scale_rewards=True, alpha=EMA_ALPHA):
         """
         Base class for creating environments extending OpenAI's GYM framework.
@@ -54,6 +55,13 @@ class BaseEnvironment(Env, ABC):
             5) 'normed' --> refer to https://arxiv.org/abs/1804.04216v1
             6) 'div' --> reward is generated per trade's round trip divided by
                 inventory count (again, refer to https://arxiv.org/abs/1804.04216v1)
+            7) 'asymmetrical' --> 'default' enhanced with a reward for being
+                filled above/below midpoint, and returns only negative rewards for
+                Unrealized PnL to discourage long-term speculation.
+            8) 'asymmetrical_adj' --> 'default' enhanced with a reward for being
+                filled above/below midpoint, and weighted up/down unrealized returns
+            9) 'default' --> Pct change in Unrealized PnL + Realized PnL of respective
+                time step
         :param alpha: decay factor for EMA, usually between 0.9 and 0.9999; if NONE,
             raw values are returned in place of smoothed values
         """
@@ -78,6 +86,8 @@ class BaseEnvironment(Env, ABC):
         self.observation = None
         self.action = 0
         self.last_pnl = 0.
+        self.last_midpoint = None
+        self.midpoint_change = None
 
         # properties to override in sub-classes
         self.actions = None
@@ -89,7 +99,7 @@ class BaseEnvironment(Env, ABC):
         self.sim = Sim(use_arctic=False, z_score=z_score, alpha=alpha)
 
         self.prices_, self.data, self.normalized_data = self.sim.load_environment_data(
-            fitting_file, testing_file)
+            fitting_file=fitting_file, testing_file=testing_file, include_imbalances=True)
         self.best_bid = self.best_ask = None
 
         self.max_steps = self.data.shape[0] - self.step_size * self.action_repeats - 1
@@ -143,17 +153,113 @@ class BaseEnvironment(Env, ABC):
             (-1, 1) in self._get_step_reward() method
         """
         reward = 0.0
-        if step_pnl > MARKET_ORDER_FEE:
-            reward += 0.1
+        if step_pnl > MARKET_ORDER_FEE * 2:  # e.g.,  2:1 profit to loss ratio
+            reward += 0.01
         elif step_pnl > 0.0:
             reward += step_pnl
-        elif step_pnl < -MARKET_ORDER_FEE:
-            reward -= 0.1
+        elif step_pnl < -MARKET_ORDER_FEE:  # skew penalty so
+            reward -= 0.01
         else:
             reward -= step_pnl
         return reward
 
-    def _get_step_reward(self, step_pnl: float):
+    def _asymmetrical_reward(self, long_filled: bool, short_filled: bool, step_pnl: float,
+                       dampening=0.15):
+        """
+        Asymmetrical reward type for environments, which is derived from percentage
+        changes and notional values.
+        The inputs are as follows:
+            (1) Change in exposure value between time steps, in percentage terms; and,
+            (2) Realized PnL from a open order being filled between time steps,
+                in dollar terms.
+        :param long_filled: TRUE if long order is filled within same time step
+        :param short_filled: TRUE if short order is filled within same time step
+        :param step_pnl: limit order pnl and any penalties for bad actions
+        :param dampening: discount factor towards pnl change between time steps
+        :return: (float)
+        """
+        exposure_change = self.broker.total_inventory_exposure * self.midpoint_change
+        long_fill_reward = short_fill_reward = 0.
+
+        if long_filled:
+            long_fill_reward += ((self.midpoint / self.best_bid)
+                                 - 1.) * Order.DEFAULT_SIZE
+            print("long_fill_reward:", long_fill_reward)
+        if short_filled:
+            short_fill_reward += ((self.best_ask / self.midpoint)
+                                  - 1.) * Order.DEFAULT_SIZE
+            print("short_fill_reward:", short_fill_reward)
+
+        reward = (long_fill_reward + short_fill_reward) + \
+            min(0., exposure_change * dampening)
+
+        if long_filled:
+            reward += step_pnl * Order.DEFAULT_SIZE
+        if short_filled:
+            reward += step_pnl * Order.DEFAULT_SIZE
+
+        return reward
+
+    def _asymmetrical_reward_adj(self, long_filled: bool, short_filled: bool,
+                                 step_pnl: float, dampening=0.25):
+        """
+        Asymmetrical reward type for environments with balanced feedback, which is
+        derived from percentage
+        changes and notional values.
+        The inputs are as follows:
+            (1) Change in exposure value between time steps, in percentage terms; and,
+            (2) Realized PnL from a open order being filled between time steps,
+                in dollar terms.
+        :param long_filled: TRUE if long order is filled within same time step
+        :param short_filled: TRUE if short order is filled within same time step
+        :param step_pnl: limit order pnl and any penalties for bad actions
+        :param dampening: discount factor towards pnl change between time steps
+        :return: (float)
+        """
+        exposure_change = self.broker.total_inventory_exposure * self.midpoint_change
+        long_fill_reward = short_fill_reward = 0.
+
+        if long_filled:
+            long_fill_reward += ((self.midpoint / self.best_bid)
+                                 - 1.) * Order.DEFAULT_SIZE
+            print("long_fill_reward:", long_fill_reward)
+        if short_filled:
+            short_fill_reward += ((self.best_ask / self.midpoint)
+                                  - 1.) * Order.DEFAULT_SIZE
+            print("short_fill_reward:", short_fill_reward)
+
+        reward = (long_fill_reward + short_fill_reward) + \
+            min(0., exposure_change * (1. - dampening)) + \
+            max(0., exposure_change * dampening)
+
+        if long_filled:
+            reward += step_pnl * Order.DEFAULT_SIZE
+        if short_filled:
+            reward += step_pnl * Order.DEFAULT_SIZE
+
+        return reward
+
+    def _default_reward(self, long_filled: bool, short_filled: bool, step_pnl: float):
+        """
+        Default reward type for environments, which is derived from PnL and order
+        quantity.
+        The inputs are as follows:
+            (1) Change in exposure value between time steps, in dollar terms; and,
+            (2) Realized PnL from a open order being filled between time steps,
+                in dollar terms.
+        :param long_filled: TRUE if long order is filled within same time step
+        :param short_filled: TRUE if short order is filled within same time step
+        :param step_pnl: limit order pnl and any penalties for bad actions
+        :return:
+        """
+        reward = self.broker.total_inventory_exposure * self.midpoint_change
+        if long_filled:
+            reward += Order.DEFAULT_SIZE * step_pnl
+        if short_filled:
+            reward += Order.DEFAULT_SIZE * step_pnl
+        return reward
+
+    def _get_step_reward(self, step_pnl: float, long_filled: bool, short_filled: bool):
         """
         Get reward for current time step.
             Note: 'reward_type' is set during environment instantiation.
@@ -161,11 +267,20 @@ class BaseEnvironment(Env, ABC):
         :return: (float) reward
         """
         reward = 0.0
-        if self.reward_type == 'trade_completion':
-            reward += self._trade_completion_reward(
-                step_pnl=step_pnl)  # Note: we do not need to update last_pnl for this
-            # reward approach
-        elif self.reward_type == 'continuous_total_pnl':
+        if self.reward_type == 'default':  # pnl in dollar terms
+            reward += self._default_reward(long_filled, short_filled, step_pnl)
+        elif self.reward_type == 'asymmetrical':
+            reward += self._asymmetrical_reward(long_filled=long_filled,
+                                                short_filled=short_filled,
+                                                step_pnl=step_pnl)
+        elif self.reward_type == 'asymmetrical_adj':
+            reward += self._asymmetrical_reward_adj(long_filled=long_filled,
+                                                short_filled=short_filled,
+                                                step_pnl=step_pnl)
+        elif self.reward_type == 'trade_completion':  # reward is [-1,1]
+            reward += self._trade_completion_reward(step_pnl=step_pnl)
+            # Note: we do not need to update last_pnl for this reward approach
+        elif self.reward_type == 'continuous_total_pnl':  # pnl in percentage
             new_pnl = self.broker.get_total_pnl(self.best_bid, self.best_ask)
             difference = new_pnl - self.last_pnl  # Difference in PnL over time step
             # include step_pnl to net out drops in unrealized PnL from position closing
@@ -182,15 +297,18 @@ class BaseEnvironment(Env, ABC):
             reward += difference + step_pnl
             self.last_pnl = new_pnl
         elif self.reward_type == 'normed':
-            reward += self.pnl_norm.raw_value
+            # refer to https://arxiv.org/abs/1804.04216v1
+            new_pnl = self.pnl_norm.raw_value
+            reward += new_pnl - self.last_pnl  # Difference in PnL
+            self.last_pnl = new_pnl
         elif self.reward_type == 'div':
-            reward += step_pnl / max(self.broker.long_inventory_count +
-                                     self.broker.short_inventory_count, 1)
-        else:
-            print("_get_step_reward() Unknown reward_type: {}".format(self.reward_type))
+            reward += step_pnl / max(
+                self.broker.long_inventory_count + self.broker.short_inventory_count, 1)
+        else:  # Default implementation
+            reward += self._default_reward(long_filled, short_filled, step_pnl)
 
         if self.scale_rewards:
-            reward /= self.broker.reward_scale
+            reward *= 100.  # multiply to avoid division error
 
         return reward
 
@@ -215,6 +333,7 @@ class BaseEnvironment(Env, ABC):
 
             # Get current step's midpoint
             self.midpoint = self.prices_[self.local_step_number]
+            self.midpoint_change = (self.midpoint / self.last_midpoint) - 1.
 
             # Pass current time step bid/ask prices to broker to calculate PnL,
             # or if any open orders are to be filled
@@ -227,11 +346,9 @@ class BaseEnvironment(Env, ABC):
             self.rsi.step(price=self.midpoint)
 
             # Get PnL from any filled LIMIT orders
-            limit_pnl = self.broker.step_limit_order_pnl(bid_price=self.best_bid,
-                                                         ask_price=self.best_ask,
-                                                         buy_volume=buy_volume,
-                                                         sell_volume=sell_volume,
-                                                         step=self.local_step_number)
+            limit_pnl, long_filled, short_filled = self.broker.step_limit_order_pnl(
+                bid_price=self.best_bid, ask_price=self.best_ask, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=self.local_step_number)
 
             # Get PnL from any filled MARKET orders AND action penalties for invalid
             # actions made by the agent for future discouragement
@@ -240,10 +357,14 @@ class BaseEnvironment(Env, ABC):
 
             # step thru pnl_norm if not None
             if self.pnl_norm:
-                self.pnl_norm.step(pnl=self.broker.get_unrealized_pnl(
-                    bid_price=self.best_bid, ask_price=self.best_ask))
+                self.pnl_norm.step(
+                    pnl=self.broker.get_unrealized_pnl(
+                        bid_price=self.best_bid,
+                        ask_price=self.best_ask))
 
-            self.reward += self._get_step_reward(step_pnl=step_pnl)
+            self.reward += self._get_step_reward(step_pnl=step_pnl,
+                                                 long_filled=long_filled,
+                                                 short_filled=short_filled)
 
             step_observation = self._get_step_observation(action=action)
             self.data_buffer.append(step_observation)
@@ -252,13 +373,16 @@ class BaseEnvironment(Env, ABC):
                 del self.data_buffer[0]
 
             self.local_step_number += self.step_size
+            self.last_midpoint = self.midpoint
 
         self.observation = self._get_observation()
 
         if self.local_step_number > self.max_steps:
             self.done = True
             flatten_pnl = self.broker.flatten_inventory(self.best_bid, self.best_ask)
-            self.reward += self._get_step_reward(step_pnl=flatten_pnl)
+            self.reward += self._get_step_reward(step_pnl=flatten_pnl,
+                                                 long_filled=False,
+                                                 short_filled=False)
 
         return self.observation, self.reward, self.done, {}
 
@@ -268,14 +392,15 @@ class BaseEnvironment(Env, ABC):
         :return: (np.array) Observation at first step
         """
         if self.training:
-            self.local_step_number = self._random_state.randint(
-                low=0, high=self.data.shape[0] // 4)
+            self.local_step_number = self._random_state.randint(low=0,
+                high=self.data.shape[0] // 4)
         else:
             self.local_step_number = 0
 
-        msg = ' {}-{} reset. Episode pnl: {:.4f} with {} trades. First step: {}'.format(
-            self.sym, self._seed, self.broker.get_total_pnl(self.best_bid, self.best_ask),
-            self.broker.total_trade_count, self.local_step_number)
+        msg = (' {}-{} reset. Episode pnl: {:.4f} with {} trades. '
+               'Avg. Trade PnL: {:.4f}.  First step: {}').format(self.sym, self._seed,
+            self.broker.realized_pnl, self.broker.total_trade_count,
+            self.broker.average_trade_pnl, self.local_step_number)
         print(msg)
 
         self.reward = 0.0
@@ -298,16 +423,19 @@ class BaseEnvironment(Env, ABC):
 
             # step thru pnl_norm if not None
             if self.pnl_norm:
-                self.pnl_norm.step(pnl=self.broker.get_unrealized_pnl(
-                    bid_price=self.best_bid, ask_price=self.best_ask))
+                self.pnl_norm.step(
+                    pnl=self.broker.get_unrealized_pnl(bid_price=self.best_bid,
+                        ask_price=self.best_ask))
 
             step_observation = self._get_step_observation(action=0)
             self.data_buffer.append(step_observation)
 
             self.local_step_number += self.step_size
+            self.last_midpoint = self.midpoint
             if len(self.data_buffer) > self.window_size:
                 del self.data_buffer[0]
 
+        self.midpoint_change = (self.midpoint / self.last_midpoint) - 1.
         self.observation = self._get_observation()
 
         return self.observation

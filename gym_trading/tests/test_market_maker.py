@@ -14,7 +14,7 @@ class MarketMakerTestCases(unittest.TestCase):
             'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
             'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
-            'format_3d': False, 'z_score': False, 'reward_type': 'normed',
+            'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
             'scale_rewards': False, 'alpha': 0.99, 'transaction_fee': None,
         }
         print("**********\n{}\n**********".format(config))
@@ -29,14 +29,16 @@ class MarketMakerTestCases(unittest.TestCase):
         while not done:
             i += 1
 
-            if i % 3000 == 0:
+            if i % 300 == 0:
                 action = 10  # np.random.randint(env.action_space.n)  # break
-                print('reward = ', reward)
             else:
                 action = 0
 
             state, reward, done, _ = env.step(action)
             total_reward += reward
+
+            if abs(reward) > 0.001:
+                print('reward = {:.4f} on step #{}'.format(reward, i))
             # env.render()
 
             if done:
@@ -57,7 +59,7 @@ class MarketMakerTestCases(unittest.TestCase):
             'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'continuous_total_pnl',
-            'scale_rewards': True, 'alpha': [0.999, 0.9999],
+            'scale_rewards': False, 'alpha': 0.99, 'transaction_fee': None,
         }
         print("**********\n{}\n**********".format(config))
 
@@ -71,16 +73,65 @@ class MarketMakerTestCases(unittest.TestCase):
         while not done:
             i += 1
 
-            if i % 3000 == 0:
+            if i % 300 == 0:
                 action = 10  # np.random.randint(env.action_space.n)  # break
             else:
                 action = 0
 
             state, reward, done, _ = env.step(action)
             total_reward += reward
+
+            if abs(reward) > 0.0001:
+                print('reward = {:.4f} on step #{}'.format(
+                    reward, env.env.local_step_number))
             # env.render()
 
-            if done:
+            if done or i > 20000:
+                elapsed = (dt.now() - start_time).seconds
+                print('Done on step #%i @ %i steps/second' % (
+                    i, (i // elapsed) * env.action_repeats))
+                break
+
+        env.reset()
+        print('Total reward: %.4f' % total_reward)
+        self.assertEqual(True, done)
+
+    def test_market_maker_gym_asymmetrical_reward(self):
+        start_time = dt.now()
+
+        config = {
+            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
+            'format_3d': False, 'z_score': False, 'reward_type': 'asymmetrical',
+            'scale_rewards': False, 'alpha': 0.99, 'transaction_fee': None,
+        }
+        print("**********\n{}\n**********".format(config))
+
+        env = gym.make(MarketMaker.id, **config)
+        total_reward = 0.0
+
+        i = 0
+        done = False
+        env.reset()
+
+        while not done:
+            i += 1
+
+            if i % 300 == 0:
+                action = 10  # np.random.randint(env.action_space.n)  # break
+            else:
+                action = 0
+
+            state, reward, done, _ = env.step(action)
+            total_reward += reward
+
+            if abs(reward) > 0.001:
+                print('reward = {:.4f} on step #{}'.format(
+                    reward, env.env.local_step_number))
+            # env.render()
+
+            if done or i > 20000:
                 elapsed = (dt.now() - start_time).seconds
                 print('Done on step #%i @ %i steps/second' % (
                     i, (i // elapsed) * env.action_repeats))

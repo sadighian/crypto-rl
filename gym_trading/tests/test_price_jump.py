@@ -16,7 +16,7 @@ class PriceJumpTestCases(unittest.TestCase):
             'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 1, 'window_size': 5, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
-            'scale_rewards': True, 'alpha': [0.999, 0.9999],
+            'scale_rewards': True, 'alpha': 0.99,  # [0.999, 0.9999],
         }
         print("**********\n{}\n**********".format(config))
 
@@ -30,7 +30,7 @@ class PriceJumpTestCases(unittest.TestCase):
         while not done:
             i += 1
 
-            if i % 200 == 0:
+            if i % 2000 == 0:
                 action = np.random.randint(3)
             else:
                 action = 0
@@ -39,7 +39,7 @@ class PriceJumpTestCases(unittest.TestCase):
             total_reward += reward
 
             if abs(reward) > 0.00001:
-                print('reward = %.4f' % reward)
+                print('reward = {:.4f} at step #{}'.format(reward, i))
 
             if done:
                 elapsed = (dt.now() - start_time).seconds

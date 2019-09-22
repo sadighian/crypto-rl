@@ -61,7 +61,7 @@ crypto-rl/
 	gym_trading/
 		...extended openai.gym environment to observe limit order book data
 	indicators/
-		...technical indicators with O(1) calculation times
+		...technical indicators implemented to be O(1) time complexity
 	design-patterns/
 		...visual diagrams module architecture
 	venv/

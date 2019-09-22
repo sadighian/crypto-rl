@@ -29,7 +29,7 @@ class PriceJump(BaseEnvironment):
                                             shape=self.observation.shape,
                                             dtype=np.float32)
 
-        print('{} PriceJump #{} instantiated.\nself.observation_space.shape : {}'.format(
+        print('{} PriceJump #{} instantiated.\nobservation_space : {}'.format(
             self.sym, self._seed, self.observation_space.shape),
             'reward_type = {}'.format(self.reward_type))
 

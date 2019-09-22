@@ -50,6 +50,17 @@ def apply_ema_all_data(ema, data: np.array):
         return None
 
 
+def reset_ema(ema):
+    if ema is None:
+        pass
+    elif isinstance(ema, ExponentialMovingAverage):
+        ema.reset()
+    elif isinstance(ema, list):
+        for e in ema:
+            e.reset()
+    return ema
+
+
 class ExponentialMovingAverage(object):
 
     def __init__(self, alpha: float):

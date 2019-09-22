@@ -113,11 +113,11 @@ class LimitOrderTestCases(unittest.TestCase):
                     bid_price *= 1.01
                     ask_price *= 1.01
 
-                pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                          ask_price=ask_price,
-                                                          buy_volume=buy_volume,
-                                                          sell_volume=sell_volume,
-                                                          step=step)
+                pnl, is_long_order_filled, is_short_order_filled = \
+                    test_position.step_limit_order_pnl(
+                    bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                    sell_volume=sell_volume, step=step)
+                pnl += pnl
                 if i % 10 == 0:
                     print('bid_price={:.2f} | ask_price={:.2f}'.format(bid_price,
                                                                        ask_price))
@@ -163,10 +163,11 @@ class LimitOrderTestCases(unittest.TestCase):
 
         print("taking first step...")
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+            sell_volume=sell_volume, step=step)
+        pnl += pnl
         self.assertEqual(500, test_position.long_inventory.order.executed)
         self.assertEqual(0, test_position.long_inventory_count)
 
@@ -180,10 +181,11 @@ class LimitOrderTestCases(unittest.TestCase):
 
         print("taking second step...")
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+            sell_volume=sell_volume, step=step)
+        pnl += pnl
         self.assertEqual(1, test_position.long_inventory_count)
         self.assertEqual(100., test_position.long_inventory.average_price)
         print("PnL: {}".format(pnl))
@@ -205,10 +207,11 @@ class LimitOrderTestCases(unittest.TestCase):
         test_position.add(order=order_open)
 
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+            sell_volume=sell_volume, step=step)
+        pnl += pnl
 
         print("#1 long_inventory.order = \n{}".format(test_position.long_inventory.order))
         self.assertEqual(300, test_position.long_inventory.order.queue_ahead)
@@ -216,10 +219,11 @@ class LimitOrderTestCases(unittest.TestCase):
         self.assertEqual(0, test_position.long_inventory_count)
 
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+            sell_volume=sell_volume, step=step)
+        pnl += pnl
 
         print("#2 long_inventory.order = \n{}".format(test_position.long_inventory.order))
         self.assertEqual(200, test_position.long_inventory.order.executed)
@@ -238,10 +242,11 @@ class LimitOrderTestCases(unittest.TestCase):
         bid_price = 100.
         for i in range(5):
             step += 1
-            pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                      ask_price=ask_price,
-                                                      buy_volume=buy_volume,
-                                                      sell_volume=sell_volume, step=step)
+            pnl, is_long_order_filled, is_short_order_filled = \
+                test_position.step_limit_order_pnl(
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
+            pnl += pnl
 
         self.assertEqual(1, test_position.long_inventory_count)
         self.assertEqual(100.40, round(test_position.long_inventory.average_price, 2))
@@ -269,10 +274,11 @@ class LimitOrderTestCases(unittest.TestCase):
 
         print('\ntaking first step...')
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+            sell_volume=sell_volume, step=step)
+        pnl += pnl
 
         print("#1 long_inventory.order = \n{}".format(test_position.long_inventory.order))
         print(
@@ -287,10 +293,11 @@ class LimitOrderTestCases(unittest.TestCase):
         buy_volume = 500
         sell_volume = 500
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
+        pnl += pnl
 
         print("#2 long_inventory.order = \n{}".format(test_position.long_inventory.order))
         print(
@@ -305,10 +312,11 @@ class LimitOrderTestCases(unittest.TestCase):
         buy_volume = 500
         sell_volume = 499
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+            sell_volume=sell_volume, step=step)
+        pnl += pnl
 
         print("#3 long_inventory.order = \n{}".format(test_position.long_inventory.order))
         print(
@@ -323,10 +331,11 @@ class LimitOrderTestCases(unittest.TestCase):
         buy_volume = 500
         sell_volume = 500
         step += 1
-        pnl += test_position.step_limit_order_pnl(bid_price=bid_price,
-                                                  ask_price=ask_price,
-                                                  buy_volume=buy_volume,
-                                                  sell_volume=sell_volume, step=step)
+        pnl, is_long_order_filled, is_short_order_filled = \
+            test_position.step_limit_order_pnl(
+            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+            sell_volume=sell_volume, step=step)
+        pnl += pnl
 
         print("#4 long_inventory.order = \n{}".format(test_position.long_inventory.order))
         print(

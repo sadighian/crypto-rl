@@ -132,7 +132,7 @@ class Broker(object):
         :return: (int) number of executed trades
         """
         return self.long_inventory.total_trade_count + \
-            self.short_inventory.total_trade_count
+               self.short_inventory.total_trade_count
 
     def step_limit_order_pnl(self, bid_price=100., ask_price=100., buy_volume=1000.,
                              sell_volume=1000., step=100):
@@ -146,25 +146,33 @@ class Broker(object):
         :return: (float) PnL for current time step due to limit order fill and netting
         """
         pnl = 0.
-        if self.long_inventory.step(bid_price=bid_price, ask_price=ask_price,
-                                    buy_volume=buy_volume, sell_volume=sell_volume,
-                                    step=step):
+        is_long_order_filled = self.long_inventory.step(bid_price=bid_price,
+                                                        ask_price=ask_price,
+                                                        buy_volume=buy_volume,
+                                                        sell_volume=sell_volume,
+                                                        step=step)
+        is_short_order_filled = self.short_inventory.step(bid_price=bid_price,
+                                                          ask_price=ask_price,
+                                                          buy_volume=buy_volume,
+                                                          sell_volume=sell_volume,
+                                                          step=step)
+
+        if is_long_order_filled:
             # check if we can net the inventory
             if self.short_inventory_count > 0:
                 # net out the inventory
                 new_position = self.long_inventory.pop_position()
                 pnl += self.short_inventory.remove(
                     price=new_position.average_execution_price)
-        if self.short_inventory.step(bid_price=bid_price, ask_price=ask_price,
-                                     buy_volume=buy_volume, sell_volume=sell_volume,
-                                     step=step):
+
+        if is_short_order_filled:
             # check if we can net the inventory
             if self.long_inventory_count > 0:
                 # net out the inventory
                 new_position = self.short_inventory.pop_position()
                 pnl += self.long_inventory.remove(
                     price=new_position.average_execution_price)
-        return pnl
+        return pnl, is_long_order_filled, is_short_order_filled
 
     def get_short_order_distance_to_midpoint(self, midpoint=100.):
         """
@@ -208,3 +216,35 @@ class Broker(object):
             short_queue = (executions - queue) / (queue + trade_size)
 
         return buy_queue, short_queue
+
+    @property
+    def average_trade_pnl(self):
+        """
+        Average profit (or loss) per trade, given the trade history.
+        :return: (float) average pnl per trade
+        """
+        if self.realized_pnl == 0.:
+            return 0.
+        elif self.total_trade_count == 0.:
+            return 0.
+        return self.realized_pnl / self.total_trade_count
+
+    @property
+    def total_exposure(self):
+        """
+        Total exposure in notional terms
+        :return:
+        """
+        long_exposure = self.long_inventory.total_exposure
+        short_exposure = self.short_inventory.total_exposure
+        return long_exposure + short_exposure
+
+    @property
+    def total_inventory_exposure(self):
+        """
+        Total exposure in [units * default size]
+        :return:
+        """
+        short_exposure = self.short_inventory_count * Order.DEFAULT_SIZE
+        long_exposure = self.long_inventory_count * Order.DEFAULT_SIZE
+        return long_exposure + short_exposure

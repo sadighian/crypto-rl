@@ -77,27 +77,36 @@ parser.add_argument('--z_score',
                     help="If TRUE, normalize data with z-score",
                     type=bool)
 parser.add_argument('--reward_type',
-                    default='continuous_total_pnl',
+                    default='default',
                     choices=['trade_completion', 'continuous_total_pnl',
                              'continuous_realized_pnl', 'continuous_unrealized_pnl',
-                             'normed', 'div'],
+                             'normed', 'div', 'asymmetrical', 'asymmetrical_adj',
+                             'default'],
                     help="""
                     reward_type: method for calculating the environment's reward:
-                    1) 'trade_completion' --> reward is generated per trade's round trip
+                    1) 'trade_completion' --> reward is generated per trade's round trip.
                     2) 'continuous_total_pnl' --> change in realized & unrealized pnl  
-                        between time steps
+                        between time steps.
                     3) 'continuous_realized_pnl' --> change in realized pnl between 
-                        time steps
+                        time steps.
                     4) 'continuous_unrealized_pnl' --> change in unrealized pnl 
-                        between time steps
+                        between time steps.
                     5) 'normed' --> refer to https://arxiv.org/abs/1804.04216v1
                     6) 'div' --> reward is generated per trade's round trip divided by
                         inventory count (again, refer to 
-                        https://arxiv.org/abs/1804.04216v1)
+                        https://arxiv.org/abs/1804.04216v1).
+                    7) 'asymmetrical' --> 'default' enhanced with a reward for being  
+                        filled above/below midpoint, and returns only negative rewards for 
+                        Unrealized PnL to discourage long-term speculation.
+                    8) 'asymmetrical_adj' --> 'default' enhanced with a reward for being  
+                        filled above/below midpoint, and weighted up/down unrealized  
+                        returns.
+                    9) 'default' --> Pct change in Unrealized PnL + Realized PnL of  
+                        respective time step/
                     """,
                     type=str)
 parser.add_argument('--scale_rewards',
-                    default=True,
+                    default=False,
                     help="If TRUE, scale PnL by a scalar defined in `broker.py`",
                     type=bool)
 parser.add_argument('--nn_type',

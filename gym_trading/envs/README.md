@@ -12,7 +12,7 @@ with all mandatory abstract methods are implemented.
 - Includes all repetitive functions required by environments: (1) data
   loading and preprocessing, (2) broker to act as counterparty, and (3)
   other attributes
-- `rewards` can be derived via 4 different approaches:
+- `rewards` can be derived via several different approaches:
   1.   'trade_completion' : reward is generated per trade's round trip
   2.   'continuous_total_pnl' : change in realized & unrealized pnl
        between time steps
@@ -21,7 +21,17 @@ with all mandatory abstract methods are implemented.
   4.   'continuous_unrealized_pnl' : change in unrealized pnl between
        time steps
   5.   'normed' : refer to https://arxiv.org/abs/1804.04216v1
-  6.   'div' : reward is generated per trade's round trip divided by
+  6.   'div' : reward is generated per trade's round trip divided by the
+       number of positions held within inventory
+  7.   'asymmetrical' --> 'default' enhanced with a reward for being
+       filled above/below midpoint, and returns only negative rewards
+       for Unrealized PnL to discourage long-term speculation.
+  8.   'asymmetrical_adj' --> 'default' enhanced with a reward for being
+       filled above/below midpoint, and weighted up/down unrealized
+       returns
+  9.   'default' --> Pct change in Unrealized PnL + Realized PnL of
+       respective time step
+       
 - `observation space` can be normalized via: 
     1.  z-score
     2. min-max (e.g., range [0,1])

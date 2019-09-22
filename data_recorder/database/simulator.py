@@ -2,7 +2,7 @@ from datetime import datetime as dt
 from datetime import timedelta
 from arctic import Arctic, TICK_STORE
 from arctic.date import DateRange
-from indicators import apply_ema_all_data, load_ema
+from indicators import apply_ema_all_data, load_ema, reset_ema
 from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from configurations.configs import TIMEZONE, MONGO_ENDPOINT, ARCTIC_NAME, \
@@ -242,7 +242,39 @@ class Simulator(object):
             method='bfill')
         return data.values
 
-    def load_environment_data(self, fitting_file: str, testing_file: str):
+    @staticmethod
+    def _get_order_imbalance(data: pd.DataFrame):
+        """
+        Calculate order imbalances per price level, their mean & standard deviation.
+
+        Order Imbalances are calculated by:
+            = (bid_quantity - ask_quantity) / (bid_quantity + ask_quantity)
+
+        ...thus scale from [-1, 1].
+
+        :param data: raw/unnormalized LOB snapshot data
+        :return: (pd.DataFrame) order imbalances at N-levels, the mean & std imbalance
+        """
+        # create the column names for making a data frame (also used for debugging)
+        bid_notional_columns, ask_notional_columns, imbalance_columns = [], [], []
+        for i in range(MAX_BOOK_ROWS):
+            bid_notional_columns.append('coinbase_bid_notional_{}'.format(i))
+            ask_notional_columns.append('coinbase_ask_notional_{}'.format(i))
+            imbalance_columns.append('notional_imbalance_{}'.format(i))
+        # acquire bid and ask notional data
+        bid_notional = data[bid_notional_columns].values[::-1]  # reverse the bids to
+        # ascending order, so that they align with the asks
+        ask_notional = data[ask_notional_columns].values
+        # calculate the order imbalance
+        imbalances = (bid_notional - ask_notional) / (bid_notional + ask_notional)
+        imbalances = pd.DataFrame(imbalances, columns=imbalance_columns).fillna(0.)
+        # add meta data to features (mean and std)
+        imbalances['notional_imbalance_mean'] = imbalances[imbalance_columns].mean(axis=1)
+        imbalances['notional_imbalance_std'] = imbalances[imbalance_columns].std(axis=1)
+        return imbalances.values  # return a np.array
+
+    def load_environment_data(self, fitting_file: str, testing_file: str,
+                              include_imbalances=True):
         """
         Import and scale environment data set with prior day's data.
 
@@ -251,6 +283,7 @@ class Simulator(object):
 
         :param fitting_file: prior trading day
         :param testing_file: current trading day
+        :param include_imbalances: if TRUE, include LOB imbalances
         :return: (pd.DataFrame) scaled environment data
         """
         # import data used to fit scaler
@@ -271,6 +304,15 @@ class Simulator(object):
 
         normalized_data = self.scale_data(normalized_data)
         normalized_data = np.clip(normalized_data, -10, 10)
+
+        if include_imbalances:
+            print('Adding order imbalances...')
+            # Note: since order imbalance data is scaled [-1, 1], we do not apply
+            # z-score to the imbalance data
+            imbalance_data = self._get_order_imbalance(data=data)
+            imbalance_data = apply_ema_all_data(ema=reset_ema(self.ema),
+                                                data=imbalance_data)
+            normalized_data = np.concatenate((normalized_data, imbalance_data), axis=1)
 
         return midpoint_prices, data.values, normalized_data
 
