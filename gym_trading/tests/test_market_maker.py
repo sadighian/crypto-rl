@@ -11,16 +11,17 @@ class MarketMakerTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'training': False, 'fitting_file': 'BTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'BTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
-            'scale_rewards': False, 'alpha': 0.99, 'transaction_fee': None,
+            'scale_rewards': False, 'ema_alpha': 0.99, 'transaction_fee': None,
         }
         print("**********\n{}\n**********".format(config))
 
         env = gym.make(MarketMaker.id, **config)
         total_reward = 0.0
+        reward_list = []
 
         i = 0
         done = False
@@ -36,8 +37,9 @@ class MarketMakerTestCases(unittest.TestCase):
 
             state, reward, done, _ = env.step(action)
             total_reward += reward
+            reward_list.append(reward)
 
-            if abs(reward) > 0.001:
+            if abs(reward) > 0.0001:
                 print('reward = {:.4f} on step #{}'.format(reward, i))
             # env.render()
 
@@ -45,6 +47,8 @@ class MarketMakerTestCases(unittest.TestCase):
                 elapsed = (dt.now() - start_time).seconds
                 print('Done on step #%i @ %i steps/second' % (
                     i, (i // elapsed) * env.action_repeats))
+                print("Max reward: {}\nMin reward: {}".format(max(reward_list),
+                                                              min(reward_list)))
                 break
 
         env.reset()
@@ -55,11 +59,11 @@ class MarketMakerTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'training': False, 'fitting_file': 'BTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'BTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'continuous_total_pnl',
-            'scale_rewards': False, 'alpha': 0.99, 'transaction_fee': None,
+            'scale_rewards': False, 'ema_alpha': 0.99, 'transaction_fee': None,
         }
         print("**********\n{}\n**********".format(config))
 
@@ -100,11 +104,11 @@ class MarketMakerTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'training': False, 'fitting_file': 'BTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'BTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'asymmetrical',
-            'scale_rewards': False, 'alpha': 0.99, 'transaction_fee': None,
+            'scale_rewards': False, 'ema_alpha': 0.99, 'transaction_fee': None,
         }
         print("**********\n{}\n**********".format(config))
 
@@ -145,11 +149,11 @@ class MarketMakerTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': False, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'training': False, 'fitting_file': 'BTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'BTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 5, 'window_size': 20, 'seed': 1, 'action_repeats': 10,
-            'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
-            'scale_rewards': True, 'alpha': [0.99, 0.999],
+            'format_3d': False, 'z_score': False, 'reward_type': 'default',
+            'scale_rewards': True, 'ema_alpha': [0.99, 0.999],
         }
         print("**********\n{}\n**********".format(config))
 
@@ -178,7 +182,7 @@ class MarketMakerTestCases(unittest.TestCase):
         for i in range(1000):
             state, reward, done, total_reward = take_step(action, total_reward)
 
-        self.assertEqual(True, env.env.broker.realized_pnl < 0.)
+        self.assertEqual(False, env.env.broker.realized_pnl < 0.)
 
         action = 4  # skew short
         state, reward, done, total_reward = take_step(action, total_reward)
@@ -193,7 +197,7 @@ class MarketMakerTestCases(unittest.TestCase):
 
         print(env.env.broker)
         self.assertEqual(3, env.env.broker.long_inventory.total_trade_count)
-        self.assertEqual(2, env.env.broker.short_inventory.total_trade_count)
+        self.assertEqual(3, env.env.broker.short_inventory.total_trade_count)
 
         elapsed = (dt.now() - start_time).seconds
         print("test_market_maker_action_space completed in {} seconds.".format(elapsed))

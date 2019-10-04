@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 
 def load_ema(alpha=None):
@@ -21,30 +22,36 @@ def load_ema(alpha=None):
         return None
 
 
-def apply_ema_all_data(ema, data: np.array):
+def apply_ema_all_data(ema, data: pd.DataFrame):
     """
     Apply exponential moving average to entire data set in a single batch
     :param ema: EMA handler; if None, no EMA is applied
     :param data: data set to smooth
-    :return: smoothed data set, if ema is provided
+    :return: (np.array) smoothed data set, if ema is provided
     """
-    smoothed_data = []
     if ema is None:
         return data
-    elif isinstance(ema, ExponentialMovingAverage):
-        for row in data:
+
+    smoothed_data = []
+    labels = data.columns.tolist()
+
+    if isinstance(ema, ExponentialMovingAverage):
+        for row in data.values:
             ema.step(value=row)
             smoothed_data.append(ema.value)
-        return np.asarray(smoothed_data, dtype=np.float32)
+        smoothed_data = np.asarray(smoothed_data, dtype=np.float32)
+        return pd.DataFrame(smoothed_data, columns=labels)
     elif isinstance(ema, list):
-        for row in data:
+        labels = ['{}_{}'.format(label, e.alpha) for e in ema for label in labels]
+        for row in data.values:
             tmp_row = []
             for e in ema:
                 e.step(value=row)
                 tmp_row.append(e.value)
             smoothed_data.append(tmp_row)
-        return np.asarray(smoothed_data, dtype=np.float32).reshape(
+        smoothed_data = np.asarray(smoothed_data, dtype=np.float32).reshape(
             data.shape[0], -1)
+        return pd.DataFrame(smoothed_data, columns=labels)
     else:
         print("_apply_ema() --> unknown ema type: {}".format(type(ema)))
         return None

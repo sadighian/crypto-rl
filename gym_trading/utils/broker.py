@@ -7,12 +7,13 @@ import logging
 from gym_trading.utils.order import Order
 from gym_trading.utils.position import Position
 
+
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
 logger = logging.getLogger('broker')
 
 
 class Broker(object):
-    reward_scale = 0.01  # use as the denominator to scale PnL
+    reward_scale = 100.  # use as the denominator to scale PnL
 
     def __init__(self, max_position=1, transaction_fee=None):
         """
@@ -126,6 +127,14 @@ class Broker(object):
         return self.short_inventory.position_count
 
     @property
+    def total_inventory_count(self):
+        """
+        Total number of positions held in inventory (short or long).
+        :return: (int) number of positions
+        """
+        return self.short_inventory_count + self.long_inventory_count
+
+    @property
     def total_trade_count(self):
         """
         Total number of long and short trades executed
@@ -133,6 +142,24 @@ class Broker(object):
         """
         return self.long_inventory.total_trade_count + \
                self.short_inventory.total_trade_count
+
+    @property
+    def total_inventory_exposure(self):
+        """
+        Total exposure in notional terms
+        :return:
+        """
+        long_exposure = self.long_inventory.total_exposure
+        short_exposure = self.short_inventory.total_exposure
+        return long_exposure + short_exposure
+
+    @property
+    def total_inventory_notional(self):
+        """
+        Total exposure in [units * default size]
+        :return:
+        """
+        return self.total_inventory_count * Order.DEFAULT_SIZE
 
     def step_limit_order_pnl(self, bid_price=100., ask_price=100., buy_volume=1000.,
                              sell_volume=1000., step=100):
@@ -228,23 +255,3 @@ class Broker(object):
         elif self.total_trade_count == 0.:
             return 0.
         return self.realized_pnl / self.total_trade_count
-
-    @property
-    def total_exposure(self):
-        """
-        Total exposure in notional terms
-        :return:
-        """
-        long_exposure = self.long_inventory.total_exposure
-        short_exposure = self.short_inventory.total_exposure
-        return long_exposure + short_exposure
-
-    @property
-    def total_inventory_exposure(self):
-        """
-        Total exposure in [units * default size]
-        :return:
-        """
-        short_exposure = self.short_inventory_count * Order.DEFAULT_SIZE
-        long_exposure = self.long_inventory_count * Order.DEFAULT_SIZE
-        return long_exposure + short_exposure

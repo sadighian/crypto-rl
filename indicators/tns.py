@@ -25,6 +25,7 @@ class TnS(Indicator):
             self.ups -= buys_
             self.downs -= sells_
 
+        # Save current time step value for EMA, in case smoothing is enabled
         self._value = self.calculate()
         super(TnS, self).step(value=self._value)
 

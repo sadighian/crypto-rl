@@ -22,11 +22,11 @@ parser.add_argument('--max_position',
                          "able to be held in a broker's inventory",
                     type=int)
 parser.add_argument('--fitting_file',
-                    default='LTC-USD_2019-04-07.csv.xz',
+                    default='BTC-USD_2019-04-07.csv.xz',
                     help="Data set for fitting the z-score scaler (previous day)",
                     type=str)
 parser.add_argument('--testing_file',
-                    default='LTC-USD_2019-04-08.csv.xz',
+                    default='BTC-USD_2019-04-08.csv.xz',
                     help="Data set for training the agent (current day)",
                     type=str)
 parser.add_argument('--id',
@@ -40,7 +40,7 @@ parser.add_argument('--number_of_training_steps',
                          "(does not include action repeats)",
                     type=int)
 parser.add_argument('--gamma',
-                    default=0.995,
+                    default=0.99,
                     help="Discount for future rewards",
                     type=float)
 parser.add_argument('--seed',
@@ -48,7 +48,7 @@ parser.add_argument('--seed',
                     help="Random number seed for dataset",
                     type=int)
 parser.add_argument('--action_repeats',
-                    default=10,
+                    default=5,
                     help="Number of steps to pass on between actions",
                     type=int)
 parser.add_argument('--load_weights',

@@ -62,12 +62,8 @@ class PriceJump(BaseEnvironment):
                     reward -= discouragement
 
             else:
-                print((
-                                  'gym_trading.get_reward() ' + 'Error for action #{} - '
-                                                                '' + 'unable to place '
-                                                                     'an order with '
-                                                                     'broker').format(
-                    action))
+                print(('gym_trading.get_reward() Error for action #{} - unable to place '
+                       'an order with broker').format(action))
 
         elif action == 2:  # sell
             if self.broker.long_inventory_count > 0:
@@ -82,19 +78,12 @@ class PriceJump(BaseEnvironment):
                     reward -= discouragement
 
             else:
-                print((
-                                  'gym_trading.get_reward() ' + 'Error for action #{} - '
-                                                                '' + 'unable to place '
-                                                                     'an order with '
-                                                                     'broker').format(
-                    action))
+                print(('gym_trading.get_reward() Error for action #{} - unable to place '
+                       'an order with broker').format(action))
 
         else:
-            print((
-                              'Unknown action to take in get_reward(): ' + 'action={} | '
-                                                                           'midpoint={'
-                                                                           '}').format(
-                action, self.midpoint))
+            print(('Unknown action to take in get_reward(): action={} | midpoint={}'
+                   ).format(action, self.midpoint))
 
         return reward, pnl
 
@@ -105,7 +94,7 @@ class PriceJump(BaseEnvironment):
         """
         return np.array((self.broker.long_inventory.position_count / self.max_position,
                          self.broker.short_inventory.position_count / self.max_position,
-                         self.broker.realized_pnl / self.broker.reward_scale,
-                         self.broker.get_unrealized_pnl(
-                             self.best_bid, self.best_ask) / self.broker.reward_scale),
+                         self.broker.realized_pnl * self.broker.reward_scale,
+                         self.broker.get_unrealized_pnl(self.best_bid, self.best_ask)
+                        * self.broker.reward_scale),
                         dtype=np.float32)

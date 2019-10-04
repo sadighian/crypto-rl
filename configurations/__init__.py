@@ -1,1 +1,1 @@
-from configurations import configs
+from configurations.configs import *

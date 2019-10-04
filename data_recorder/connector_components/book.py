@@ -7,7 +7,7 @@ from data_recorder.connector_components.price_level import PriceLevel
 
 
 class Book(ABC):
-    CLEAR_MAX_ROWS = MAX_BOOK_ROWS + 20
+    CLEAR_MAX_ROWS = MAX_BOOK_ROWS + 45
 
     def __init__(self, sym, side):
         """

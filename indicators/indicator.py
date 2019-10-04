@@ -13,6 +13,7 @@ class Indicator(ABC):
         :param alpha: (float) decay rate for EMA; if NONE, raw values returned
         """
         self.window = window
+        # TODO change to list to boost performance
         self.all_history_queue = deque(maxlen=self.window)
         self.ema = load_ema(alpha=alpha)
         self._value = None

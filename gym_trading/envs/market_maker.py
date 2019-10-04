@@ -152,15 +152,15 @@ class MarketMaker(BaseEnvironment):
         return np.array((self.broker.long_inventory.position_count / self.max_position,
                          self.broker.short_inventory.position_count / self.max_position,
                          self.broker.get_total_pnl(self.best_bid, self.best_ask)
-                         / self.broker.reward_scale,
+                         * self.broker.reward_scale,
                          self.broker.long_inventory.get_unrealized_pnl(self.best_bid)
-                         / self.broker.reward_scale,
+                         * self.broker.reward_scale,
                          self.broker.short_inventory.get_unrealized_pnl(self.best_ask)
-                         / self.broker.reward_scale,
+                         * self.broker.reward_scale,
                          self.broker.get_long_order_distance_to_midpoint(
-                             midpoint=self.midpoint) / self.broker.reward_scale,
+                             midpoint=self.midpoint) * self.broker.reward_scale,
                          self.broker.get_short_order_distance_to_midpoint(
-                             midpoint=self.midpoint) / self.broker.reward_scale,
+                             midpoint=self.midpoint) * self.broker.reward_scale,
                          *self.broker.get_queues_ahead_features()), dtype=np.float32)
 
     def _create_order_at_level(self, reward: float, discouragement: float, level=0,

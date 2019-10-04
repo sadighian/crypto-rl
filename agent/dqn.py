@@ -31,7 +31,7 @@ class Agent(object):
         :param train: boolean, train or test agent
         :param load_weights: boolean, import existing weights
         :param z_score: boolean, standardize observation space
-        :param visualize: boolean, visiualize environment
+        :param visualize: boolean, visualize environment
         :param dueling_network: boolean, use dueling network architecture
         :param double_dqn: boolean, use double DQN for Q-value approximation
         """

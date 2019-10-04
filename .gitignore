@@ -11,3 +11,11 @@ dist
 .pytest_cache
 
 agent/dqn_weights/*
+agent/ppo_weights/*
+agent/acer_weights/*
+agent/a2c_weights/*
+
+*.egg*
+
+*.ipynb
+.ipynb_checkpoints

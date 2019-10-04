@@ -102,7 +102,7 @@ class Position(object):
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
             self.total_trade_count += 1
-            print('FILLED {} order #{} at {:.3f} after {} steps on {}.'.format(
+            logger.debug('FILLED {} order #{} at {:.3f} after {} steps on {}.'.format(
                 self.order.side, self.order.id, avg_execution_px,
                 self.order.metrics.steps_in_position, step))
             self.order = None  # set the slot back to no open orders
@@ -190,7 +190,7 @@ class Position(object):
         """
         if self.order is None:
             if self.full_inventory:
-                logger.info(("{} order rejected. Already at max position limit "
+                logger.debug(("{} order rejected. Already at max position limit "
                              "({})").format(self.side, self.max_position_count))
                 return False
             self.order = order
@@ -255,8 +255,8 @@ class Position(object):
         self.average_price = self.total_exposure / self.position_count if \
             self.position_count > 0 else 0.
         self.full_inventory = self.position_count >= self.max_position_count
-        logger.info(
-            'Netted {} position #{} with PnL={:.4f}'.format(self.side, order.id, pnl))
+        logger.debug(
+            'Netted {} position #{} with PnL = {:.4f}'.format(self.side, order.id, pnl))
         return pnl
 
     def pop_position(self):

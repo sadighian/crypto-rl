@@ -12,11 +12,11 @@ class PriceJumpTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': True, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'training': True, 'fitting_file': 'BTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'BTC-USD_2019-04-08.csv.xz', 'step_size': 1,
             'max_position': 1, 'window_size': 5, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'trade_completion',
-            'scale_rewards': True, 'alpha': 0.99,  # [0.999, 0.9999],
+            'scale_rewards': True, 'ema_alpha': 0.99,  # [0.999, 0.9999],
         }
         print("**********\n{}\n**********".format(config))
 
@@ -56,11 +56,13 @@ class PriceJumpTestCases(unittest.TestCase):
         start_time = dt.now()
 
         config = {
-            'training': True, 'fitting_file': 'LTC-USD_2019-04-07.csv.xz',
-            'testing_file': 'LTC-USD_2019-04-08.csv.xz', 'step_size': 1,
+            'training': True,
+            'fitting_file': 'BTC-USD_2019-04-07.csv.xz',
+            'testing_file': 'BTC-USD_2019-04-08.csv.xz',
+            'step_size': 1,
             'max_position': 1, 'window_size': 5, 'seed': 1, 'action_repeats': 10,
             'format_3d': False, 'z_score': False, 'reward_type': 'continuous_total_pnl',
-            'scale_rewards': True, 'alpha': 0.999,
+            'scale_rewards': True, 'ema_alpha': 0.99,
         }
         print("**********\n{}\n**********".format(config))
 
@@ -82,8 +84,8 @@ class PriceJumpTestCases(unittest.TestCase):
             state, reward, done, _ = env.step(action)
             total_reward += reward
 
-            # if reward != 0.0:
-            #     print('reward = %.4f' % reward)
+            if abs(reward) >= 0.0001:
+                print('reward = %.4f' % reward)
 
             if done:
                 elapsed = (dt.now() - start_time).seconds

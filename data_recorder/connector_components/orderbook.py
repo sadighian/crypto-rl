@@ -17,7 +17,8 @@ class OrderBook(ABC):
         :param exchange: 'coinbase' or 'bitfinex'
         """
         self.sym = ccy
-        self.db = Database(ccy, exchange)
+        self.db = Database(sym=ccy, exchange=exchange)
+        self.db.init_db_connection()
         self.bids = CoinbaseBook(ccy, 'bids') if exchange == 'coinbase' else BitfinexBook(
             ccy, 'bids')
         self.asks = CoinbaseBook(ccy, 'asks') if exchange == 'coinbase' else BitfinexBook(
@@ -25,6 +26,7 @@ class OrderBook(ABC):
         self.midpoint = float()
         self.buy_tracker = TradeTracker()
         self.sell_tracker = TradeTracker()
+        self.last_tick_time = None
 
     def __str__(self):
         return '%s  ||  %s' % (self.bids, self.asks)
@@ -56,6 +58,7 @@ class OrderBook(ABC):
         """
         self.bids.clear()
         self.asks.clear()
+        self.last_tick_time = None
         print('--Cleared %s order book--' % self.sym)
 
     # def render_book(self):

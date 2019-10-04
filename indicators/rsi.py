@@ -6,6 +6,13 @@ from indicators.indicator import Indicator
 class RSI(Indicator):
 
     def __init__(self, window=INDICATOR_WINDOW, alpha=None):
+        """
+        Price change momentum indicator.
+
+        Note: Scaled to [-1, 1] and not [0, 100].
+        :param window: number of lags
+        :param alpha: ema alpha
+        """
         super(RSI, self).__init__(window=window, alpha=alpha)
         self.last_price = np.nan
         self.ups = self.downs = 0.

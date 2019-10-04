@@ -61,8 +61,10 @@ class BitfinexOrderBook(OrderBook):
             if 'event' in msg:
                 return self._process_events(msg)
             elif msg['type'] == 'te':
+                self.last_tick_time = msg.get('system_time', None)
                 return self._process_trades_replay(msg)
             elif msg['type'] in ['update', 'preload']:
+                self.last_tick_time = msg.get('system_time', None)
                 return self._process_book_replay(msg)
             elif msg['type'] == 'load_book':
                 self.clear_book()

@@ -131,6 +131,7 @@ class CoinbaseOrderBook(OrderBook):
 
         # persist data to Arctic Tick Store
         self.db.new_tick(msg)
+        self.last_tick_time = msg.get('time', None)
         # make sure CONFIGS.RECORDING is false when replaying data
 
         side = msg['side']
@@ -185,8 +186,8 @@ class CoinbaseOrderBook(OrderBook):
             return True
 
         elif message_type == 'book_loaded':
-            self.bids.warming_up = False
-            self.asks.warming_up = False
+            self.bids.warming_up = self.asks.warming_up = False
+            print("Book finished loading at {}".format(self.last_tick_time))
             return True
 
         else:
