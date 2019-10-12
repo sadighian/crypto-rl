@@ -36,6 +36,7 @@ class Simulator(object):
                            include_bitfinex: bool = True,
                            include_order_flow: bool = INCLUDE_ORDERFLOW,
                            include_imbalances: bool = True,
+                           include_spread: bool = False,
                            include_ema=None):
         """
         Function to create the features' labels
@@ -47,6 +48,8 @@ class Simulator(object):
                 if TRUE, order arrival metrics are included in the feature set
         :param include_imbalances: True/False
                 if TRUE, order volume imbalances at level are included in the feature set
+        :param include_spread: True/False
+                if TRUE, order spread column is included
         :param include_ema: None, float, or list
                 if list, then append alphas to each column
         :return:
@@ -89,6 +92,10 @@ class Simulator(object):
                             for level in range(MAX_BOOK_ROWS):
                                 columns.append(('%s_%s_%s_%i' %
                                                 (exchange, side, feature, level)))
+
+            if include_spread:
+                columns.append('{}_spread'.format(exchange))
+
             if include_imbalances:
                 for level in range(MAX_BOOK_ROWS):
                     columns.append('notional_imbalance_{}'.format(level))
@@ -187,6 +194,18 @@ class Simulator(object):
         return data
 
     @staticmethod
+    def _spread_calc(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Derive the spread and normalize it by a multiple of the market order fee.
+        :param data: (pd.DataFrame) data set containing a bid and ask
+        :return: data with spread added as the last column
+        """
+        # calculate the spread in real terms ('+' because bid_distances are all negative)
+        data['coinbase_spread'] = data['coinbase_ask_distance_0'].values + \
+                                  data['coinbase_bid_distance_0'].values
+        return data
+
+    @staticmethod
     def _get_order_imbalance(data: pd.DataFrame):
         """
         Calculate order imbalances per price level, their mean & standard deviation.
@@ -238,6 +257,7 @@ class Simulator(object):
         include_bitfinex = 'bitfinex' in fitting_data.columns.tolist()
         # carry on with data import process
         fitting_data = self._midpoint_diff(data=fitting_data)  # normalize midpoint
+        fitting_data = self._spread_calc(data=fitting_data)  # normalize spread
         fitting_data = apply_ema_all_data(ema=self.ema, data=fitting_data)
         self.fit_scaler(fitting_data)
         del fitting_data
@@ -248,12 +268,14 @@ class Simulator(object):
         midpoint_prices = data['coinbase_midpoint']
 
         normalized_data = self._midpoint_diff(data.copy(deep=True))
+        normalized_data = self._spread_calc(data=normalized_data)  # normalize spread
         normalized_data = apply_ema_all_data(ema=self.ema, data=normalized_data)
 
         normalized_data = self.scale_data(normalized_data)
         normalized_data = np.clip(normalized_data, -10, 10)
         normalized_data = pd.DataFrame(normalized_data, columns=self.get_feature_labels(
             include_system_time=False, include_bitfinex=include_bitfinex,
+            include_spread=True,
             include_imbalances=False, include_ema=self.alpha))
 
         if include_imbalances:
@@ -282,8 +304,6 @@ class Simulator(object):
         :return: (int) delta between ticks
         """
         if last_snapshot_time > new_tick_time:
-            # print('_get_microsecond_delta() --> warning: stale tick at {}'.format(
-            #     new_tick_time))
             return -1
         snapshot_tick_time_delta = new_tick_time - last_snapshot_time
         seconds = snapshot_tick_time_delta.seconds * 1000000
@@ -386,11 +406,6 @@ class Simulator(object):
                     if last_coinbase_tick_time is None:
                         continue
                     last_coinbase_tick_time_dt = parse(last_coinbase_tick_time)
-                    # if last_coinbase_tick_time_dt < new_tick_time:
-                    #     last_snapshot_time = new_tick_time
-                    #     print('{} first tick: {} | Sequence: {}'.format(
-                    #         coinbase_order_book.sym, new_tick_time,
-                    #         coinbase_order_book.sequence))
                     last_snapshot_time = last_coinbase_tick_time_dt
                     print('{} first tick: {} | Sequence: {}'.format(
                         coinbase_order_book.sym, new_tick_time,
@@ -485,7 +500,7 @@ class Simulator(object):
         orderbook_snapshot_history = pd.DataFrame(
             snapshot_list,
             columns=self.get_feature_labels(
-                include_system_time=True,
+                include_system_time=True, include_spread=False,
                 include_bitfinex=include_bitfinex, include_order_flow=INCLUDE_ORDERFLOW,
                 include_imbalances=False, include_ema=self.alpha))
         orderbook_snapshot_history = orderbook_snapshot_history.dropna(axis=0)
@@ -497,7 +512,7 @@ class Simulator(object):
         Create and export limit order book data to csv. This function
         exports multiple days of data and ensures each day starts and
         ends exactly on time.
-        :param query: (dict) ccy= symy, daterange=YYYYMMDD,YYYYMMDD
+        :param query: (dict) ccy=sym, daterange=(YYYYMMDD,YYYYMMDD)
         :return: void
         """
         start_time = dt.now(tz=TIMEZONE)

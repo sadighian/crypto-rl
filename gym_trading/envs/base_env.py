@@ -1,5 +1,4 @@
 from data_recorder.database.simulator import Simulator as Sim
-from gym_trading.utils import Order
 from gym_trading.utils.render_env import TradingGraph
 from configurations.configs import (INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA,
                                     MARKET_ORDER_FEE)
@@ -15,7 +14,8 @@ class BaseEnvironment(Env, ABC):
     # Index of specific data points used to generate the observation space
     # Turn to true if Bitifinex is in the dataset (e.g., include_bitfinex=True)
     features = Sim.get_feature_labels(include_system_time=False, include_bitfinex=False,
-                                      include_imbalances=True, include_ema=False)
+                                      include_imbalances=True, include_ema=False,
+                                      include_spread=True)
     best_bid_index = features.index('coinbase_bid_distance_0')
     best_ask_index = features.index('coinbase_ask_distance_0')
     notional_bid_index = features.index('coinbase_bid_notional_0')
@@ -23,8 +23,8 @@ class BaseEnvironment(Env, ABC):
     buy_trade_index = features.index('coinbase_buys')
     sell_trade_index = features.index('coinbase_sells')
 
-    def __init__(self, fitting_file='ETH-USD_2019-04-07.csv.xz',
-                 testing_file='ETH-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
+    def __init__(self, fitting_file='BTC-USD_2019-04-07.csv.xz',
+                 testing_file='BTC-USD_2019-04-08.csv.xz', step_size=1, max_position=5,
                  window_size=10, seed=1, action_repeats=10, training=True,
                  format_3d=True, z_score=True, reward_type='default',
                  scale_rewards=True, ema_alpha=EMA_ALPHA):
@@ -184,10 +184,10 @@ class BaseEnvironment(Env, ABC):
 
         if long_filled:
             long_fill_reward += ((self.midpoint / self.best_bid) - 1.)
-            print("long_fill_reward:", long_fill_reward)
+            print("long_fill_reward: {:.6f}".format(long_fill_reward))
         if short_filled:
             short_fill_reward += ((self.best_ask / self.midpoint) - 1.)
-            print("short_fill_reward:", short_fill_reward)
+            print("short_fill_reward: {:.6f}".format(short_fill_reward))
 
         reward = (long_fill_reward + short_fill_reward) + \
             min(0., exposure_change * dampening)
@@ -220,10 +220,10 @@ class BaseEnvironment(Env, ABC):
 
         if long_filled:
             long_fill_reward += ((self.midpoint / self.best_bid) - 1.)
-            print("long_fill_reward:", long_fill_reward)
+            print("long_fill_reward: {:.6f}".format(long_fill_reward))
         if short_filled:
             short_fill_reward += ((self.best_ask / self.midpoint) - 1.)
-            print("short_fill_reward:", short_fill_reward)
+            print("short_fill_reward: {:.6f}".format(short_fill_reward))
 
         reward = (long_fill_reward + short_fill_reward) + \
             min(0., exposure_change * (1. - dampening)*0.1) + \
@@ -272,8 +272,8 @@ class BaseEnvironment(Env, ABC):
                                                 step_pnl=step_pnl)
         elif self.reward_type == 'asymmetrical_adj':
             reward += self._asymmetrical_reward_adj(long_filled=long_filled,
-                                                short_filled=short_filled,
-                                                step_pnl=step_pnl)
+                                                    short_filled=short_filled,
+                                                    step_pnl=step_pnl)
         elif self.reward_type == 'trade_completion':  # reward is [-1,1]
             reward += self._trade_completion_reward(step_pnl=step_pnl)
             # Note: we do not need to update last_pnl for this reward approach
@@ -389,15 +389,17 @@ class BaseEnvironment(Env, ABC):
         :return: (np.array) Observation at first step
         """
         if self.training:
-            self.local_step_number = self._random_state.randint(low=0,
-                high=self.data.shape[0] // 5)
+            self.local_step_number = self._random_state.randint(
+                low=0, high=self.data.shape[0] // 5)
         else:
             self.local_step_number = 0
 
-        msg = (' {}-{} reset. Episode pnl: {:.4f} with {} trades. '
-               'Avg. Trade PnL: {:.4f}.  First step: {}').format(self.sym, self._seed,
-                self.broker.realized_pnl, self.broker.total_trade_count,
-                self.broker.average_trade_pnl, self.local_step_number)
+        msg = (
+            ' {}-{} reset. Episode pnl: {:.4f} with {} trades. '
+            'Avg. Trade PnL: {:.4f}.  First step: {}').format(
+            self.sym, self._seed, self.broker.realized_pnl, self.broker.total_trade_count,
+            self.broker.average_trade_pnl, self.local_step_number
+        )
         print(msg)
 
         self.reward = 0.0
@@ -421,8 +423,8 @@ class BaseEnvironment(Env, ABC):
             # step thru pnl_norm if not None
             if self.pnl_norm:
                 self.pnl_norm.step(
-                    pnl=self.broker.get_unrealized_pnl(bid_price=self.best_bid,
-                        ask_price=self.best_ask))
+                    pnl=self.broker.get_unrealized_pnl(
+                        bid_price=self.best_bid, ask_price=self.best_ask))
 
             step_observation = self._get_step_observation(action=0)
             self.data_buffer.append(step_observation)
@@ -524,7 +526,6 @@ class BaseEnvironment(Env, ABC):
         step_action_features = self._create_action_features(action=action)
         step_indicator_features = self._create_indicator_features()
         return np.concatenate((
-            np.array([(self.best_ask-self.best_bid) / self.midpoint], dtype=np.float32),
             self._process_data(self.normalized_data[self.local_step_number]),
             step_indicator_features, step_position_features, step_action_features,
             np.array([self.reward], dtype=np.float32)),
