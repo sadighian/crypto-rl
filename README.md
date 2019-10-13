@@ -135,7 +135,7 @@ is in your database.
 
 Example to export features to a compressed csv:
 ```
-python3 data_recorder/tests/test_extract_features.py
+python3 data_recorder/tests/test_simulator.py
 ```
 
 ### 6.3 Train an agent
@@ -149,7 +149,7 @@ into that folder, see refer to the section above
 **Step 2:**
 Open a CLI/terminal and start learning/training the agent. 
 ```
-python3 experiment.py --window_size=50 --weights=False --fitting_file=...
+python3 experiment.py --window_size=50 --weights=False --...
 ```
 Refer to `experiment.py` to see all the keyword arguments.
 
