@@ -211,7 +211,7 @@ class MarketMaker(BaseEnvironment):
             inside_best = self._get_book_data(
                 MarketMaker.best_ask_index + level - adjustment)
             denormalized_inside_best = round(self.midpoint * (inside_best + 1), 2)
-            plus_one = denormalized_best + 0.01
+            plus_one = denormalized_best - 0.01
 
             if denormalized_inside_best == plus_one:
                 ask_price = denormalized_best
