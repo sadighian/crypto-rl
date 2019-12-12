@@ -164,7 +164,7 @@ Please remember to cite this repository if used in your research:
         year = {2019},
         publisher = {GitHub},
         journal = {GitHub repository},
-        howpublished = {\url{https://github.com/RedBanies3ofThem/crypto-rl}},
+        howpublished = {\url{https://github.com/sadighian/crypto-rl}},
     }
 ```
 
