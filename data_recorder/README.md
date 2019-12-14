@@ -13,6 +13,8 @@ foundation for implementing a trading strategy.
   `mongo-integration` or `arctic-book-snapshot` branch) runs on 
   a separate thread
 
+![plot_order_arrivals](../design_patterns/design-pattern.png)
+
 ## 2. Tick Store Data Model
 **Arctic tick store** is the database implementation of choice for 
 this project for the 
