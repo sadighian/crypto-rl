@@ -3,29 +3,32 @@
 #   Inventory and risk management module for environments
 #
 #
-import logging
-from configurations.configs import MARKET_ORDER_FEE
-from gym_trading.utils.order import Order
-
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
-logger = logging.getLogger('broker')
+from configurations import (
+    SLIPPAGE, LOGGER, ENCOURAGEMENT, MARKET_ORDER_FEE, LIMIT_ORDER_FEE
+)
+from gym_trading.utils.order import MarketOrder, LimitOrder
+from gym_trading.utils.statistics import TradeStatistics
+from collections import deque
 
 
 class Position(object):
-    slippage = MARKET_ORDER_FEE / 4
+    slippage = SLIPPAGE
 
-    def __init__(self, side='long', max_position=1, transaction_fee=None):
+    def __init__(self, side: str,
+                 max_position: int = 10,
+                 transaction_fee: bool = False):
         """
-        Position class keeps track the agent's trades and provides stats (e.g.,
-        pnl) on all trades.
+        Position class keeps track the agent's trades and provides stats
+        (e.g., pnl) on all trades.
+
         :param side: 'long' or 'short'
         :param max_position: (int) maximum number of positions agent can have open
-                                    at a given time.
-        :param transaction_fee: (float) fee to use for add/remove order transactions;
+            at a given time.
+        :param transaction_fee: (bool) fee to use for add/remove order transactions;
                 If NONE, then transaction fees are omitted.
         """
         self.max_position_count = max_position
-        self.positions = []
+        self.positions = deque()
         self.realized_pnl = 0.0
         self.full_inventory = False
         self.total_exposure = 0.0
@@ -34,6 +37,7 @@ class Position(object):
         self.total_trade_count = 0
         self.transaction_fee = transaction_fee
         self.order = None
+        self.statistics = TradeStatistics()
 
     def __str__(self):
         msg = 'PositionI-{}: [realized_pnl={:.4f}'.format(self.side, self.realized_pnl)
@@ -41,9 +45,10 @@ class Position(object):
             self.total_exposure, self.total_trade_count)
         return msg
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Reset broker metrics / inventories.
+
         :return: (void)
         """
         self.positions.clear()
@@ -53,18 +58,21 @@ class Position(object):
         self.average_price = 0.0
         self.total_trade_count = 0
         self.order = None
+        self.statistics.reset()
 
     @property
-    def position_count(self):
+    def position_count(self) -> int:
         """
         Number of positions held in inventory.
+
         :return: (int) number of positions in inventory
         """
-        return len(self.positions)
+        return self.positions.__len__()
 
-    def _process_transaction_volume(self, volume: float):
+    def _process_transaction_volume(self, volume: float) -> None:
         """
         Handle order executions in LOB queue.
+
         :param volume: unsigned notional value of trades (either buy or sell)
         :return:(void)
         """
@@ -74,9 +82,10 @@ class Position(object):
             self.order.reduce_queue_ahead(volume)
 
     def _step_limit_order(self, bid_price: float, ask_price: float, buy_volume: float,
-                          sell_volume: float, step: int):
+                          sell_volume: float, step: int) -> bool:
         """
         Step in environment and update LIMIT order inventories.
+
         :param bid_price: best bid price
         :param ask_price: best ask price
         :param buy_volume: executions initiated by buyers (in notional terms)
@@ -102,33 +111,47 @@ class Position(object):
             self.average_price = self.total_exposure / self.position_count
             self.full_inventory = self.position_count >= self.max_position_count
             self.total_trade_count += 1
-            logger.debug('FILLED {} order #{} at {:.3f} after {} steps on {}.'.format(
-                self.order.side, self.order.id, avg_execution_px,
-                self.order.metrics.steps_in_position, step))
+
+            LOGGER.debug(
+                'FILLED {} order #{} at {:.3f} after {} steps on {}.'.format(
+                    self.order.side, self.order.id, avg_execution_px,
+                    self.order.metrics.steps_in_position, step)
+            )
+
             self.order = None  # set the slot back to no open orders
+            self.statistics.orders_executed += 1
+
+            # deduct transaction fees when the LIMIT order gets filled
+            if self.transaction_fee:
+                self.realized_pnl -= LIMIT_ORDER_FEE
+
             return True
 
         return False
 
-    def _step_position_metrics(self, bid_price: float, ask_price: float, step: int):
+    def _step_position_metrics(self, bid_price: float, ask_price: float, step: int) -> None:
         """
         Step in environment and update position metrics.
+
         :param bid_price: best bid price
         :param ask_price: best ask price
         :param step: current time step
         :return: (void)
         """
         price = bid_price if self.side == 'long' else ask_price
+
         if self.order:
             self.order.update_metrics(price=price, step=step)
+
         if self.position_count > 0:
             for position in self.positions:
                 position.update_metrics(price=price, step=step)
 
     def step(self, bid_price: float, ask_price: float, buy_volume: float,
-             sell_volume: float, step: int):
+             sell_volume: float, step: int) -> bool:
         """
         Step in environment and update broker inventories.
+
         :param bid_price: best bid price
         :param ask_price: best ask price
         :param buy_volume: executions initiated by buyers (in notional terms)
@@ -139,37 +162,40 @@ class Position(object):
         is_filled = self._step_limit_order(bid_price=bid_price, ask_price=ask_price,
                                            buy_volume=buy_volume, sell_volume=sell_volume,
                                            step=step)
+
         self._step_position_metrics(bid_price=bid_price, ask_price=ask_price, step=step)
         return is_filled
 
-    def cancel_limit_order(self):
+    def cancel_limit_order(self) -> bool:
         """
-        Cancel a limit order
+        Cancel a limit order.
+
         :return: (bool) TRUE if cancel was successful
         """
         if self.order is None:
-            logger.debug('No {} open orders to cancel.'.format(self.side))
+            LOGGER.debug('No {} open orders to cancel.'.format(self.side))
             return False
 
-        logger.debug('Cancelling order ({})'.format(self.order))
+        LOGGER.debug('Cancelling order ({})'.format(self.order))
         self.order = None
         return True
 
-    def _add_market_order(self, order: Order):
+    def _add_market_order(self, order: MarketOrder) -> bool:
         """
-        Add a MARKET order
+        Add a MARKET order.
+
         :param order: (Order) New order to be used for updating existing order or
                         placing a new order
         """
         if self.full_inventory:
-            logger.debug('  %s inventory max' % order.side)
+            LOGGER.debug('  %s inventory max' % order.side)
             return False
 
         # Create a hypothetical average execution price incorporating a fixed slippage
         hypothetical_avg_price = order.price + Position.slippage \
             if order.side == 'long' else order.price - Position.slippage
         order.average_execution_price = hypothetical_avg_price
-        order.executed = Order.DEFAULT_SIZE
+        order.executed = order.DEFAULT_SIZE
 
         # Update position inventory attributes
         self.cancel_limit_order()  # remove any unfilled limit orders
@@ -178,39 +204,57 @@ class Position(object):
         self.average_price = self.total_exposure / self.position_count
         self.full_inventory = self.position_count >= self.max_position_count
         self.total_trade_count += 1
-        logger.debug('  %s @ %.2f | step %i' % (
-            order.side, order.average_execution_price, order.step))
+
+        # deduct transaction fees whenever an order gets filled
+        if self.transaction_fee:
+            self.realized_pnl -= MARKET_ORDER_FEE
+
+        # update statistics
+        self.statistics.market_orders += 1
+
+        LOGGER.debug(
+            '  %s @ %.2f | step %i' % (
+                order.side, order.average_execution_price, order.step)
+        )
         return True
 
-    def _add_limit_order(self, order: Order):
+    def _add_limit_order(self, order: LimitOrder) -> bool:
         """
-        Add / update a LIMIT order
+        Add / update a LIMIT order.
+
         :param order: (Order) New order to be used for updating existing order or
                         placing a new order
         """
         if self.order is None:
             if self.full_inventory:
-                logger.debug(("{} order rejected. Already at max position limit "
-                             "({})").format(self.side, self.max_position_count))
+                LOGGER.debug(
+                    "{} order rejected. Already at max position limit ({})".format(
+                        self.side, self.max_position_count)
+                )
                 return False
             self.order = order
-            logger.debug('\nOpened new order={}'.format(order))
+            # update statistics
+            self.statistics.orders_placed += 1
+            LOGGER.debug('\nOpened new order={}'.format(order))
 
         elif self.order.price != order.price:
             self.order.price = order.price
             self.order.queue_ahead = order.queue_ahead
             self.order.id = order.id
             self.order.step = order.step
-            logger.debug('\nUpdating order{} --> \n{}'.format(order, self.order))
+            # update statistics
+            self.statistics.orders_updated += 1
+            LOGGER.debug('\nUpdating order{} --> \n{}'.format(order, self.order))
 
         else:
-            logger.debug("\nNothing to update about the order {}".format(self.order))
+            LOGGER.debug("\nNothing to update about the order {}".format(self.order))
 
         return True
 
-    def add(self, order: Order):
+    def add(self, order:  MarketOrder or LimitOrder) -> bool:
         """
-        Add / update an order
+        Add / update an order.
+
         :param order: (Order) New order to be used for updating existing order or
                         placing a new order
         :return: (bool) TRUE if order add action successfully completed, FALSE if already
@@ -221,31 +265,32 @@ class Position(object):
         elif order.order_type == 'limit':
             return self._add_limit_order(order=order)
         else:
-            logger.warning(
-                "Position() add --> unknown order_type {}".format(order.order_type))
+            LOGGER.info(
+                "Position() add --> unknown order_type {}".format(order.order_type)
+            )
+            raise ValueError("ERROR: order_type must be limit or market, not {}".format(
+                order.order_type
+            ))
 
-    def remove(self, price: float):
+    def remove(self, netting_order: MarketOrder or LimitOrder) -> float:
         """
         Remove position from inventory and return position PnL.
-        :param price: (float) Price to use for the PnL calculation
+
+        :param netting_order: order object used to net position
         :return: (bool) TRUE if position removed successfully
         """
         pnl = 0.
         if self.position_count < 1:
-            logger.info('Error. No {} positions to remove.'.format(self.side))
+            LOGGER.info('Error. No {} positions to remove.'.format(self.side))
             return pnl
 
-        order = self.positions.pop(0)
+        order = self.positions.popleft()
 
         # Calculate PnL
         if self.side == 'long':
-            pnl = (price - order.average_execution_price) / order.average_execution_price
+            pnl = (netting_order.price / order.average_execution_price) - 1.
         elif self.side == 'short':
-            pnl = (order.average_execution_price - price) / order.average_execution_price
-
-        # Add transaction fees, if provided
-        if self.transaction_fee:
-            pnl -= self.transaction_fee * 2  # round trip fees for position
+            pnl = (order.average_execution_price / netting_order.price) - 1.
 
         # Add Profit and Loss to realized gains/losses
         self.realized_pnl += pnl
@@ -255,17 +300,22 @@ class Position(object):
         self.average_price = self.total_exposure / self.position_count if \
             self.position_count > 0 else 0.
         self.full_inventory = self.position_count >= self.max_position_count
-        logger.debug(
-            'Netted {} position #{} with PnL = {:.4f}'.format(self.side, order.id, pnl))
+
+        LOGGER.debug(
+            'remove-> Netted {} position #{} with {} trade #{} PnL = {:.4f}'.format(
+                self.side, order.id, netting_order.side, netting_order.id, pnl)
+        )
+
         return pnl
 
-    def pop_position(self):
+    def pop_position(self) -> LimitOrder:
         """
         Remove LIMIT order position from inventory when netted out.
+
         :return: (LimitOrder) position being netted out
         """
         if self.position_count > 0:
-            position = self.positions.pop(0)
+            position = self.positions.popleft()
 
             # update positions attributes
             self.total_exposure -= position.average_execution_price
@@ -275,61 +325,74 @@ class Position(object):
                 self.average_price = 0
 
             self.full_inventory = self.position_count >= self.max_position_count
-            logger.debug('---%s position #%i @ %.4f has been netted out.' % (
-                self.side, position.id, position.price))
+            LOGGER.debug(
+                'pop_position-> %s position #%i @ %.4f has been netted out.' % (
+                    self.side, position.id, position.price)
+            )
             return position
         else:
-            logger.info('Error. No {} pop_position to remove.'.format(self.side))
-            return None
+            raise ValueError('Error. No {} pop_position to remove.'.format(self.side))
 
-    def get_unrealized_pnl(self, price: float):
+    def get_unrealized_pnl(self, price: float) -> float:
         """
-        Unrealized PnL as a percentage gain
-        :return: (float) PnL %
+        Unrealized PnL as a percentage gain.
+
+        :return: (float) PnL percentage
         """
         if self.position_count == 0:
             return 0.0
 
         if self.side == 'long':
-            unrealized_pnl = (price - self.average_price) / self.average_price
+            unrealized_pnl = (price / self.average_price) - 1.
         elif self.side == 'short':
-            unrealized_pnl = (self.average_price - price) / self.average_price
+            unrealized_pnl = (self.average_price / price) - 1.
         else:
-            unrealized_pnl = 0.0
-            logger.info(('Error: PositionI.get_unrealized_pnl() for '
-                         'side = {}').format(self.side))
-
-        # Add transaction fees, if provided
-        if self.transaction_fee:
-            unrealized_pnl -= self.transaction_fee * 2  # include round trip fees
+            raise ValueError(('Error: PositionI.get_unrealized_pnl() for '
+                              'side = {}').format(self.side))
 
         return unrealized_pnl
 
-    def flatten_inventory(self, price: float):
+    def flatten_inventory(self, price: float) -> float:
         """
         Flatten all positions held in inventory.
+
         :param price: (float) current bid or ask price
         :return: (float) PnL from flattening inventory
         """
-        logger.debug(
-            '{} is flattening inventory of {}'.format(self.side, self.position_count))
+        LOGGER.debug(
+            '{} is flattening inventory of {}'.format(self.side, self.position_count)
+        )
 
         if self.position_count < 1:
-            return -0.00000000001
+            return -ENCOURAGEMENT
 
         pnl = 0.
         while self.position_count > 0:
-            pnl += self.remove(price=price)
+            # need to reverse the side to reflect the correct direction of
+            # the flatten_order()
+            order = MarketOrder(ccy=None,
+                                side='long' if self.side == 'short' else 'short',
+                                price=price)
+            pnl += self.remove(netting_order=order)
+            self.total_trade_count += 1
+
+            # deduct transaction fee based on order type
+            if self.transaction_fee:
+                pnl -= MARKET_ORDER_FEE
+
+            # update statistics
+            self.statistics.market_orders += 1
 
         return pnl
 
-    def get_distance_to_midpoint(self, midpoint: float):
+    def get_distance_to_midpoint(self, midpoint: float) -> float:
         """
-        Distance percentage between current midpoint price and the open order's
-        posted price.
+        Distance percentage between current midpoint price and the open
+        order's posted price.
+
         :param midpoint: (float) current midpoint of crypto currency
         :return: (float) distance between open order and midpoint price
         """
         if self.order is None:
             return 0.
-        return abs(midpoint - self.order.price) / self.order.price
+        return abs((midpoint / self.order.price) - 1.)

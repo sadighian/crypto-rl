@@ -1,5 +1,5 @@
 # Environments
-As of September 20, 2019.
+As of December 12, 2019.
 
 ## 1. Overview
 Each python file is an extension to OpenAI's GYM module 
@@ -10,39 +10,33 @@ with all mandatory abstract methods are implemented.
 ### 2.1 base_env.py
 - Base class environment to serve as a platform for extending
 - Includes all repetitive functions required by environments: (1) data
-  loading and preprocessing, (2) broker to act as counterparty, and (3)
+  loading and pre-processing, (2) broker to act as counter-party, and (3)
   other attributes
 - `rewards` can be derived via several different approaches:
-  1.   'trade_completion' : reward is generated per trade's round trip
-  2.   'continuous_total_pnl' : change in realized & unrealized pnl
-       between time steps
-  3.   'continuous_realized_pnl' : change in realized pnl between time
-       steps
-  4.   'continuous_unrealized_pnl' : change in unrealized pnl between
-       time steps
-  5.   'normed' : refer to https://arxiv.org/abs/1804.04216v1
-  6.   'div' : reward is generated per trade's round trip divided by the
-       number of positions held within inventory
-  7.   'asymmetrical' --> 'default' enhanced with a reward for being
-       filled above/below midpoint, and returns only negative rewards
-       for Unrealized PnL to discourage long-term speculation.
-  8.   'asymmetrical_adj' --> 'default' enhanced with a reward for being
-       filled above/below midpoint, and weighted up/down unrealized
-       returns
-  9.   'default' --> Pct change in Unrealized PnL + Realized PnL of
-       respective time step
+    1) 'default' --> inventory count * change in midpoint price returns
+    2) 'default_with_fills' --> inventory count * change in midpoint price returns + closed trade
+     PnL
+    3) 'realized_pnl' --> change in realized pnl between time steps
+    4) 'differential_sharpe_ratio' -->
+        http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.7210&rep=rep1&type=pdf
+    5) 'asymmetrical' --> extended version of *default* and enhanced with a
+        reward for being filled above or below midpoint, and returns only
+        negative rewards for Unrealized PnL to discourage long-term
+        speculation.
+    6) 'partially_asymmetrical' --> extended version of *default* and enhanced
+    with a reward for being filled above/below midpoint, and weighted
+    up/down unrealized returns.
+    7) 'trade_completion' --> reward is generated per trade's round trip
        
-- `observation space` can be normalized via: 
-    1.  z-score
-    2. min-max (e.g., range [0,1])
+- `observation space` is normalized via z-score; outliers above +/-10 are clipped.
 - The position management and PnL calculator are handled by the
   `../broker.py` class in FIFO order
-- The historical data is loaded using `../data_recorder/database/simulator.py`
+- The historical data is loaded using `../gym_trading/utils/data_pipeline.py`
  class
 
-### 2.2 price_jump.py
+### 2.2 trend_following.py
 - This environment is designed for MARKET orders only with the objective
-  being able to identify a "price jump"
+  being able to identify a "price jump" or directional movement
 - Rewards in this environment are realized PnL in FIFO order 
 (i.e., current midpoint)
 - The `../agent/dqn.py` Agent implements this class

@@ -1,12 +1,12 @@
 # Database
-As of September 26, 2019.
+As of December 12, 2019.
 
 ## 1. Overview
-The `database` module contains the wrapper class for storing tick data
-from the `Arctic Tick Store`.
+The `database` module contains three files:
+ - `database.py` a wrapper class for storing tick data from the `Arctic Tick Store`.
+ - `simulator.py` class to replay and export recorded tick data.
+ - `viz.py` class to plot exported order book snapshot data from `simulator.py`.
 
-**Note** the `../simulator.py` class is used to reconstruct the limit
-order book.
 
 ## 2. Classes
 
@@ -17,9 +17,10 @@ This is a wrapper class used for storing streaming tick data into the
 -  The `new_tick()` method is used to persist data to Arctic and it is
    implemented in both `bifinex_connector` and `coinbase_connector`
    projects.
+-  The `init_db_connection` method establishes a connection with MongoDB.
 -  The `get_tick_history` method is used to query Arctic and return its
    `cursor` in the form of a `pd.DataFrame`; it is implemented in
-   `database.py`
+   `database.py`.
 
 ### 2.2 Simulator
 This is a utility class to replay historical data, and export order book
@@ -28,9 +29,9 @@ snapshots to a xz-compressed csv.
 An example of how to export LOB snapshots to a csv is below:
 
 ```
-# Find LTC-USD ticks from Coinbase Pro between April 06, 2019 and April 07, 2019.
+# Find LTC-USD ticks from Bitmex Pro between April 06, 2019 and April 07, 2019.
 query = {
-        'ccy': ['LTC-USD'],
+        'ccy': ['XBTUSD'],
         'start_date': 20190406,
         'end_date': 20190407
     }

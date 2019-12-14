@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from configurations.configs import INDICATOR_WINDOW
+from configurations import INDICATOR_WINDOW
 from collections import deque
 from indicators import load_ema, ExponentialMovingAverage
 
@@ -8,13 +8,13 @@ class Indicator(ABC):
 
     def __init__(self, window=INDICATOR_WINDOW, alpha=None):
         """
-        Indicator constructor
+        Indicator constructor.
+
         :param window: (int) rolling window used for indicators
         :param alpha: (float) decay rate for EMA; if NONE, raw values returned
         """
         self.window = window
-        # TODO change to list to boost performance
-        self.all_history_queue = deque(maxlen=self.window)
+        self.all_history_queue = deque(maxlen=self.window + 1)  # add one so we can pop it off
         self.ema = load_ema(alpha=alpha)
         self._value = None
 
@@ -25,7 +25,8 @@ class Indicator(ABC):
     @abstractmethod
     def reset(self):
         """
-        Clear values in indicator cache
+        Clear values in indicator cache.
+
         :return: (void)
         """
         self._value = None
@@ -34,7 +35,8 @@ class Indicator(ABC):
     @abstractmethod
     def step(self, **kwargs):
         """
-        Update indicator with steps from the environment
+        Update indicator with steps from the environment.
+
         :param kwargs: data values passed to indicators
         :return: (void)
         """
@@ -49,17 +51,19 @@ class Indicator(ABC):
             pass
 
     @abstractmethod
-    def calculate(self):
+    def calculate(self, *args, **kwargs):
         """
-        Calculate indicator value
+        Calculate indicator value.
+
         :return: (float) value of indicator
         """
         pass
 
     @property
-    def value(self):
+    def value(self) -> float or list:
         """
-        Get indicator value for the current time step
+        Get indicator value for the current time step.
+
         :return: (scalar float)
         """
         if isinstance(self.ema, ExponentialMovingAverage):
@@ -72,15 +76,16 @@ class Indicator(ABC):
             return 0.
 
     @property
-    def raw_value(self):
+    def raw_value(self) -> float:
         """
-        Guaranteed raw value, if EMA is enabled
+        Guaranteed raw value, if EMA is enabled.
+
         :return: (float) raw indicator value
         """
         return self._value
 
     @staticmethod
-    def _divide(nom, denom):
+    def _divide(nom, denom) -> float:
         if denom == 0.:
             return 0.
         elif nom == 0.:
@@ -100,17 +105,19 @@ class IndicatorManager(object):
         """
         self.indicators = []
 
-    def add(self, name_and_indicator):
+    def add(self, name_and_indicator) -> None:
         """
-        Add indicator to the list to be managed
+        Add indicator to the list to be managed.
+
         :param name_and_indicator: tuple(name, indicator)
         :return: (void)
         """
         self.indicators.append(name_and_indicator)
 
-    def delete(self, index):
+    def delete(self, index) -> None:
         """
-        Delete an indicator from the manager
+        Delete an indicator from the manager.
+
         :param index: index to delete (int or str)
         :return: (void)
         """
@@ -121,7 +128,8 @@ class IndicatorManager(object):
 
     def pop(self, index=None):
         """
-        Pop indicator from manager
+        Pop indicator from manager.
+
         :param index: (int) index of indicator to pop
         :return: (name, indicator)
         """
@@ -130,26 +138,29 @@ class IndicatorManager(object):
         else:
             return self.indicators.pop()
 
-    def step(self, **kwargs):
+    def step(self, **kwargs) -> None:
         """
-        Update indicator with new step through environment
+        Update indicator with new step through environment.
+
         :param kwargs: Data passed to indicator for the update
         :return:
         """
         for (name, indicator) in self.indicators:
             getattr(indicator, 'step')(**kwargs)
 
-    def reset(self):
+    def reset(self) -> None:
         """
-        Reset all indicators being managed
+        Reset all indicators being managed.
+
         :return: (void)
         """
         for (name, indicator) in self.indicators:
             getattr(indicator, 'reset')()
 
-    def get_value(self):
+    def get_value(self) -> list:
         """
-        Get all indicator values in the manager's inventory
+        Get all indicator values in the manager's inventory.
+
         :return: (list of floats) Indicator values for current time step
         """
         return [getattr(indicator, 'value')

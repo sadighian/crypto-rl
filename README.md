@@ -1,4 +1,7 @@
 # Deep Reinforcement Learning Toolkit for Cryptocurrencies
+
+*NOTE: Project refactored as on December 2019. See changelog at the bottom.*
+
 **Table of contents:**
 
 1. Purpose
@@ -54,8 +57,6 @@ The key elements in this project and brief descriptions.
 crypto-rl/
 	agent/
 		...reinforcement learning algorithm implementations
-	configurations/
-		...constants used throughout this project
 	data_recorder/
 		...tools to connect, download, and retrieve limit order book data
 	gym_trading/
@@ -68,6 +69,7 @@ crypto-rl/
 		...virtual environment for local deployments
 	experiment.py          # Entry point for running reinforcement learning experiments
 	recorder.py            # Entry point to start recording limit order book data
+	configurations.py      # Constants used throughout this project
 	requirements.txt       # List of project dependencies
 	setup.py               # Run the command `python3 setup.py install` to 
 	                       #    install the extended gym environment i.e., gym_trading.py
@@ -75,11 +77,12 @@ crypto-rl/
 
 
 ## 5. Design Patterns
-Refer to each individual's module for design pattern specifications
-- [Limit Order Book, Data Recorder, and Database](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/data_recorder)
+Refer to each individual's module for design pattern specifications:
+
+- [Limit Order Book, Data Recorder, and Database](./data_recorder/README.md)
 - [Stationary LOB Features](https://arxiv.org/abs/1810.09965v1)
-- [POMDP / Environment](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/gym_trading)
-- [Learning Algorithms and Neural Networks](https://github.com/RedBanies3ofThem/crypto-rl/tree/arctic-streaming-ticks-full/agent)
+- [POMDP / Environment](https://github.com/sadighian/crypto-rl/tree/arctic-streaming-ticks-full/gym_trading)
+- [Learning Algorithms and Neural Networks](https://github.com/sadighian/crypto-rl/tree/arctic-streaming-ticks-full/agent)
 
 Sample snapshot of Limit Order Book levels:
 ![plot_lob_levels](./design_patterns/plot_lob_levels.png)
@@ -89,10 +92,31 @@ Sample snapshot of Order Arrival flow metrics:
 
 
 ## 6. Getting Started
+
+Install the project on your machine:
+```
+# clone the project from github
+git clone https://github.com/sadighian/crypto-rl.git
+cd crypto-rl
+
+# install a virtual environment for the project's dependencies
+python3 -m venv ./venv
+
+# turn on the virtual environment
+source venv/bin/activate
+
+# install keras-rl dependencies
+pip3 install Keras==2.2.4 Keras-Applications==1.0.7 Keras-Preprocessing==1.0.9 keras-rl==0.4.2
+ tensorboard==1.13.1 tensorflow-estimator==1.13.0 tensorflow-gpu==1.13.1
+
+# install the project
+pip3 install -e .
+```
+
 ### 6.1 Record limit order book data from exchanges
 
 **Step 1:**
-Go to the `configurations.configs.py` and define the crypto currencies which
+Go to the `configurations.py` and define the crypto currencies which
 you would like to subscribe and record. 
 
 Note: the first column of CCYs are Coinbase-Pro currency names, and the 
@@ -135,7 +159,7 @@ is in your database.
 
 Example to export features to a compressed csv:
 ```
-python3 data_recorder/tests/test_simulator.py
+python3 data_recorder/tests/test_extract_features.py
 ```
 
 ### 6.3 Train an agent
@@ -149,7 +173,7 @@ into that folder, see refer to the section above
 **Step 2:**
 Open a CLI/terminal and start learning/training the agent. 
 ```
-python3 experiment.py --window_size=50 --weights=False --...
+python3 experiment.py --window_size=50 --weights=False --fitting_file=...
 ```
 Refer to `experiment.py` to see all the keyword arguments.
 
@@ -193,11 +217,14 @@ for persisting data:
  date with the **FULL** branch.
 
 ### 8.2 Assumptions
+- You have installed a virtual environment and installed the project to that venv 
+(e.g., `pip3 install -e .`)
 - You have mongoDB already installed
 - You know how to use a cli to start python scripts
 - You are running an ubuntu 18+ os
 
 ### 8.3 Change Log
+- 2019-12-12: Added docstrings and refactored many classes to improve code readability
 - 2019-09-18: Refactored `env`s and `broker`s for simplification and
   added different `reward` approaches.
 - 2019-09-13: Created and implemented 'order arrival' flow metrics,

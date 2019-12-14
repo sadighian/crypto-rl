@@ -4,12 +4,7 @@
 #
 #
 from abc import ABC
-from configurations.configs import MARKET_ORDER_FEE, LIMIT_ORDER_FEE
-import logging
-
-
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
-logger = logging.getLogger('broker')
+from configurations import MARKET_ORDER_FEE, LIMIT_ORDER_FEE, LOGGER
 
 
 class OrderMetrics(object):
@@ -30,12 +25,21 @@ class OrderMetrics(object):
 
 class Order(ABC):
     DEFAULT_SIZE = 1000.
-    id = 0
+    _id = 0
     LIMIT_ORDER_FEE = LIMIT_ORDER_FEE * 2
     MARKET_ORDER_FEE = MARKET_ORDER_FEE * 2
 
     def __init__(self, price: float, step: int, average_execution_price: float,
                  order_type='limit', ccy='BTC-USD', side='long', ):
+        """
+
+        :param price:
+        :param step:
+        :param average_execution_price:
+        :param order_type:
+        :param ccy:
+        :param side:
+        """
         self.order_type = order_type
         self.ccy = ccy
         self.side = side
@@ -46,23 +50,26 @@ class Order(ABC):
         self.executed = 0.
         self.queue_ahead = 0.
         self.executions = dict()
-        Order.id += 1
+        Order._id += 1
+        self.id = Order._id
 
     def __str__(self):
-        return ' {} | {} | {:.3f} | {} | {} | {}'.format(
-            self.ccy, self.side, self.price, self.step, self.metrics, self.queue_ahead)
+        return ' {} #{} | {} | {:.3f} | {} | {} | {}'.format(
+            self.ccy, self.id, self.side, self.price, self.step, self.metrics, self.queue_ahead)
 
     @property
-    def is_filled(self):
+    def is_filled(self) -> bool:
         """
-        If TRUE, the entire order has been executed
-        :return: (bool)
+        If TRUE, the entire order has been executed.
+
+        :return: (bool) TRUE if the order is completely filled
         """
         return self.executed >= Order.DEFAULT_SIZE
 
-    def update_metrics(self, price: float, step: int):
+    def update_metrics(self, price: float, step: int) -> None:
         """
         Update specific position metrics per each order.
+
         :param price: (float) current midpoint price
         :param step: (int) current time step
         :return: (void)
@@ -70,16 +77,14 @@ class Order(ABC):
         self.metrics.steps_in_position = step - self.step
         if self.is_filled:
             if self.side == 'long':
-                unrealized_pnl = (
-                                         price - self.average_execution_price) / \
+                unrealized_pnl = (price - self.average_execution_price) / \
                                  self.average_execution_price
             elif self.side == 'short':
-                unrealized_pnl = (
-                                         self.average_execution_price - price) / \
+                unrealized_pnl = (self.average_execution_price - price) / \
                                  self.average_execution_price
             else:
                 unrealized_pnl = 0.0
-                logger.warning('alert: unknown order.step() side %s' % self.side)
+                LOGGER.warning('alert: unknown order.step() side %s' % self.side)
 
             if unrealized_pnl < self.metrics.drawdown_max:
                 self.metrics.drawdown_max = unrealized_pnl
@@ -90,8 +95,10 @@ class Order(ABC):
 
 class MarketOrder(Order):
     def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1):
-        super(MarketOrder, self).__init__(price=price, step=step,
-                                          average_execution_price=-1, order_type='market',
+        super(MarketOrder, self).__init__(price=price,
+                                          step=step,
+                                          average_execution_price=-1,
+                                          order_type='market',
                                           ccy=ccy,
                                           side=side)
 
@@ -102,19 +109,26 @@ class MarketOrder(Order):
 class LimitOrder(Order):
 
     def __init__(self, ccy='BTC-USD', side='long', price=0.0, step=-1, queue_ahead=100.):
-        super(LimitOrder, self).__init__(price=price, step=step,
-                                         average_execution_price=-1., order_type='limit',
-                                         ccy=ccy, side=side)
+        super(LimitOrder, self).__init__(price=price,
+                                         step=step,
+                                         average_execution_price=-1.,
+                                         order_type='limit',
+                                         ccy=ccy,
+                                         side=side)
         self.queue_ahead = queue_ahead
+        # print('LimitOrder_{}: [price={} | side={} | step={} | queue={}]'.format(
+        #     self.ccy, self.price, self.side, self.step, self.queue_ahead
+        # ))
 
     def __str__(self):
         return "[LimitOrder] " + super(LimitOrder, self).__str__()
 
-    def reduce_queue_ahead(self, executed_volume=100.):
+    def reduce_queue_ahead(self, executed_volume=100.) -> None:
         """
         Subtract transactions from the queue ahead of the agent's open order in the
         LOB. This attribute is used to inform the agent how much notional volume is
         ahead of it's open order.
+
         :param executed_volume: (float) notional volume of recent transaction
         :return: (void)
         """
@@ -124,9 +138,10 @@ class LimitOrder(Order):
             self.queue_ahead = 0.
             self.process_executions(volume=splash)
 
-    def process_executions(self, volume=100.):
+    def process_executions(self, volume=100.) -> None:
         """
         Subtract transactions from the agent's open order (e.g., partial fills).
+
         :param volume: (float) notional volume of recent transaction
         :return: (void)
         """
@@ -142,12 +157,13 @@ class LimitOrder(Order):
         else:
             self.executions[_price] = volume - overflow
 
-    def get_average_execution_price(self):
+    def get_average_execution_price(self) -> float:
         """
         Average execution price of an order.
 
         Note: agents can update a given order many times, thus a single order can have
                 partial fills at many different prices.
+
         :return: (float) average execution price
         """
         self.average_execution_price = sum(
@@ -156,9 +172,10 @@ class LimitOrder(Order):
         return round(self.average_execution_price, 2)
 
     @property
-    def is_first_in_queue(self):
+    def is_first_in_queue(self) -> bool:
         """
+        Determine if current order is first in line to be executed.
 
-        :return:
+        :return: True if the order is the first in the queue
         """
         return self.queue_ahead <= 0.

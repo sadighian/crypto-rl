@@ -4,6 +4,7 @@ from keras.optimizers import Adam
 from rl.agents.dqn import DQNAgent
 from rl.memory import SequentialMemory
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
+from configurations import LOGGER
 import os
 import gym
 import gym_trading
@@ -17,7 +18,6 @@ class Agent(object):
                  **kwargs):
         """
         Agent constructor
-        :param step_size: int, number of steps to take in env for a given simulation step
         :param window_size: int, number of lags to include in observation
         :param max_position: int, maximum number of positions able to be held in inventory
         :param fitting_file: str, file used for z-score fitting
@@ -75,37 +75,45 @@ class Agent(object):
         return 'Agent = {} | env = {} | number_of_training_steps = {}'.format(
             Agent.name, self.env_name, self.number_of_training_steps)
 
-    def create_model(self, name='cnn'):
-        print("creating model for {}".format(name))
+    def create_model(self, name: str = 'cnn') -> Sequential:
+        """
+        Helper function get create and get the default MLP or CNN model.
+
+        :param name: Neural network type ['mlp' or 'cnn']
+        :return: neural network
+        """
+        LOGGER.info("creating model for {}".format(name))
         if name == 'cnn':
             return self._create_cnn_model()
         elif name == 'mlp':
             return self._create_mlp_model()
 
-    def _create_cnn_model(self):
+    def _create_cnn_model(self) -> Sequential:
         """
-        Create a Convolutional neural network with dense layer at the end
+        Create a Convolutional neural network with dense layer at the end.
+
         :return: keras model
         """
         features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
         model = Sequential()
         conv = Conv2D
         model.add(conv(input_shape=features_shape,
-                       filters=16, kernel_size=[10, 1], padding='same', activation='relu',
+                       filters=5, kernel_size=[10, 1], padding='same', activation='relu',
                        strides=[5, 1], data_format='channels_first'))
-        model.add(conv(filters=16, kernel_size=[6, 1], padding='same', activation='relu',
-                       strides=[3, 1], data_format='channels_first'))
-        model.add(conv(filters=16, kernel_size=[4, 1], padding='same', activation='relu',
+        model.add(conv(filters=5, kernel_size=[5, 1], padding='same', activation='relu',
+                       strides=[2, 1], data_format='channels_first'))
+        model.add(conv(filters=5, kernel_size=[4, 1], padding='same', activation='relu',
                        strides=[2, 1], data_format='channels_first'))
         model.add(Flatten())
         model.add(Dense(256, activation='relu'))
         model.add(Dense(self.env.action_space.n, activation='softmax'))
-        print(model.summary())
+        LOGGER.info(model.summary())
         return model
 
-    def _create_mlp_model(self):
+    def _create_mlp_model(self) -> Sequential:
         """
         Create a DENSE neural network with dense layer at the end
+
         :return: keras model
         """
         features_shape = (self.memory_frame_stack, *self.env.observation_space.shape)
@@ -114,26 +122,27 @@ class Agent(object):
         model.add(Dense(units=256, activation='relu'))
         model.add(Flatten())
         model.add(Dense(self.env.action_space.n, activation='softmax'))
-        print(model.summary())
+        LOGGER.info(model.summary())
         return model
 
-    def start(self):
+    def start(self) -> None:
         """
         Entry point for agent training and testing
+
         :return: (void)
         """
         output_directory = os.path.join(self.cwd, 'dqn_weights')
         if not os.path.exists(output_directory):
-            print('{} does not exist. Creating Directory.'.format(output_directory))
+            LOGGER.info('{} does not exist. Creating Directory.'.format(output_directory))
             os.mkdir(output_directory)
 
         weight_name = 'dqn_{}_{}_weights.h5f'.format(
             self.env_name, self.neural_network_type)
         weights_filename = os.path.join(output_directory, weight_name)
-        print("weights_filename: {}".format(weights_filename))
+        LOGGER.info("weights_filename: {}".format(weights_filename))
 
         if self.load_weights:
-            print('...loading weights for {} from\n{}'.format(
+            LOGGER.info('...loading weights for {} from\n{}'.format(
                 self.env_name, weights_filename))
             self.agent.load_weights(weights_filename)
 
@@ -143,26 +152,27 @@ class Agent(object):
             checkpoint_weights_filename = os.path.join(self.cwd,
                                                        'dqn_weights',
                                                        step_chkpt)
-            print("checkpoint_weights_filename: {}".format(checkpoint_weights_filename))
+            LOGGER.info("checkpoint_weights_filename: {}".format(
+                checkpoint_weights_filename))
             log_filename = os.path.join(self.cwd, 'dqn_weights',
                                         'dqn_{}_log.json'.format(self.env_name))
-            print('log_filename: {}'.format(log_filename))
+            LOGGER.info('log_filename: {}'.format(log_filename))
 
             callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename,
                                                  interval=250000)]
             callbacks += [FileLogger(log_filename, interval=100)]
 
-            print('Starting training...')
+            LOGGER.info('Starting training...')
             self.agent.fit(self.env,
                            callbacks=callbacks,
                            nb_steps=self.number_of_training_steps,
                            log_interval=10000,
                            verbose=0,
                            visualize=self.visualize)
-            print("training over.")
-            print('Saving AGENT weights...')
+            LOGGER.info("training over.")
+            LOGGER.info('Saving AGENT weights...')
             self.agent.save_weights(weights_filename, overwrite=True)
-            print("AGENT weights saved.")
+            LOGGER.info("AGENT weights saved.")
         else:
-            print('Starting TEST...')
+            LOGGER.info('Starting TEST...')
             self.agent.test(self.env, nb_episodes=2, visualize=self.visualize)

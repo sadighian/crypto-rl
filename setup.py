@@ -10,10 +10,10 @@ with open("README.md", 'r') as f:
     long_description = f.read()
 
 setup(name='crypto_rl',
-      version='0.1.7',
+      version='0.2.0',
       description='Cryptocurrency LOB trading environment in gym format.',
       long_description=long_description,
       author='Jonathan Sadighian',
-      url='https://github.com/redbanies3ofthem/crypto-rl',
+      url='https://github.com/sadighian/crypto-rl',
       install_requires=dependencies,
-      packages=['agent', 'configurations', 'data_recorder', 'gym_trading', 'indicators'])
+      packages=['agent', 'data_recorder', 'gym_trading', 'indicators'])

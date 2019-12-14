@@ -1,5 +1,5 @@
 # GYM_TRADING
-As of September 18, 2019.
+As of December 12, 2019.
 
 ## Overview
 This package is my implementation of an HFT environment extending a
@@ -16,8 +16,11 @@ Module containing various environment implementations.
 Module containing utility classes for the `gym_trading` module.
 - `broker.py`, `position.py`, and `order.py` manages orders &
   executions, position inventories, and PnL calculations for `envs`
-- `render_env.py` render's midpoint price data as the agent steps
+- `render_env.py` renders midpoint price data as the agent steps
   through the environment
+- `plot_history.py` renders environment observations and PnL
+- `reward.py` contains the reward functions
+- `statistics` contains trackers for risk, rewards, etc.
 
 ## 3. Tests
 Module containing test cases for `gym_trading`'s modules.

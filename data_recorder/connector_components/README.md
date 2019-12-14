@@ -3,8 +3,12 @@ As of September 09, 2019.
 
 ## 1. Overview
 The `connector_components` module contains the base classes for 
-connecting to crypto exchanges. Each base class is overriden in the
-`bitfinex_connector` and `coinbase_connector` projects.
+connecting to crypto exchanges. Each base class is overriden in the 
+following modules:
+- `bitfinex_connector/`
+- `coinbase_connector/`
+- `bitmex_connector/`
+
 
 ## 2. Classes
 
@@ -13,7 +17,7 @@ This class is responsible for maintaining the inventory all of the buy
 **or** sell orders through implementing the `./price_level.py` class.
 
 ### 2.2 Client
-This class is responsible for creating websocket connections to an 
+This class is responsible for creating WebSocket connections to an 
 exchange endpoint.
 
 ### 2.3 Order Book

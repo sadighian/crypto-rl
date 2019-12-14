@@ -1,11 +1,10 @@
-from configurations.configs import INDICATOR_WINDOW
 from indicators.indicator import Indicator
 
 
 class TnS(Indicator):
 
-    def __init__(self, window=INDICATOR_WINDOW, alpha=None):
-        super(TnS, self).__init__(window=window, alpha=alpha)
+    def __init__(self, **kwargs):
+        super(TnS, self).__init__(**kwargs)
         self.ups = self.downs = 0.
 
     def __str__(self):
@@ -29,7 +28,7 @@ class TnS(Indicator):
         self._value = self.calculate()
         super(TnS, self).step(value=self._value)
 
-    def calculate(self):
+    def calculate(self) -> float:
         nom = round(self.ups - self.downs, 6)
         denom = round(self.ups + self.downs, 6)
         return self._divide(nom=nom, denom=denom)

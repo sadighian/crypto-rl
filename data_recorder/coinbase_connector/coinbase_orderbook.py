@@ -1,4 +1,5 @@
 from data_recorder.connector_components.orderbook import OrderBook
+from configurations import LOGGER, COINBASE_BOOK_ENDPOINT
 from datetime import datetime as dt
 from time import time
 import requests
@@ -7,31 +8,36 @@ import numpy as np
 
 class CoinbaseOrderBook(OrderBook):
 
-    def __init__(self, sym):
-        super(CoinbaseOrderBook, self).__init__(sym, 'coinbase')
+    def __init__(self, sym: str):
+        """
+        Coinbase Order Book constructor.
+
+        :param sym: Instrument or cryptocurrency pair name
+        """
+        super(CoinbaseOrderBook, self).__init__(ccy=sym, exchange='coinbase')
         self.sequence = 0
         self.diff = 0
 
-    def _get_book(self):
+    def _get_book(self) -> dict:
         """
-        Get order book snapshot
+        Get order book snapshot.
+
         :return: order book
         """
-        print('%s get_book request made.' % self.sym)
+        LOGGER.info('%s get_book request made.' % self.sym)
         start_time = time()
 
         self.clear_book()
-        path = ('https://api.pro.coinbase.com/products/%s/book' % self.sym)
+        path = (COINBASE_BOOK_ENDPOINT % self.sym)
         book = requests.get(path, params={'level': 3}).json()
 
         elapsed = time() - start_time
-        print('%s get_book request completed in %f seconds.' % (self.sym, elapsed))
+        LOGGER.info('%s get_book request completed in %f seconds.' % (self.sym, elapsed))
         return book
 
-    def load_book(self):
+    def load_book(self) -> None:
         """
-        Load initial limit order book snapshot
-        :return: void
+        Load initial limit order book snapshot.
         """
         book = self._get_book()
 
@@ -76,15 +82,15 @@ class CoinbaseOrderBook(OrderBook):
                           'product_id': self.sym,
                           'sequence': self.sequence})
         del book
-        self.bids.warming_up = False
-        self.asks.warming_up = False
+        self.bids.warming_up = self.asks.warming_up = False
 
         elapsed = time() - start_time
-        print('%s: book loaded................in %f seconds' % (self.sym, elapsed))
+        LOGGER.info('%s: book loaded................in %f seconds' % (self.sym, elapsed))
 
-    def new_tick(self, msg):
+    def new_tick(self, msg: dict) -> bool:
         """
         Method to process incoming ticks.
+
         :param msg: incoming tick
         :return: False if there is an exception
         """
@@ -93,13 +99,13 @@ class CoinbaseOrderBook(OrderBook):
             if message_type == 'subscriptions':
                 # request an order book snapshot after the
                 #   websocket feed is established
-                print('Coinbase Subscriptions successful for : %s' % self.sym)
+                LOGGER.info('Coinbase Subscriptions successful for : %s' % self.sym)
                 self.load_book()
             return True
         elif np.isnan(msg['sequence']):
             # this situation appears during data replays
             #   (and not in live data feeds)
-            print('\n%s found a nan in the sequence' % self.sym)
+            LOGGER.warn('\n%s found a nan in the sequence' % self.sym)
             return True
 
         # check the incoming message sequence to verify if there
@@ -116,16 +122,16 @@ class CoinbaseOrderBook(OrderBook):
             self.sequence = new_sequence
         elif self.diff <= 0:
             if message_type in ['received', 'open', 'done', 'match', 'change']:
-                print('%s [%s] has a stale tick: current %i | incoming %i' % (
+                LOGGER.info('%s [%s] has a stale tick: current %i | incoming %i' % (
                     self.sym, message_type, self.sequence, new_sequence))
                 return True
             else:
-                print('UNKNOWN-%s %s has a stale tick: current %i | incoming %i' % (
+                LOGGER.warn('UNKNOWN-%s %s has a stale tick: current %i | incoming %i' % (
                     self.sym, message_type, self.sequence, new_sequence))
                 return True
         else:  # when the tick sequence difference is greater than 1
-            print('sequence gap: %s missing %i messages. new_sequence: %i [%s]\n' %
-                  (self.sym, self.diff, new_sequence, message_type))
+            LOGGER.info('sequence gap: %s missing %i messages. new_sequence: %i [%s]\n' %
+                        (self.sym, self.diff, new_sequence, message_type))
             self.sequence = new_sequence
             return False
 
@@ -157,11 +163,11 @@ class CoinbaseOrderBook(OrderBook):
         elif message_type == 'match':
             trade_notional = float(msg['price']) * float(msg['size'])
             if side == 'buy':  # trades matched on the bids book are considered sells
-                self.buy_tracker.add(notional=trade_notional)
+                self.sell_tracker.add(notional=trade_notional)
                 self.bids.match(msg)
                 return True
             else:  # trades matched on the asks book are considered buys
-                self.sell_tracker.add(notional=trade_notional)
+                self.buy_tracker.add(notional=trade_notional)
                 self.asks.match(msg)
                 return True
 
@@ -187,9 +193,9 @@ class CoinbaseOrderBook(OrderBook):
 
         elif message_type == 'book_loaded':
             self.bids.warming_up = self.asks.warming_up = False
-            print("Book finished loading at {}".format(self.last_tick_time))
+            LOGGER.info("Book finished loading at {}".format(self.last_tick_time))
             return True
 
         else:
-            print('\n\n\nunhandled message type\n%s\n\n' % str(msg))
+            LOGGER.warn('\n\n\nunhandled message type\n%s\n\n' % str(msg))
             return False

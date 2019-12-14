@@ -1,32 +1,33 @@
-from data_recorder.connector_components.book import Book, round_price
-from configurations.configs import RECORD_DATA
+from data_recorder.connector_components.book import Book
+from configurations import RECORD_DATA
 
 
 class BitfinexBook(Book):
 
-    def __init__(self, sym, side):
-        super(BitfinexBook, self).__init__(sym, side)
+    def __init__(self, **kwargs):
+        super(BitfinexBook, self).__init__(**kwargs)
 
-    def insert_order(self, msg):
+    def insert_order(self, msg: dict) -> None:
         """
-        Create new node
+        Create new node.
+
         :param msg: incoming new order
         :return: (void)
         """
         self.order_map[msg['order_id']] = msg
-        price = msg.get('price', None)
-        adj_price = round_price(price)
-        if adj_price not in self.price_dict:
-            self.create_price(adj_price)
 
-        quantity = abs(msg['size'])
-        self.price_dict[adj_price].add_limit(quantity=quantity, price=price)
-        self.price_dict[adj_price].add_quantity(quantity=quantity, price=price)
-        self.price_dict[adj_price].add_count()
+        price = msg['price']
+        if price not in self.price_dict:
+            self.create_price(price)
 
-    def match(self, msg):
+        size = abs(msg['size'])
+        self.price_dict[price].add_limit(quantity=size, price=price)
+        self.price_dict[price].add_quantity(quantity=size, price=price)
+        self.price_dict[price].add_count()
+
+    def match(self, msg: dict) -> None:
         """
-        This method is not implemented within Bitfinex's API.
+        This method is not implemented within Bitmex's API.
 
         However, I've implemented it to capture order arrival flows (i.e., incoming
         market orders.) and to be consistent with the overarching design pattern.
@@ -38,14 +39,14 @@ class BitfinexBook(Book):
         :return: (void)
         """
         price = msg.get('price', None)
-        adj_price = round_price(price)
-        if adj_price in self.price_dict:
-            self.price_dict[adj_price].add_market(quantity=msg['size'],
-                                                  price=price)
+        if price in self.price_dict:
+            quantity = abs(msg['size'])
+            self.price_dict[price].add_market(quantity=quantity, price=price)
 
-    def change(self, msg):
+    def change(self, msg: dict) -> None:
         """
-        Update inventory
+        Update inventory.
+
         :param msg: order update message from Bitfinex
         :return: (void)
         """
@@ -53,26 +54,22 @@ class BitfinexBook(Book):
         diff = msg['size'] - old_order['size']
 
         vol_change = diff != float(0)
-        px_change = old_order['price'] != msg['price']
+        px_change = msg['price'] != old_order['price']
 
         if px_change:
             self.remove_order(old_order)
-            old_order['price'] = msg['price']
-            if vol_change:
-                old_order['size'] = msg['size']
-            self.insert_order(old_order)
+            self.insert_order(msg)
 
         elif vol_change:
             old_order['size'] = msg['size']
-            adj_price = round_price(old_order['price'])
+            price = old_order['price']
             self.order_map[msg['order_id']] = old_order
-            self.price_dict[adj_price].remove_quantity(quantity=diff,
-                                                       price=old_order['price'])
-            assert px_change is False
+            self.price_dict[price].add_quantity(quantity=diff, price=price)
 
-    def remove_order(self, msg):
+    def remove_order(self, msg: dict) -> None:
         """
-        Done messages result in the order being removed from map
+        Done messages result in the order being removed from map.
+
         :param msg: remove order message from Bitfinex
         :return: (void)
         """
@@ -80,11 +77,11 @@ class BitfinexBook(Book):
         if msg_order_id in self.order_map:
 
             old_order = self.order_map[msg_order_id]
-            adj_price = round_price(old_order['price'])
+            price = old_order['price']
 
-            if adj_price not in self.price_dict:
+            if price not in self.price_dict:
                 print('remove_order: price not in msg...adj_price = {} '.format(
-                    adj_price))
+                    price))
                 print('Incoming order: %s' % msg)
                 print('Old order: %s' % old_order)
 
@@ -93,14 +90,12 @@ class BitfinexBook(Book):
             # Note: Bitfinex does not have 'canceled' message types, thus it is not
             # possible to distinguish filled orders from canceled orders with the order
             # arrival trackers.
-            self.price_dict[adj_price].add_cancel(quantity=order_size,
-                                                  price=order_price)
-            self.price_dict[adj_price].remove_quantity(quantity=order_size,
-                                                       price=order_price)
-            self.price_dict[adj_price].remove_count()
+            self.price_dict[price].add_cancel(quantity=order_size, price=order_price)
+            self.price_dict[price].remove_quantity(quantity=order_size, price=order_price)
+            self.price_dict[price].remove_count()
 
-            if self.price_dict[adj_price].count == 0:
-                self.remove_price(adj_price)
+            if self.price_dict[price].count == 0:
+                self.remove_price(price)
 
             del self.order_map[old_order['order_id']]
 

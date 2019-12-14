@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+from configurations import LOGGER
 
 
 def load_ema(alpha=None):
     """
     Set exponential moving average smoother.
+
     :param alpha: decay rate for EMA
     :return: (var) EMA
     """
@@ -12,19 +14,19 @@ def load_ema(alpha=None):
         # print("EMA smoothing DISABLED")
         return None
     elif isinstance(alpha, float):
-        # print("EMA smoothing ENABLED: {}".format(alpha))
+        LOGGER.info("EMA smoothing ENABLED: {}".format(alpha))
         return ExponentialMovingAverage(alpha=alpha)
     elif isinstance(alpha, list):
-        # print("EMA smoothing ENABLED: {}".format(alpha))
+        LOGGER.info("EMA smoothing ENABLED: {}".format(alpha))
         return [ExponentialMovingAverage(alpha=a) for a in alpha]
     else:
-        print("_load_ema() --> unknown alpha type: {}".format(type(alpha)))
-        return None
+        raise ValueError("_load_ema() --> unknown alpha type: {}".format(type(alpha)))
 
 
-def apply_ema_all_data(ema, data: pd.DataFrame):
+def apply_ema_all_data(ema, data: pd.DataFrame) -> pd.DataFrame:
     """
-    Apply exponential moving average to entire data set in a single batch
+    Apply exponential moving average to entire data set in a single batch.
+
     :param ema: EMA handler; if None, no EMA is applied
     :param data: data set to smooth
     :return: (np.array) smoothed data set, if ema is provided
@@ -36,12 +38,14 @@ def apply_ema_all_data(ema, data: pd.DataFrame):
     labels = data.columns.tolist()
 
     if isinstance(ema, ExponentialMovingAverage):
+        LOGGER.info("Applying EMA to data...")
         for row in data.values:
             ema.step(value=row)
             smoothed_data.append(ema.value)
         smoothed_data = np.asarray(smoothed_data, dtype=np.float32)
         return pd.DataFrame(smoothed_data, columns=labels)
     elif isinstance(ema, list):
+        LOGGER.info("Applying list of EMAs to data...")
         labels = ['{}_{}'.format(label, e.alpha) for e in ema for label in labels]
         for row in data.values:
             tmp_row = []
@@ -53,18 +57,25 @@ def apply_ema_all_data(ema, data: pd.DataFrame):
             data.shape[0], -1)
         return pd.DataFrame(smoothed_data, columns=labels)
     else:
-        print("_apply_ema() --> unknown ema type: {}".format(type(ema)))
-        return None
+        raise ValueError("_apply_ema() --> unknown ema type: {}".format(type(ema)))
 
 
-def reset_ema(ema):
+def reset_ema(ema) -> None:
+    """
+    Reset EMA manager.
+
+    :param ema: EMA manager to be reset
+    :return: EMA manager that has been reset
+    """
     if ema is None:
         pass
     elif isinstance(ema, ExponentialMovingAverage):
         ema.reset()
+        LOGGER.info("Reset EMA data.")
     elif isinstance(ema, list):
         for e in ema:
             e.reset()
+        LOGGER.info("Reset EMA data.")
     return ema
 
 
@@ -72,7 +83,8 @@ class ExponentialMovingAverage(object):
 
     def __init__(self, alpha: float):
         """
-        Calculate Exponential moving average in O(1) time
+        Calculate Exponential moving average in O(1) time.
+
         :param alpha: decay factor, usually between 0.9 and 0.9999
         """
         self.alpha = alpha
@@ -82,9 +94,10 @@ class ExponentialMovingAverage(object):
         return 'ExponentialMovingAverage: [ alpha={} | value={} ]'.format(
             self.alpha, self._value)
 
-    def step(self, value: float):
+    def step(self, value: float) -> None:
         """
-        Update EMA at every time step
+        Update EMA at every time step.
+
         :param value: price at current time step
         :return: (void)
         """
@@ -95,16 +108,18 @@ class ExponentialMovingAverage(object):
         self._value = (1. - self.alpha) * value + self.alpha * self._value
 
     @property
-    def value(self):
+    def value(self) -> float:
         """
-        EMA value of data
+        EMA value of data.
+
         :return: (float) EMA smoothed value
         """
         return self._value
 
-    def reset(self):
+    def reset(self) -> None:
         """
-        Reset EMA
+        Reset EMA.
+
         :return: (void)
         """
         self._value = None

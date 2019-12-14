@@ -9,7 +9,7 @@ if __name__ == "__main__":
     """
 
     loop = asyncio.get_event_loop()
-    symbols = ['BTC-USD']  # , 'BCH-USD', 'LTC-USD', 'ETH-USD']
+    symbols = ['BTC-USD']  # 'LTC-USD', 'ETH-USD']
     p = dict()
 
     print('Initializing...%s' % symbols)

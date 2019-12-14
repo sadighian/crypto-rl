@@ -1,19 +1,11 @@
 from agent.dqn import Agent
 import argparse
-import logging
-
-
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
-logger = logging.getLogger('experiment')
+from configurations import LOGGER
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--step_size',
-                    default=1,
-                    help="Increment for looping through historical data",
-                    type=int)
 parser.add_argument('--window_size',
-                    default=1,
+                    default=100,
                     help="Number of lags to include in the observation",
                     type=int)
 parser.add_argument('--max_position',
@@ -22,17 +14,22 @@ parser.add_argument('--max_position',
                          "able to be held in a broker's inventory",
                     type=int)
 parser.add_argument('--fitting_file',
-                    default='BTC-USD_2019-04-07.csv.xz',
+                    default='demo_LTC-USD_20190926.csv.xz',
                     help="Data set for fitting the z-score scaler (previous day)",
                     type=str)
 parser.add_argument('--testing_file',
-                    default='BTC-USD_2019-04-08.csv.xz',
+                    default='demo_LTC-USD_20190926.csv.xz',
                     help="Data set for training the agent (current day)",
+                    type=str)
+parser.add_argument('--symbol',
+                    default='LTC-USD',
+                    help="Name of currency pair or instrument",
                     type=str)
 parser.add_argument('--id',
                     # default='market-maker-v0',
-                    default='long-short-v0',
-                    help="Environment ID; Either 'long-short-v0' or 'market-maker-v0'",
+                    default='trend-following-v0',
+                    help="Environment ID; Either 'trend-following-v0' or "
+                         "'market-maker-v0'",
                     type=str)
 parser.add_argument('--number_of_training_steps',
                     default=1e5,
@@ -45,7 +42,7 @@ parser.add_argument('--gamma',
                     type=float)
 parser.add_argument('--seed',
                     default=1,
-                    help="Random number seed for dataset",
+                    help="Random number seed for data set",
                     type=int)
 parser.add_argument('--action_repeats',
                     default=5,
@@ -72,45 +69,31 @@ parser.add_argument('--format_3d',
                     "Keras-RL." +
                     "E.g., [window, features] --> [window, features, 1]",
                     type=bool)
-parser.add_argument('--z_score',
-                    default=True,
-                    help="If TRUE, normalize data with z-score",
-                    type=bool)
 parser.add_argument('--reward_type',
                     default='default',
-                    choices=['trade_completion', 'continuous_total_pnl',
-                             'continuous_realized_pnl', 'continuous_unrealized_pnl',
-                             'normed', 'div', 'asymmetrical', 'asymmetrical_adj',
-                             'default'],
+                    choices=['default',
+                             'default_with_fills',
+                             'realized_pnl',
+                             'differential_sharpe_ratio',
+                             'asymmetrical',
+                             'trade_completion'],
                     help="""
                     reward_type: method for calculating the environment's reward:
-                    1) 'trade_completion' --> reward is generated per trade's round trip.
-                    2) 'continuous_total_pnl' --> change in realized & unrealized pnl  
-                        between time steps.
-                    3) 'continuous_realized_pnl' --> change in realized pnl between 
-                        time steps.
-                    4) 'continuous_unrealized_pnl' --> change in unrealized pnl 
-                        between time steps.
-                    5) 'normed' --> refer to https://arxiv.org/abs/1804.04216v1
-                    6) 'div' --> reward is generated per trade's round trip divided by
-                        inventory count (again, refer to 
-                        https://arxiv.org/abs/1804.04216v1).
-                    7) 'asymmetrical' --> 'default' enhanced with a reward for being  
-                        filled above/below midpoint, and returns only negative rewards for 
-                        Unrealized PnL to discourage long-term speculation.
-                    8) 'asymmetrical_adj' --> 'default' enhanced with a reward for being  
-                        filled above/below midpoint, and weighted up/down unrealized  
-                        returns.
-                    9) 'default' --> Pct change in Unrealized PnL + Realized PnL of  
-                        respective time step/
+                    1) 'default' --> inventory count * change in midpoint price returns
+                    2) 'default_with_fills' --> inventory count * change in midpoint  
+                    price returns + closed trade PnL
+                    3) 'realized_pnl' --> change in realized pnl between time steps
+                    4) 'differential_sharpe_ratio' -->
+                    http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.7210&rep=rep1&type=pdf
+                    5) 'asymmetrical' --> extended version of *default* and enhanced 
+                    with  a reward for being filled above or below midpoint, 
+                    and returns only negative rewards for Unrealized PnL to discourage 
+                    long-term speculation.
+                    6) 'trade_completion' --> reward is generated per trade's round trip
                     """,
                     type=str)
-parser.add_argument('--scale_rewards',
-                    default=False,
-                    help="If TRUE, scale PnL by a scalar defined in `broker.py`",
-                    type=bool)
 parser.add_argument('--nn_type',
-                    default='mlp',
+                    default='cnn',
                     help="Type of neural network to use: 'cnn' or 'mlp' ",
                     type=str)
 parser.add_argument('--dueling_network',
@@ -125,9 +108,9 @@ args = vars(parser.parse_args())
 
 
 def main(kwargs):
-    logger.info('Experiment creating agent with kwargs: {}'.format(kwargs))
+    LOGGER.info('Experiment creating agent with kwargs: {}'.format(kwargs))
     agent = Agent(**kwargs)
-    logger.info('Agent created. {}'.format(agent))
+    LOGGER.info('Agent created. {}'.format(agent))
     agent.start()
 
 

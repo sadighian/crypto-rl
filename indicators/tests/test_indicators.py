@@ -3,10 +3,12 @@ import numpy as np
 from indicators.indicator import IndicatorManager
 from indicators.rsi import RSI
 from indicators.tns import TnS
+from gym_trading.utils.decorator import print_time
 
 
 class IndicatorTestCases(unittest.TestCase):
 
+    @print_time
     def test_rsi_up(self):
         indicator = RSI(window=10)
         prices = np.linspace(1, 5, 5)
@@ -18,6 +20,7 @@ class IndicatorTestCases(unittest.TestCase):
                          msg='indicator_value is {} and should be {}'.format(
                              indicator_value, float(1)))
 
+    @print_time
     def test_rsi_down(self):
         indicator = RSI(window=10)
         prices = np.linspace(1, 5, 5)[::-1]
@@ -29,6 +32,7 @@ class IndicatorTestCases(unittest.TestCase):
                          msg='indicator_value is {} and should be {}'.format(
                              indicator_value, float(-1)))
 
+    @print_time
     def test_tns_up(self):
         indicator = TnS(window=10)
         buys = [10] * 3 + [0] * 7
@@ -41,6 +45,7 @@ class IndicatorTestCases(unittest.TestCase):
                          msg='indicator_value is {} and should be {}'.format(
                              indicator_value, float(1)))
 
+    @print_time
     def test_tns_down(self):
         indicator = TnS(window=10)
         buys = [0] * 10
@@ -53,12 +58,14 @@ class IndicatorTestCases(unittest.TestCase):
                          msg='indicator_value is {} and should be {}'.format(
                              indicator_value, float(-1)))
 
+    @print_time
     def test_indicator_manager(self):
         im = IndicatorManager()
         for i in range(2, 5):
             name = 'tns_{}'.format(i)
             print("adding {}".format(name))
             im.add((name, TnS(window=i)))
+
         buys = [0] * 10
         sells = [0] * 7 + [10] * 3
         im.step(buys=0, sells=0)
@@ -69,6 +76,7 @@ class IndicatorTestCases(unittest.TestCase):
                          msg='indicator_value is {} and should be {}'.format(
                              indicator_values, float(-1)))
 
+    @print_time
     def test_exponential_moving_average(self):
         indicator_ema = RSI(window=10, alpha=0.99)
         indicator = RSI(window=10, alpha=None)

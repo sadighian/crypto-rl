@@ -2,9 +2,10 @@
 
 class PriceLevel(object):
 
-    def __init__(self, price=100.01, quantity=0.5):
+    def __init__(self, price: float, quantity: float):
         """
-        PriceLevel constructor
+        PriceLevel constructor.
+
         :param price: LOB adjust price level
         :param quantity: total quantity available at the price
         """
@@ -37,99 +38,103 @@ class PriceLevel(object):
         return level_info + order_flow_info
 
     @property
-    def price(self):
+    def price(self) -> float:
         """
-        Adjusted price of level in LOB
-        :return: (float)
+        Adjusted price of level in LOB.
+
+        :return: price (possibly rounded price, if enabled) of price level
         """
         return self._price
 
     @property
-    def quantity(self):
+    def quantity(self) -> float:
         """
-        Total order size
-        :return: (int)
+        Total order size.
+
+        :return: number of units at price level
         """
         return self._quantity
 
     @property
-    def count(self):
+    def count(self) -> int:
         """
-        Total number of orders
-        :return: (int)
+        Total number of orders.
+
+        :return: number of orders at price level
         """
         return self._count
 
     @property
-    def notional(self):
+    def notional(self) -> float:
         """
-        Total notional value of the price level
-        :return: (float)
+        Total notional value of the price level.
+
+        :return: notional value of price level
         """
         return round(self._notional, 2)
 
     @property
-    def limit_notional(self):
+    def limit_notional(self) -> float:
         """
-        Total value of incoming limit orders added at the price level
-        :return: (float)
+        Total value of incoming limit orders added at the price level.
+
+        :return: notional value of new limit orders received since last `clear_trackers()`
         """
         return round(self._limit_notional, 2)
 
     @property
-    def market_notional(self):
+    def market_notional(self) -> float:
         """
-        Total value of incoming market orders at the price level
-        :return: (float)
+        Total value of incoming market orders at the price level.
+
+        :return: notional value of market orders received since last `clear_trackers()`
         """
         return round(self._market_notional, 2)
 
     @property
-    def cancel_notional(self):
+    def cancel_notional(self) -> float:
         """
-        Total value of incoming cancel orders at the price level
-        :return: (float)
+        Total value of incoming cancel orders at the price level.
+
+        :return: notional value of cancel orders received since last `clear_trackers()`
         """
         return round(self._cancel_notional, 2)
 
-    def add_quantity(self, quantity=0.5, price=100.):
+    def add_quantity(self, quantity=0.5, price=100.) -> None:
         """
-        Add more orders to a given price level
+        Add more orders to a given price level.
+
         :param quantity: order size
         :param price: order price
-        :return: (void)
         """
         self._quantity += quantity
         self._notional += quantity * price
 
-    def remove_quantity(self, quantity=0.5, price=100.):
+    def remove_quantity(self, quantity=0.5, price=100.) -> None:
         """
-        Remove more orders to a given price level
+        Remove more orders to a given price level.
+
         :param quantity: order size
         :param price: order price
-        :return: (void)
         """
         self._quantity -= quantity
         self._notional -= quantity * price
 
-    def add_count(self):
+    def add_count(self) -> None:
         """
-        Counter for number of orders received at price level
-        :return: (void)
+        Counter for number of orders received at price level.
         """
         self._count += 1
 
-    def remove_count(self):
+    def remove_count(self) -> None:
         """
-        Counter for number of orders received at price level
-        :return: (void)
+        Counter for number of orders received at price level.
         """
         self._count -= 1
 
-    def clear_trackers(self):
+    def clear_trackers(self) -> None:
         """
-        Reset all trackers back to zero at the start of a new LOB snapshot interval
-        :return: (void)
+        Reset all trackers back to zero at the start of a new LOB snapshot interval.
         """
         self._limit_count = 0
         self._limit_quantity = 0.
@@ -141,35 +146,61 @@ class PriceLevel(object):
         self._cancel_quantity = 0.
         self._cancel_notional = 0.
 
-    def add_limit(self, quantity=0., price=100.):
+    def add_limit(self, quantity: float, price: float) -> None:
         """
-        Add new incoming limit order to trackers
+        Add new incoming limit order to trackers.
+
         :param quantity: order size
         :param price: order price
-        :return: (void)
         """
         self._limit_count += 1
         self._limit_quantity += quantity
         self._limit_notional += quantity * price
 
-    def add_market(self, quantity=0., price=100.):
+    def add_market(self, quantity: float, price: float) -> None:
         """
-        Add new incoming market order to trackers
+        Add new incoming market order to trackers.
+
         :param quantity: order size
         :param price: order price
-        :return: (void)
         """
         self._market_count += 1
         self._market_quantity += quantity
         self._market_notional += quantity * price
 
-    def add_cancel(self, quantity=0., price=100.):
+    def add_cancel(self, quantity: float, price: float) -> None:
         """
-        Add new incoming cancel order to trackers
+        Add new incoming cancel order to trackers.
+
         :param quantity: order size
         :param price: order price
-        :return: (void)
         """
         self._cancel_count += 1
         self._cancel_quantity += quantity
         self._cancel_notional += quantity * price
+
+    def set_notional(self, notional: float) -> None:
+        """
+        Set the notional value of the price level.
+
+        :param notional: notional value (# of units * price)
+        """
+        self._notional = notional
+
+    def add_limit_notional(self, notional: float) -> None:
+        """
+        Add a limit order's notional value to the cumulative sum of notional values
+        for all the limit orders received at the price level.
+
+        :param notional: notional value (# of units * price)
+        """
+        self._limit_notional += notional
+
+    def add_cancel_notional(self, notional: float) -> None:
+        """
+        Add a cancel limit order's notional value to the cumulative sum of notional
+        values for all the cancelled limit orders received at the price level.
+
+        :param notional: notional value (# of units * price)
+        """
+        self._cancel_notional += notional

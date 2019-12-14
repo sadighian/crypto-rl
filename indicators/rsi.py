@@ -1,19 +1,17 @@
 import numpy as np
-from configurations.configs import INDICATOR_WINDOW
 from indicators.indicator import Indicator
 
 
 class RSI(Indicator):
 
-    def __init__(self, window=INDICATOR_WINDOW, alpha=None):
+    def __init__(self, **kwargs):
         """
-        Price change momentum indicator.
+        Price change momentum indicator. Note: Scaled to [-1, 1] and not [0, 100].
 
-        Note: Scaled to [-1, 1] and not [0, 100].
         :param window: number of lags
         :param alpha: ema alpha
         """
-        super(RSI, self).__init__(window=window, alpha=alpha)
+        super(RSI, self).__init__(**kwargs)
         self.last_price = np.nan
         self.ups = self.downs = 0.
 
@@ -26,7 +24,7 @@ class RSI(Indicator):
         self.ups = self.downs = 0.
         super(RSI, self).reset()
 
-    def step(self, price=100.):
+    def step(self, price: float):
         if np.isnan(self.last_price):
             self.last_price = price
             return
@@ -66,7 +64,7 @@ class RSI(Indicator):
         self._value = self.calculate()
         super(RSI, self).step(value=self._value)
 
-    def calculate(self):
+    def calculate(self) -> float:
         abs_downs = abs(self.downs)
         nom = self.ups - abs_downs
         denom = self.ups + abs_downs

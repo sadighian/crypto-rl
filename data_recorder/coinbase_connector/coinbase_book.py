@@ -1,17 +1,20 @@
-from data_recorder.connector_components .book import Book, round_price
-from configurations.configs import RECORD_DATA
+from data_recorder.connector_components.book import Book
+from configurations import RECORD_DATA, LOGGER
 
 
 class CoinbaseBook(Book):
 
-    def __init__(self, sym, side):
-        super(CoinbaseBook, self).__init__(sym, side)
-
-    def insert_order(self, msg):
+    def __init__(self, **kwargs):
         """
-        Create new node
-        :param msg:
-        :return:
+        Coinbase Book constructor.
+        """
+        super(CoinbaseBook, self).__init__(**kwargs)
+
+    def insert_order(self, msg: dict) -> None:
+        """
+        Create new node.
+
+        :param msg: incoming order message
         """
         msg_order_id = msg.get('order_id', None)
         if msg_order_id not in self.order_map:
@@ -27,22 +30,19 @@ class CoinbaseBook(Book):
             self.order_map[order['order_id']] = order
             price = order.get('price', None)
             size = order.get('size', None)
-            adj_price = round_price(price)
 
-            if adj_price not in self.price_dict:
-                self.create_price(adj_price)
+            if price not in self.price_dict:
+                self.create_price(price)
 
-            self.price_dict[adj_price].add_limit(quantity=size,
-                                                 price=price)
-            self.price_dict[adj_price].add_quantity(quantity=size,
-                                                    price=price)
-            self.price_dict[adj_price].add_count()
+            self.price_dict[price].add_limit(quantity=size, price=price)
+            self.price_dict[price].add_quantity(quantity=size, price=price)
+            self.price_dict[price].add_count()
 
-    def match(self, msg):
+    def match(self, msg: dict) -> None:
         """
-        Change volume of book
-        :param msg:
-        :return:
+        Change volume of book.
+
+        :param msg: incoming order message
         """
         msg_order_id = msg.get('maker_order_id', None)
         if msg_order_id in self.order_map:
@@ -56,27 +56,27 @@ class CoinbaseBook(Book):
                 'type': msg['type'],
                 'product_id': msg['product_id']
             }
-            adj_price = round_price(order['price'])
-            if adj_price in self.price_dict:
+            price = order['price']
+            if price in self.price_dict:
                 remove_size = order['size']
                 remaining_size = old_order['size'] - remove_size
                 order['size'] = remaining_size
                 self.order_map[old_order['order_id']] = order
                 old_order_price = old_order.get('price', None)
-                self.price_dict[adj_price].add_market(quantity=remove_size,
-                                                      price=old_order_price)
-                self.price_dict[adj_price].remove_quantity(quantity=remove_size,
-                                                           price=old_order_price)
+                self.price_dict[price].add_market(quantity=remove_size,
+                                                  price=old_order_price)
+                self.price_dict[price].remove_quantity(quantity=remove_size,
+                                                       price=old_order_price)
             else:
-                print('\nmatch: price not in tree already [%s]\n' % msg)
+                LOGGER.info('\nmatch: price not in tree already [%s]\n' % msg)
         elif RECORD_DATA:
-            print('\n%s match: order id cannot be found for %s\n' % (self.sym, msg))
+            LOGGER.warn('\n%s match: order id cannot be found for %s\n' % (self.sym, msg))
 
-    def change(self, msg):
+    def change(self, msg: dict) -> None:
         """
-        Update inventory
-        :param msg:
-        :return:
+        Update inventory.
+
+        :param msg: incoming order message
         """
         if 'price' in msg:
             msg_order_id = msg.get('order_id', None)
@@ -88,40 +88,38 @@ class CoinbaseBook(Book):
                 old_order['size'] = new_size
                 self.order_map[old_order['order_id']] = old_order
                 old_order_price = old_order.get('price', None)
-                adj_price = round_price(old_order_price)
-                self.price_dict[adj_price].remove_quantity(quantity=diff,
+                self.price_dict[old_order_price].remove_quantity(quantity=diff,
                                                            price=old_order_price)
             elif RECORD_DATA:
-                print('\n%s change: missing order_ID [%s] from order_map\n' %
-                      (self.sym, msg))
+                LOGGER.info('\n%s change: missing order_ID [%s] from order_map\n' %
+                            (self.sym, msg))
 
-    def remove_order(self, msg):
+    def remove_order(self, msg: dict) -> None:
         """
-        Done messages result in the order being removed from map
-        :param msg:
-        :return:
+        Done messages result in the order being removed from map.
+
+        :param msg: incoming order message
         """
         msg_order_id = msg.get('order_id', None)
         if msg_order_id in self.order_map:
 
             old_order = self.order_map[msg_order_id]
             price = old_order.get('price', None)
-            adj_price = round_price(price)
 
-            if adj_price in self.price_dict:
+            if price in self.price_dict:
                 if msg.get('reason', None) == 'canceled':
-                    self.price_dict[adj_price].add_cancel(
+                    self.price_dict[price].add_cancel(
                         quantity=float(msg.get('remaining_size')), price=price)
 
-                self.price_dict[adj_price].remove_quantity(
+                self.price_dict[price].remove_quantity(
                     quantity=old_order['size'], price=price)
-                self.price_dict[adj_price].remove_count()
+                self.price_dict[price].remove_count()
 
-                if self.price_dict[adj_price].count == 0:
-                    self.remove_price(adj_price)
+                if self.price_dict[price].count == 0:
+                    self.remove_price(price)
 
             elif RECORD_DATA:
-                print('%s remove_order: price not in price_map [%s]' %
-                      (msg['product_id'], str(adj_price)))
+                LOGGER.info('%s remove_order: price not in price_map [%s]' %
+                            (msg['product_id'], str(price)))
 
             del self.order_map[msg_order_id]

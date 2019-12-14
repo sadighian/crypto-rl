@@ -1,10 +1,12 @@
 import unittest
 from gym_trading.utils.broker import Broker
 from gym_trading.utils.order import MarketOrder, LimitOrder
+from gym_trading.utils.decorator import debugging
 
 
 class MarketOrderTestCases(unittest.TestCase):
 
+    @debugging
     def test_case_one(self):
         print('\nTest_Case_One')
 
@@ -17,11 +19,11 @@ class MarketOrderTestCases(unittest.TestCase):
 
         self.assertEqual(1, test_position.long_inventory.position_count)
         print('LONG Unrealized_pnl: %f' % test_position.long_inventory.get_unrealized_pnl(
-            midpoint=midpoint))
+            price=midpoint))
 
         self.assertEqual(0, test_position.short_inventory.position_count)
         self.assertEqual(0., test_position.short_inventory.get_unrealized_pnl(
-            midpoint=midpoint))
+            price=midpoint))
 
         order_close = MarketOrder(ccy='BTC-USD', side='long',
                                   price=midpoint + (midpoint * fee * 5), step=100)
@@ -29,13 +31,14 @@ class MarketOrderTestCases(unittest.TestCase):
         test_position.remove(order=order_close)
         self.assertEqual(0, test_position.long_inventory.position_count)
         print('LONG Unrealized_pnl: %f' % test_position.long_inventory.get_unrealized_pnl(
-            midpoint=midpoint))
+            price=midpoint))
 
         self.assertEqual(test_position.short_inventory.position_count, 0)
         self.assertEqual(
-            test_position.short_inventory.get_unrealized_pnl(midpoint=midpoint), 0.)
+            test_position.short_inventory.get_unrealized_pnl(price=midpoint), 0.)
         print('LONG Realized_pnl: %f' % test_position.realized_pnl)
 
+    @debugging
     def test_case_two(self):
         print('\nTest_Case_Two')
 
@@ -48,10 +51,10 @@ class MarketOrderTestCases(unittest.TestCase):
         self.assertEqual(1, test_position.short_inventory.position_count)
         self.assertEqual(0, test_position.long_inventory.position_count)
         self.assertEqual(0., test_position.long_inventory.get_unrealized_pnl(
-            midpoint=midpoint))
+            price=midpoint))
         print(
             'SHORT Unrealized_pnl: %f' % test_position.short_inventory.get_unrealized_pnl(
-                midpoint=midpoint))
+                price=midpoint))
 
         order_close = MarketOrder(ccy='BTC-USD', side='short',
                                   price=midpoint - (midpoint * fee * 15), step=100)
@@ -59,12 +62,13 @@ class MarketOrderTestCases(unittest.TestCase):
         self.assertEqual(0, test_position.short_inventory.position_count)
         self.assertEqual(0, test_position.long_inventory.position_count)
         self.assertEqual(0., test_position.long_inventory.get_unrealized_pnl(
-            midpoint=midpoint))
+            price=midpoint))
         print(
             'SHORT Unrealized_pnl: %f' % test_position.short_inventory.get_unrealized_pnl(
-                midpoint=midpoint))
+                price=midpoint))
         print('SHORT Realized_pnl: %f' % test_position.realized_pnl)
 
+    @debugging
     def test_case_three(self):
         print('\nTest_Case_Three')
 
@@ -72,19 +76,15 @@ class MarketOrderTestCases(unittest.TestCase):
         midpoint = 100.
 
         for i in range(10):
-            order_open = MarketOrder(ccy='BTC-USD', side='long', price=midpoint - i,
-                                     step=i)
+            order_open = MarketOrder(ccy='BTC-USD', side='long', price=midpoint - i, step=i)
             test_position.add(order=order_open)
 
         self.assertEqual(5, test_position.long_inventory.position_count)
         self.assertEqual(0, test_position.short_inventory.position_count)
-        print(
-            'Confirm we have 5 positions: %i' %
-            test_position.long_inventory.position_count)
+        print('Confirm we have 5 positions: %i' % test_position.long_inventory.position_count)
 
         for i in range(10):
-            order_open = MarketOrder(ccy='BTC-USD', side='long', price=midpoint + i,
-                                     step=i)
+            order_open = MarketOrder(ccy='BTC-USD', side='long', price=midpoint + i, step=i)
             test_position.remove(order=order_open)
 
         self.assertEqual(0, test_position.long_inventory.position_count)
@@ -93,6 +93,7 @@ class MarketOrderTestCases(unittest.TestCase):
 
 class LimitOrderTestCases(unittest.TestCase):
 
+    @debugging
     def test_long_pnl(self):
         test_position = Broker()
         step = 0
@@ -102,8 +103,7 @@ class LimitOrderTestCases(unittest.TestCase):
         sell_volume = 100
         pnl = 0.
 
-        def walk_forward(pnl, step, bid_price, ask_price, buy_volume, sell_volume,
-                         down=True):
+        def walk_forward(pnl, step, bid_price, ask_price, buy_volume, sell_volume, down=True):
             for i in range(50):
                 step += 1
                 if down:
@@ -115,8 +115,8 @@ class LimitOrderTestCases(unittest.TestCase):
 
                 pnl, is_long_order_filled, is_short_order_filled = \
                     test_position.step_limit_order_pnl(
-                    bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-                    sell_volume=sell_volume, step=step)
+                        bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                        sell_volume=sell_volume, step=step)
                 pnl += pnl
                 if i % 10 == 0:
                     print('bid_price={:.2f} | ask_price={:.2f}'.format(bid_price,
@@ -137,7 +137,7 @@ class LimitOrderTestCases(unittest.TestCase):
                              queue_ahead=0))
         _, _, _, _, _, pnl = walk_forward(pnl, step, bid_price, ask_price, buy_volume,
                                           sell_volume, down=False)
-        realized_pnl = test_position.realized_pnl
+        realized_pnl = round(test_position.realized_pnl, 3)
 
         self.assertEqual(0.05, realized_pnl,
                          "Expected Realized PnL of 0.5 and got {}".format(realized_pnl))
@@ -146,6 +146,7 @@ class LimitOrderTestCases(unittest.TestCase):
                          test_position.long_inventory_count)
         print("PnL: {}".format(pnl))
 
+    @debugging
     def test_avg_exe(self):
         test_position = Broker()
 
@@ -155,7 +156,6 @@ class LimitOrderTestCases(unittest.TestCase):
         ask_price = 102.
         buy_volume = 500
         sell_volume = 500
-        pnl = 0.
 
         test_position.add(
             order=LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step,
@@ -165,8 +165,8 @@ class LimitOrderTestCases(unittest.TestCase):
         step += 1
         pnl, is_long_order_filled, is_short_order_filled = \
             test_position.step_limit_order_pnl(
-            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-            sell_volume=sell_volume, step=step)
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
         pnl += pnl
         self.assertEqual(500, test_position.long_inventory.order.executed)
         self.assertEqual(0, test_position.long_inventory_count)
@@ -183,13 +183,14 @@ class LimitOrderTestCases(unittest.TestCase):
         step += 1
         pnl, is_long_order_filled, is_short_order_filled = \
             test_position.step_limit_order_pnl(
-            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-            sell_volume=sell_volume, step=step)
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
         pnl += pnl
         self.assertEqual(1, test_position.long_inventory_count)
         self.assertEqual(100., test_position.long_inventory.average_price)
         print("PnL: {}".format(pnl))
 
+    @debugging
     def test_lob_queuing(self):
         test_position = Broker()
 
@@ -200,17 +201,15 @@ class LimitOrderTestCases(unittest.TestCase):
         buy_volume = 500
         sell_volume = 500
         queue_ahead = 800
-        pnl = 0.
 
-        order_open = LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step,
-                                queue_ahead=queue_ahead)
+        order_open = LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step, queue_ahead=queue_ahead)
         test_position.add(order=order_open)
 
         step += 1
         pnl, is_long_order_filled, is_short_order_filled = \
             test_position.step_limit_order_pnl(
-            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-            sell_volume=sell_volume, step=step)
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
         pnl += pnl
 
         print("#1 long_inventory.order = \n{}".format(test_position.long_inventory.order))
@@ -221,8 +220,8 @@ class LimitOrderTestCases(unittest.TestCase):
         step += 1
         pnl, is_long_order_filled, is_short_order_filled = \
             test_position.step_limit_order_pnl(
-            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-            sell_volume=sell_volume, step=step)
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
         pnl += pnl
 
         print("#2 long_inventory.order = \n{}".format(test_position.long_inventory.order))
@@ -244,14 +243,15 @@ class LimitOrderTestCases(unittest.TestCase):
             step += 1
             pnl, is_long_order_filled, is_short_order_filled = \
                 test_position.step_limit_order_pnl(
-                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-                sell_volume=sell_volume, step=step)
+                    bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                    sell_volume=sell_volume, step=step)
             pnl += pnl
 
         self.assertEqual(1, test_position.long_inventory_count)
         self.assertEqual(100.40, round(test_position.long_inventory.average_price, 2))
         print("PnL: {}".format(pnl))
 
+    @debugging
     def test_queues_ahead_features(self):
         test_position = Broker()
 
@@ -261,7 +261,6 @@ class LimitOrderTestCases(unittest.TestCase):
         ask_price = 200.
         buy_volume = 0
         sell_volume = 0
-        pnl = 0.
 
         order_open_long = LimitOrder(ccy='BTC-USD', side='long', price=bid_price,
                                      step=step, queue_ahead=0)
@@ -276,8 +275,8 @@ class LimitOrderTestCases(unittest.TestCase):
         step += 1
         pnl, is_long_order_filled, is_short_order_filled = \
             test_position.step_limit_order_pnl(
-            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-            sell_volume=sell_volume, step=step)
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
         pnl += pnl
 
         print("#1 long_inventory.order = \n{}".format(test_position.long_inventory.order))
@@ -314,8 +313,8 @@ class LimitOrderTestCases(unittest.TestCase):
         step += 1
         pnl, is_long_order_filled, is_short_order_filled = \
             test_position.step_limit_order_pnl(
-            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-            sell_volume=sell_volume, step=step)
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
         pnl += pnl
 
         print("#3 long_inventory.order = \n{}".format(test_position.long_inventory.order))
@@ -333,8 +332,8 @@ class LimitOrderTestCases(unittest.TestCase):
         step += 1
         pnl, is_long_order_filled, is_short_order_filled = \
             test_position.step_limit_order_pnl(
-            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
-            sell_volume=sell_volume, step=step)
+                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,
+                sell_volume=sell_volume, step=step)
         pnl += pnl
 
         print("#4 long_inventory.order = \n{}".format(test_position.long_inventory.order))

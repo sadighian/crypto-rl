@@ -1,13 +1,54 @@
 from time import time
 import numpy as np
 from data_recorder.connector_components.orderbook import OrderBook
+from configurations import LOGGER
 
 
 class BitfinexOrderBook(OrderBook):
 
-    def __init__(self, sym):
+    def __init__(self, sym: str):
         super(BitfinexOrderBook, self).__init__(sym, 'bitfinex')
         self.channel_id = {'book': int(0), 'trades': int(0)}
+
+    def new_tick(self, msg: dict):
+        """
+        Method to process incoming ticks.
+
+        :param msg: incoming tick
+        :return: False if there is an exception (or need to reconnect the WebSocket)
+        """
+        # check for data messages, which only come in lists
+        if isinstance(msg, list):
+            if msg[0] == self.channel_id['book']:
+                return self._process_book(msg)
+            elif msg[0] == self.channel_id['trades']:
+                return self._process_trades(msg)
+
+        # non-data messages
+        elif isinstance(msg, dict):
+            if 'event' in msg:
+                return self._process_events(msg)
+            elif msg['type'] == 'te':
+                self.last_tick_time = msg.get('system_time', None)
+                return self._process_trades_replay(msg)
+            elif msg['type'] in ['update', 'preload']:
+                self.last_tick_time = msg.get('system_time', None)
+                return self._process_book_replay(msg)
+            elif msg['type'] == 'load_book':
+                self.clear_book()
+                return True
+            elif msg['type'] == 'book_loaded':
+                self.bids.warming_up = False
+                self.asks.warming_up = False
+                return True
+            else:
+                LOGGER.info('new_tick() message does not know how to be processed = %s' %
+                            str(msg))
+
+        # unhandled exception
+        else:
+            LOGGER.warn('unhandled exception\n%s\n' % msg)
+            return True
 
     def _load_book(self, book):
         """
@@ -37,56 +78,16 @@ class BitfinexOrderBook(OrderBook):
 
         self.db.new_tick({'type': 'book_loaded', 'product_id': self.sym})
 
-        self.bids.warming_up = False
-        self.asks.warming_up = False
+        self.bids.warming_up = self.asks.warming_up = False
 
         elapsed = time() - start_time
-        print('%s: book loaded..............in %f seconds\n' % (self.sym, elapsed))
-
-    def new_tick(self, msg):
-        """
-        Method to process incoming ticks.
-        :param msg: incoming tick
-        :return: False if there is an exception
-        """
-        # check for data messages, which only come in lists
-        if isinstance(msg, list):
-            if msg[0] == self.channel_id['book']:
-                return self._process_book(msg)
-            elif msg[0] == self.channel_id['trades']:
-                return self._process_trades(msg)
-
-        # non-data messages
-        elif isinstance(msg, dict):
-            if 'event' in msg:
-                return self._process_events(msg)
-            elif msg['type'] == 'te':
-                self.last_tick_time = msg.get('system_time', None)
-                return self._process_trades_replay(msg)
-            elif msg['type'] in ['update', 'preload']:
-                self.last_tick_time = msg.get('system_time', None)
-                return self._process_book_replay(msg)
-            elif msg['type'] == 'load_book':
-                self.clear_book()
-                return True
-            elif msg['type'] == 'book_loaded':
-                self.bids.warming_up = False
-                self.asks.warming_up = False
-                return True
-            else:
-                print('new_tick() message does not know how to be processed = %s' %
-                      str(msg))
-
-        # unhandled exception
-        else:
-            print('unhandled exception\n%s\n' % msg)
-            return True
+        LOGGER.info('%s: book loaded..............in %f seconds\n' % (self.sym, elapsed))
 
     def _process_book(self, msg):
         """
         Internal method to process FULL BOOK market data
         :param msg: incoming tick
-        :return: False if resubscription in required
+        :return: False if re-subscribe is required
         """
         # check for a heartbeat
         if msg[1] == 'hb':
@@ -95,7 +96,7 @@ class BitfinexOrderBook(OrderBook):
 
         # order book message (initial snapshot)
         elif np.shape(msg[1])[0] > 3:
-            print('%s loading book...' % self.sym)
+            LOGGER.info('%s loading book...' % self.sym)
             self.clear_book()
             self._load_book(msg)
             return True
@@ -114,7 +115,7 @@ class BitfinexOrderBook(OrderBook):
             self.db.new_tick(order)
 
             # order should be removed from the book
-            if order['price'] == float(0):
+            if order['price'] == 0.:
                 if order['side'] == 'buy':
                     self.bids.remove_order(order)
                 elif order['side'] == 'sell':
@@ -136,7 +137,7 @@ class BitfinexOrderBook(OrderBook):
 
             # unhandled msg
             else:
-                print('\nUnhandled list msg %s' % msg)
+                LOGGER.warn('\nUnhandled list msg %s' % msg)
 
             return True
 
@@ -171,7 +172,7 @@ class BitfinexOrderBook(OrderBook):
                     self.asks.insert_order(order)
             # unhandled tick message
             else:
-                print('_process_book_replay: unhandled message\n%s' % str(order))
+                LOGGER.warn('_process_book_replay: unhandled message\n%s' % str(order))
 
         elif order['type'] == 'preload':
             if order['side'] == 'buy':
@@ -189,7 +190,7 @@ class BitfinexOrderBook(OrderBook):
                 self.bids.match(order)
 
         else:
-            print('\n_process_book_replay() Unhandled list msg %s' % order)
+            LOGGER.warn('\n_process_book_replay() Unhandled list msg %s' % order)
 
         return True
 
@@ -197,21 +198,18 @@ class BitfinexOrderBook(OrderBook):
         """
         Internal method to process trade messages
         :param msg: incoming tick
-        :return: False if resubscription is required
+        :return: False if a re-subscribe is required
         """
         if len(msg) == 2:
             #  historical trades
             return True
 
         msg_type = msg[1]
-
-        if msg[2][2] > 0.0:
-            side = 'upticks'
-        else:
-            side = 'downticks'
+        side = 'upticks' if msg[2][2] > 0.0 else 'downticks'
 
         if msg_type == 'hb':
-            print('Heartbeat for trades')
+            LOGGER.info('Heartbeat for trades')
+            return True
 
         elif msg_type == 'te':
             trade = {
@@ -222,18 +220,18 @@ class BitfinexOrderBook(OrderBook):
                 "product_id": self.sym
             }
             self.db.new_tick(trade)
-            # print('%s %f' % (side, msg[2][3]))
+            return self._process_trades_replay(msg=trade)
 
         return True
 
     def _process_trades_replay(self, msg):
-        trade_notional = abs(msg['price'] * msg['size'])
-
+        trade_notional = msg['price'] * msg['size']
         if msg['side'] == 'upticks':
             self.buy_tracker.add(notional=trade_notional)
+            self.asks.match(msg)
         else:
             self.sell_tracker.add(notional=trade_notional)
-
+            self.bids.match(msg)
         return True
 
     def _process_events(self, msg):
@@ -244,7 +242,7 @@ class BitfinexOrderBook(OrderBook):
         """
         if msg['event'] == 'subscribed':
             self.channel_id[msg['channel']] = msg['chanId']
-            print('%s Added channel_id: %i for %s' % (
+            LOGGER.info('%s Added channel_id: %i for %s' % (
                 self.sym, msg['chanId'], msg['channel']))
             return True
 
@@ -256,34 +254,34 @@ class BitfinexOrderBook(OrderBook):
                 code = None
 
             if code == 20051:
-                print('\nBitfinex - %s: 20051 Stop/Restart Websocket Server '
-                      '(please reconnect)' % self.sym)
+                LOGGER.info('\nBitfinex - %s: 20051 Stop/Restart Websocket Server '
+                            '(please reconnect)' % self.sym)
                 return False  # need to re-subscrbe to the data feed
             elif code == 20060:
-                print('\nBitfinex - ' + self.sym + ': 20060.'
-                                                   ' Entering in Maintenance mode. '
-                      + 'Please pause any activity and resume after receiving the '
-                      + 'info message 20061 (it should take 120 seconds at most).')
+                LOGGER.info('\nBitfinex - ' + self.sym + ': 20060.'
+                                                         ' Entering in Maintenance mode. '
+                            + 'Please pause any activity and resume after receiving the '
+                            + 'info message 20061 (it should take 120 seconds at most).')
                 return True
             elif code == 20061:
-                print('\nBitfinex - ' + self.sym + ': 20061 Maintenance ended. ' +
-                      'You can resume normal activity. ' +
-                      'It is advised to unsubscribe/subscribe again all channels.')
+                LOGGER.info('\nBitfinex - ' + self.sym + ': 20061 Maintenance ended. ' +
+                            'You can resume normal activity. ' +
+                            'It is advised to unsubscribe/subscribe again all channels.')
                 return False  # need to re-subscrbe to the data feed
             elif code == 10300:
-                print('\nBitfinex - %s: 10300 Subscription failed (generic)' %
-                      self.sym)
+                LOGGER.info('\nBitfinex - %s: 10300 Subscription failed (generic)' %
+                            self.sym)
                 return True
             elif code == 10301:
-                print('\nBitfinex - %s: 10301 Already subscribed' % self.sym)
+                LOGGER.info('\nBitfinex - %s: 10301 Already subscribed' % self.sym)
                 return True
             elif code == 10302:
-                print('\nBitfinex - %s: 10302 Unknown channel' % self.sym)
+                LOGGER.info('\nBitfinex - %s: 10302 Unknown channel' % self.sym)
                 return True
             elif code == 10400:
-                print('\nBitfinex - %s: 10400 Subscription failed (generic)' %
-                      self.sym)
+                LOGGER.info('\nBitfinex - %s: 10400 Subscription failed (generic)' %
+                            self.sym)
                 return True
             elif code == 10401:
-                print('\nBitfinex - %s: 10401 Not subscribed' % self.sym)
+                LOGGER.info('\nBitfinex - %s: 10401 Not subscribed' % self.sym)
                 return True
