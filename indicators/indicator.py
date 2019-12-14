@@ -146,7 +146,7 @@ class IndicatorManager(object):
         :return:
         """
         for (name, indicator) in self.indicators:
-            getattr(indicator, 'step')(**kwargs)
+            indicator.step(**kwargs)
 
     def reset(self) -> None:
         """
@@ -155,7 +155,7 @@ class IndicatorManager(object):
         :return: (void)
         """
         for (name, indicator) in self.indicators:
-            getattr(indicator, 'reset')()
+            indicator.reset()
 
     def get_value(self) -> list:
         """
@@ -163,5 +163,4 @@ class IndicatorManager(object):
 
         :return: (list of floats) Indicator values for current time step
         """
-        return [getattr(indicator, 'value')
-                for (name, indicator) in self.indicators]
+        return [indicator.value for (name, indicator) in self.indicators]
