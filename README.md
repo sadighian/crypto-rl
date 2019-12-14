@@ -21,6 +21,8 @@ The purpose of this application is to provide a toolkit to:
  - **Replay** recorded historical data to derive feature sets for training
  - **Train** a Dueling Deep Q-Network (DDQN) agent to trade cryptocurrencies.
 
+![High_Level_Overview](./design_patterns/design-pattern-high-level.PNG)
+
 
 ## 2. Scope
 Application is intended to be used to record and simulate limit order book data 
