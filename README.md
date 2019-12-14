@@ -1,6 +1,6 @@
 # Deep Reinforcement Learning Toolkit for Cryptocurrencies
 
-*NOTE: Project refactored as on December 2019. See changelog at the bottom.*
+*NOTE: Project refactored as of December 2019. See changelog at the bottom.*
 
 **Table of contents:**
 
@@ -81,8 +81,8 @@ Refer to each individual's module for design pattern specifications:
 
 - [Limit Order Book, Data Recorder, and Database](./data_recorder/README.md)
 - [Stationary LOB Features](https://arxiv.org/abs/1810.09965v1)
-- [POMDP / Environment](https://github.com/sadighian/crypto-rl/tree/arctic-streaming-ticks-full/gym_trading)
-- [Learning Algorithms and Neural Networks](https://github.com/sadighian/crypto-rl/tree/arctic-streaming-ticks-full/agent)
+- [POMDP Environment](./gym_trading/README.md)
+- [Learning Algorithms and Neural Networks](./agent/README.md)
 
 Sample snapshot of Limit Order Book levels:
 ![plot_lob_levels](./design_patterns/plot_lob_levels.png)

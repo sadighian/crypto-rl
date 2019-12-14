@@ -23,10 +23,7 @@ with all mandatory abstract methods are implemented.
         reward for being filled above or below midpoint, and returns only
         negative rewards for Unrealized PnL to discourage long-term
         speculation.
-    6) 'partially_asymmetrical' --> extended version of *default* and enhanced
-    with a reward for being filled above/below midpoint, and weighted
-    up/down unrealized returns.
-    7) 'trade_completion' --> reward is generated per trade's round trip
+    6) 'trade_completion' --> reward is generated per trade's round trip
        
 - `observation space` is normalized via z-score; outliers above +/-10 are clipped.
 - The position management and PnL calculator are handled by the

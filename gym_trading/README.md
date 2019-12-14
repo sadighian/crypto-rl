@@ -7,7 +7,7 @@ POMDP framework from OpenAI.
 
 ## 1. Envs
 Module containing various environment implementations.
-- `price_jump.py` implementation where the agent uses **market orders**
+- `trend_following.py` implementation where the agent uses **market orders**
   to trade crytocurrencies.
 - `market_maker.py` implementation where the agent uses **limit orders**
   to trade cryptocurrencies
