@@ -61,7 +61,8 @@ class Database(object):
         if self.counter % BATCH_SIZE == 0:
             self.collection.write(self.sym, self.data)
             LOGGER.info('{} added {} msgs to Arctic'.format(self.sym, self.counter))
-            self.counter = 0, self.data.clear()
+            self.counter = 0
+            self.data.clear()
 
     def _query_arctic(self, ccy: str, start_date: int, end_date: int) -> pd.DataFrame \
                                                                          or None:
