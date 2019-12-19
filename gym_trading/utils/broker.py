@@ -145,7 +145,7 @@ class Broker(object):
 
         :return: (int) number of positions
         """
-        return self.short_inventory_count + self.long_inventory_count
+        return self.short_inventory_count - self.long_inventory_count
 
     @property
     def total_trade_count(self) -> int:
@@ -166,7 +166,7 @@ class Broker(object):
         """
         long_exposure = self.long_inventory.total_exposure
         short_exposure = self.short_inventory.total_exposure
-        return long_exposure + short_exposure
+        return long_exposure - short_exposure
 
     @property
     def total_inventory_notional(self) -> float:
