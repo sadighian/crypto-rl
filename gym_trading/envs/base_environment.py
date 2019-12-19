@@ -193,20 +193,20 @@ class BaseEnvironment(Env, ABC):
 
         if self.reward_type == 'default':
             reward += reward_types.default(
-                inventory_count=self.broker.total_inventory_count,
+                inventory_count=self.broker.net_inventory_count,
                 midpoint_change=self.midpoint_change,
                 step_penalty=step_penalty) * 100.
 
         elif self.reward_type == 'default_with_fills':
             reward += reward_types.default_with_fills(
-                inventory_count=self.broker.total_inventory_count,
+                inventory_count=self.broker.net_inventory_count,
                 midpoint_change=self.midpoint_change,
                 step_pnl=step_pnl,
                 step_penalty=step_penalty) * 100.
 
         elif self.reward_type == 'asymmetrical':
             reward += reward_types.asymmetrical(
-                inventory_count=self.broker.total_inventory_count,
+                inventory_count=self.broker.net_inventory_count,
                 midpoint_change=self.midpoint_change,
                 half_spread_pct=(self.midpoint / self.best_bid) - 1.,
                 long_filled=long_filled,
@@ -227,7 +227,7 @@ class BaseEnvironment(Env, ABC):
             # current_pnl = self.broker.get_unrealized_pnl(*self._get_nbbo())
             # calculate Differential Sharpe Ratio
             tmp_reward, self.A_t, self.B_t = reward_types.differential_sharpe_ratio(
-                R_t=self.midpoint_change * self.broker.total_inventory_count,
+                R_t=self.midpoint_change * self.broker.net_inventory_count,
                 A_tm1=self.A_t,
                 B_tm1=self.B_t)
             reward += tmp_reward
@@ -243,7 +243,7 @@ class BaseEnvironment(Env, ABC):
 
         else:  # Default implementation
             reward += reward_types.default(
-                inventory_count=self.broker.total_inventory_count,
+                inventory_count=self.broker.net_inventory_count,
                 midpoint_change=self.midpoint_change,
                 step_penalty=step_penalty) * 100.
 

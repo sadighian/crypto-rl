@@ -139,28 +139,27 @@ class Broker(object):
         return self.short_inventory.position_count
 
     @property
-    def total_inventory_count(self) -> int:
-        """
-        Total number of positions held in inventory (short or long).
-
-        :return: (int) number of positions
-        """
-        return self.short_inventory_count - self.long_inventory_count
-
-    @property
     def total_trade_count(self) -> int:
         """
         Total number of long and short trades executed.
 
         :return: (int) number of executed trades
         """
-        return self.long_inventory.total_trade_count + \
-               self.short_inventory.total_trade_count
+        return self.long_inventory.total_trade_count + self.short_inventory.total_trade_count
 
     @property
-    def total_inventory_exposure(self) -> float:
+    def net_inventory_count(self) -> int:
         """
-        Total exposure in notional terms.
+        Net number of positions held in inventory (short or long).
+
+        :return: (int) number of positions
+        """
+        return self.long_inventory_count - self.short_inventory_count
+
+    @property
+    def net_inventory_exposure(self) -> float:
+        """
+        Net exposure in notional terms.
 
         :return:
         """
@@ -175,7 +174,7 @@ class Broker(object):
 
         :return:
         """
-        return self.total_inventory_count * MarketOrder.DEFAULT_SIZE
+        return self.net_inventory_count * MarketOrder.DEFAULT_SIZE
 
     def step_limit_order_pnl(self, bid_price: float, ask_price: float, buy_volume: float,
                              sell_volume: float, step: int) -> (float, bool, bool):
