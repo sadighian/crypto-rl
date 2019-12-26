@@ -36,8 +36,8 @@ class Recorder(Process):
         """
         coinbase, bitfinex = self.symbols
 
-        self.workers[coinbase] = CoinbaseClient(coinbase)
-        self.workers[bitfinex] = BitfinexClient(bitfinex)
+        self.workers[coinbase] = CoinbaseClient(sym=coinbase)
+        self.workers[bitfinex] = BitfinexClient(sym=bitfinex)
 
         self.workers[coinbase].start(), self.workers[bitfinex].start()
 
