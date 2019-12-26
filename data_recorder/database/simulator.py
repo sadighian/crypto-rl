@@ -1,18 +1,19 @@
 import os
 from datetime import datetime as dt
 from datetime import timedelta
-from typing import Type, Union
 
 import numpy as np
 import pandas as pd
+from typing import Type, Union
 from dateutil.parser import parse
 
 from configurations import (
-    DATA_PATH, LOGGER, SNAPSHOT_RATE_IN_MICROSECONDS, TIMEZONE
+    LOGGER, SNAPSHOT_RATE_IN_MICROSECONDS, TIMEZONE, DATA_PATH
 )
 from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from data_recorder.database.database import Database
+
 
 DATA_EXPORTS_PATH = DATA_PATH
 
@@ -178,7 +179,7 @@ class Simulator(object):
         order_book = get_orderbook_from_symbol(symbol=instrument_name)(
             sym=instrument_name)
 
-        start_time = dt.now(TIMEZONE)
+        start_time = dt.now(tz=TIMEZONE)
         LOGGER.info('Starting get_orderbook_snapshot_history() loop with %i ticks for %s'
                     % (loop_length, query['ccy']))
 
@@ -187,7 +188,7 @@ class Simulator(object):
 
             # periodically print number of steps completed
             if count % 250000 == 0:
-                elapsed = (dt.now(TIMEZONE) - start_time).seconds
+                elapsed = (dt.now(tz=TIMEZONE) - start_time).seconds
                 LOGGER.info('...completed %i loops in %i seconds' % (count, elapsed))
 
             # convert to dictionary for processing
@@ -263,7 +264,7 @@ class Simulator(object):
             order_book.new_tick(msg=tick)
             continue
 
-        elapsed = max((dt.now(TIMEZONE) - start_time).seconds, 1)
+        elapsed = max((dt.now(tz=TIMEZONE) - start_time).seconds, 1)
         LOGGER.info('Completed run_simulation() with %i ticks in %i seconds '
                     'at %i ticks/second'
                     % (loop_length, elapsed, loop_length // elapsed))
@@ -300,8 +301,8 @@ class Simulator(object):
             dates = order_book_data['system_time'].dt.date.unique()
             LOGGER.info('dates: {}'.format(dates))
             for date in dates[:]:
-                tmp = order_book_data.loc[order_book_data['system_time'].dt.date
-                                          == date]
+            # for date in dates[1:]:
+                tmp = order_book_data.loc[order_book_data['system_time'].dt.date == date]
                 self.export_to_csv(
                     tmp, filename='{}_{}'.format(query['ccy'][0], date), compress=True)
 

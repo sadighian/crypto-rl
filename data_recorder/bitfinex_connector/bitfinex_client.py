@@ -7,16 +7,14 @@ import json
 
 class BitfinexClient(Client):
 
-    def __init__(self, ccy: str):
+    def __init__(self, **kwargs):
         """
         Constructor for Bitfinex Client.
 
-        Parameters
-        ----------
-        ccy : str
-            Name of instrument or cryptocurrency pair.
+        :param sym: Instrument or cryptocurrency pair name
+        :param db_queue: (optional) queue to connect to the database process
         """
-        super(BitfinexClient, self).__init__(ccy=ccy, exchange='bitfinex')
+        super(BitfinexClient, self).__init__(exchange='bitfinex', **kwargs)
         self.request = json.dumps({
             "event": "subscribe",
             "channel": "book",

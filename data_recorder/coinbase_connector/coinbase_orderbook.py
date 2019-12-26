@@ -1,5 +1,5 @@
 from data_recorder.connector_components.orderbook import OrderBook
-from configurations import LOGGER, COINBASE_BOOK_ENDPOINT
+from configurations import LOGGER, COINBASE_BOOK_ENDPOINT, TIMEZONE
 from datetime import datetime as dt
 from time import time
 import requests
@@ -8,13 +8,14 @@ import numpy as np
 
 class CoinbaseOrderBook(OrderBook):
 
-    def __init__(self, sym: str):
+    def __init__(self, **kwargs):
         """
         Coinbase Order Book constructor.
 
         :param sym: Instrument or cryptocurrency pair name
+        :param db_queue: (optional) queue to connect to the database process
         """
-        super(CoinbaseOrderBook, self).__init__(ccy=sym, exchange='coinbase')
+        super(CoinbaseOrderBook, self).__init__(exchange='coinbase', **kwargs)
         self.sequence = 0
         self.diff = 0
 
@@ -44,7 +45,8 @@ class CoinbaseOrderBook(OrderBook):
         start_time = time()
 
         self.sequence = book['sequence']
-        load_time = str(dt.now(tz=self.db.tz))
+        now = dt.now(tz=TIMEZONE)
+        load_time = str(now)
 
         self.db.new_tick({'type': 'load_book',
                           'product_id': self.sym,
@@ -59,7 +61,7 @@ class CoinbaseOrderBook(OrderBook):
                 'product_id': self.sym,
                 'type': 'preload',
                 'sequence': self.sequence,
-                'time': load_time
+                'time': load_time,
             }
             self.db.new_tick(msg)
             self.bids.insert_order(msg)
@@ -73,7 +75,7 @@ class CoinbaseOrderBook(OrderBook):
                 'product_id': self.sym,
                 'type': 'preload',
                 'sequence': self.sequence,
-                'time': load_time
+                'time': load_time,
             }
             self.db.new_tick(msg)
             self.asks.insert_order(msg)

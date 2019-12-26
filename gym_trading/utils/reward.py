@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def default(inventory_count: int, midpoint_change: float, step_penalty: float) -> float:
+def default(inventory_count: int, midpoint_change: float) -> float:
     """
     Default reward type for environments, which is derived from PnL and order quantity.
 
@@ -12,15 +12,13 @@ def default(inventory_count: int, midpoint_change: float, step_penalty: float) -
 
     :param inventory_count: TRUE if long order is filled within same time step
     :param midpoint_change: percentage change in midpoint price
-    :param step_penalty: any penalties for bad actions
     :return: reward
     """
-    reward = (inventory_count * midpoint_change) + step_penalty
+    reward = inventory_count * midpoint_change
     return reward
 
 
-def default_with_fills(inventory_count: int, midpoint_change: float,
-                       step_pnl: float, step_penalty: float) -> float:
+def default_with_fills(inventory_count: int, midpoint_change: float, step_pnl: float) -> float:
     """
     Same as Default reward type for environments, but includes PnL from closing positions.
 
@@ -32,23 +30,21 @@ def default_with_fills(inventory_count: int, midpoint_change: float,
     :param inventory_count: TRUE if long order is filled within same time step
     :param midpoint_change: percentage change in midpoint price
     :param step_pnl: limit order pnl
-    :param step_penalty: any penalties for bad actions
     :return: reward
     """
-    reward = (inventory_count * midpoint_change) + step_pnl + step_penalty
+    reward = (inventory_count * midpoint_change) + step_pnl
     return reward
 
 
-def realized_pnl(current_pnl: float, last_pnl: float, step_penalty: float) -> float:
+def realized_pnl(current_pnl: float, last_pnl: float) -> float:
     """
     Only provide reward signal when a trade is closed (round-trip).
 
     :param current_pnl: Realized PnL at current time step
     :param last_pnl: Realized PnL at former time step
-    :param step_penalty: any penalties for bad actions
     :return: reward
     """
-    reward = (current_pnl - last_pnl) + step_penalty
+    reward = current_pnl - last_pnl
     return reward
 
 
@@ -95,7 +91,7 @@ def differential_sharpe_ratio(R_t: float, A_tm1: float, B_tm1: float,
 
 def asymmetrical(inventory_count: int, midpoint_change: float, half_spread_pct: float,
                  long_filled: bool, short_filled: bool, step_pnl: float,
-                 dampening: float = 0.06) -> float:
+                 dampening: float = 0.6) -> float:
     """
     Asymmetrical reward type for environments, which is derived from percentage
     changes and notional values.
@@ -143,12 +139,14 @@ def trade_completion(step_pnl: float, market_order_fee: float,
     :return: reward
     """
     reward = 0.0
+
     if step_pnl > market_order_fee * profit_ratio:  # e.g.,  2:1 profit to loss ratio
         reward += 1.0
-    elif step_pnl > 0.0:
+    elif step_pnl > 0.0:  # Not a 2:1 PL ratio, but still a positive return
         reward += step_pnl
-    elif step_pnl < -market_order_fee:  # skew penalty so
+    elif step_pnl < -market_order_fee:  # Loss is more than the transaction fee
         reward -= 1.0
-    else:
-        reward -= step_pnl
+    else:  # Loss is less than the transaction fee and negative
+        reward += step_pnl
+
     return reward

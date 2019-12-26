@@ -77,4 +77,4 @@ if __name__ == '__main__':
     """
     # test_get_tick_history()
     test_get_orderbook_snapshot_history()
-    test_extract_features()
+    #test_extract_features()

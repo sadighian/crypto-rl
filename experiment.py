@@ -62,13 +62,6 @@ parser.add_argument('--training',
                     "If TRUE, then agent starts learning, " +
                     "If FALSE, then agent is tested",
                     type=bool)
-parser.add_argument('--format_3d',
-                    default=False,
-                    help="Expand the observation space by one dimension" +
-                    "to be compatible with CNNs. TRUE for Baselines, and FALSE for "
-                    "Keras-RL." +
-                    "E.g., [window, features] --> [window, features, 1]",
-                    type=bool)
 parser.add_argument('--reward_type',
                     default='default',
                     choices=['default',

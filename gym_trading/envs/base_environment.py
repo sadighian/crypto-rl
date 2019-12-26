@@ -1,6 +1,5 @@
 from configurations import (
-    INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA,
-    MARKET_ORDER_FEE,
+    INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA, MARKET_ORDER_FEE
 )
 from indicators import IndicatorManager, RSI, TnS
 from gym_trading.utils.render_env import TradingGraph
@@ -16,6 +15,7 @@ from collections import deque
 import pandas as pd
 import numpy as np
 
+
 VALID_REWARD_TYPES = [f for f in dir(reward_types) if '__' not in f]
 
 
@@ -27,11 +27,11 @@ class BaseEnvironment(Env, ABC):
                  fitting_file: str,
                  testing_file: str,
                  max_position: int = 10,
-                 window_size: int = 5,
+                 window_size: int = 100,
                  seed: int = 1,
                  action_repeats: int = 5,
                  training: bool = True,
-                 format_3d: bool = True,
+                 format_3d: bool = False,
                  reward_type: str = 'default',
                  transaction_fee: bool = True,
                  ema_alpha: list or float or None = EMA_ALPHA):
@@ -88,6 +88,7 @@ class BaseEnvironment(Env, ABC):
 
         # properties that get reset()
         self.reward = np.array([0.0], dtype=np.float32)
+        self.step_reward = np.array([0.0], dtype=np.float32)
         self.done = False
         self.local_step_number = 0
         self.midpoint = 0.0
@@ -98,6 +99,7 @@ class BaseEnvironment(Env, ABC):
         self.midpoint_change = None
         self.A_t, self.B_t = 0., 0.  # variables for Differential Sharpe Ratio
         self.episode_stats = ExperimentStatistics()
+        self.best_bid = self.best_ask = None
 
         # properties to override in sub-classes
         self.actions = None
@@ -119,7 +121,9 @@ class BaseEnvironment(Env, ABC):
                 include_imbalances=True,
                 as_pandas=True,
             )
-        self.best_bid = self.best_ask = None
+        # derive best bid and offer
+        self._best_bids = self._raw_data['midpoint'] - (self._raw_data['spread'] / 2)
+        self._best_asks = self._raw_data['midpoint'] + (self._raw_data['spread'] / 2)
 
         self.max_steps = self._raw_data.shape[0] - self.action_repeats - 1
 
@@ -135,10 +139,10 @@ class BaseEnvironment(Env, ABC):
 
         # Index of specific data points used to generate the observation space
         features = self._raw_data.columns.tolist()
-        self.best_bid_index = features.index('bid_distance_0')
-        self.best_ask_index = features.index('ask_distance_0')
-        self.notional_bid_index = features.index('bid_notional_0')
-        self.notional_ask_index = features.index('ask_notional_0')
+        self.best_bid_index = features.index('bids_distance_0')
+        self.best_ask_index = features.index('asks_distance_0')
+        self.notional_bid_index = features.index('bids_notional_0')
+        self.notional_ask_index = features.index('asks_notional_0')
         self.buy_trade_index = features.index('buys')
         self.sell_trade_index = features.index('sells')
 
@@ -146,6 +150,8 @@ class BaseEnvironment(Env, ABC):
         self._raw_data = self._raw_data.to_numpy(dtype=np.float32)
         self._normalized_data = self._normalized_data.to_numpy(dtype=np.float32)
         self._midpoint_prices = self._midpoint_prices.to_numpy(dtype=np.float64)
+        self._best_bids = self._best_bids.to_numpy(dtype=np.float32)
+        self._best_asks = self._best_asks.to_numpy(dtype=np.float32)
 
         # rendering class
         self._render = TradingGraph(sym=self.symbol)
@@ -194,15 +200,15 @@ class BaseEnvironment(Env, ABC):
         if self.reward_type == 'default':
             reward += reward_types.default(
                 inventory_count=self.broker.net_inventory_count,
-                midpoint_change=self.midpoint_change,
-                step_penalty=step_penalty) * 100.
+                midpoint_change=self.midpoint_change
+            ) * 100. + step_penalty
 
         elif self.reward_type == 'default_with_fills':
             reward += reward_types.default_with_fills(
                 inventory_count=self.broker.net_inventory_count,
                 midpoint_change=self.midpoint_change,
-                step_pnl=step_pnl,
-                step_penalty=step_penalty) * 100.
+                step_pnl=step_pnl
+            ) * 100. + step_penalty
 
         elif self.reward_type == 'asymmetrical':
             reward += reward_types.asymmetrical(
@@ -212,40 +218,37 @@ class BaseEnvironment(Env, ABC):
                 long_filled=long_filled,
                 short_filled=short_filled,
                 step_pnl=step_pnl,
-                dampening=0.3) * 100.
+                dampening=0.6
+            ) * 100. + step_penalty
 
         elif self.reward_type == 'realized_pnl':
             current_pnl = self.broker.realized_pnl
             reward += reward_types.realized_pnl(
                 current_pnl=current_pnl,
-                last_pnl=self.last_pnl,
-                step_penalty=step_penalty) * 100.
+                last_pnl=self.last_pnl
+            ) * 100. + step_penalty
             self.last_pnl = current_pnl
 
         elif self.reward_type == 'differential_sharpe_ratio':
-            # current time step PnL
-            # current_pnl = self.broker.get_unrealized_pnl(*self._get_nbbo())
-            # calculate Differential Sharpe Ratio
             tmp_reward, self.A_t, self.B_t = reward_types.differential_sharpe_ratio(
                 R_t=self.midpoint_change * self.broker.net_inventory_count,
                 A_tm1=self.A_t,
-                B_tm1=self.B_t)
-            reward += tmp_reward
-
-            # updated last_pnl for the proceeding step
-            # self.last_pnl = current_pnl
+                B_tm1=self.B_t
+            )
+            reward += tmp_reward + step_penalty
 
         elif self.reward_type == 'trade_completion':
             reward += reward_types.trade_completion(
                 step_pnl=step_pnl,
                 market_order_fee=MARKET_ORDER_FEE,
-                profit_ratio=2.)
+                profit_ratio=2.
+            ) + step_penalty
 
         else:  # Default implementation
             reward += reward_types.default(
                 inventory_count=self.broker.net_inventory_count,
-                midpoint_change=self.midpoint_change,
-                step_penalty=step_penalty) * 100.
+                midpoint_change=self.midpoint_change
+            ) * 100. + step_penalty
 
         return reward
 
@@ -262,12 +265,11 @@ class BaseEnvironment(Env, ABC):
                 self.reset()
                 return self.observation, self.reward, self.done
 
+            # reset the reward if there ARE action repeats
             if current_step == 0:
-                # reset the reward on the first step
                 self.reward = 0.
                 step_action = action
             else:
-                # accumulate rewards on steps proceeding the first
                 step_action = 0
 
             # Get current step's midpoint and change in midpoint price percentage
@@ -304,30 +306,26 @@ class BaseEnvironment(Env, ABC):
 
             # Get PnL from any filled MARKET orders AND action penalties for invalid
             # actions made by the agent for future discouragement
-            action_penalty_reward, market_pnl = self.map_action_to_broker(
-                action=step_action)
-            # combine flatten_order action PnL with filled limit orders to derive the
-            # total PnL generated in the current step
+            action_penalty_reward, market_pnl = self.map_action_to_broker(action=step_action)
             step_pnl = limit_pnl + market_pnl
-            self.reward += self._get_step_reward(step_pnl=step_pnl,
-                                                 step_penalty=action_penalty_reward,
-                                                 long_filled=long_filled,
-                                                 short_filled=short_filled)
+            self.step_reward = self._get_step_reward(step_pnl=step_pnl,
+                                                     step_penalty=action_penalty_reward,
+                                                     long_filled=long_filled,
+                                                     short_filled=short_filled)
 
-            step_observation = self._get_step_observation(action=action)
-            self.viz.add_observation(obs=step_observation)
+            # Add current step's observation to the data buffer
+            step_observation = self._get_step_observation(step_action=step_action)
             self.data_buffer.append(step_observation)
 
-            # store for visualization AFTER the episode
+            # Store for visualization AFTER the episode
+            self.viz.add_observation(obs=step_observation)
             self.viz.add(self.midpoint,  # arguments map to the column names in _init_
                          int(long_filled),
                          int(short_filled),
-                         self.broker.long_inventory_count -
-                         self.broker.short_inventory_count,
-                         # normalize PnL by the max num of positions, thereby assuming
-                         # 1:1 leverage. Also, multiply by 100 for readability
+                         self.broker.net_inventory_count,
                          (self.broker.realized_pnl * 100) / self.max_position)
 
+            self.reward += self.step_reward
             self.local_step_number += 1
             self.last_midpoint = self.midpoint
 
@@ -336,8 +334,8 @@ class BaseEnvironment(Env, ABC):
         if self.local_step_number > self.max_steps:
             self.done = True
 
-            had_long_positions = self.broker.long_inventory_count > 0
-            had_short_positions = self.broker.short_inventory_count > 0
+            had_long_positions = 1 if self.broker.long_inventory_count > 0 else 0
+            had_short_positions = 1 if self.broker.short_inventory_count > 0 else 0
 
             flatten_pnl = self.broker.flatten_inventory(bid_price=self.best_bid,
                                                         ask_price=self.best_ask)
@@ -346,14 +344,11 @@ class BaseEnvironment(Env, ABC):
                                                  long_filled=False,
                                                  short_filled=False)
 
-            # store for visualization AFTER the episode
+            # store for visualization after the episode
             self.viz.add(self.midpoint,  # arguments map to the column names in _init_
-                         int(had_long_positions),
-                         int(had_short_positions),
-                         self.broker.long_inventory_count -
-                         self.broker.short_inventory_count,
-                         # normalize PnL by the max num of positions, thereby assuming
-                         # 1:1 leverage. Also, multiply by 100 for readability
+                         had_long_positions,
+                         had_short_positions,
+                         self.broker.net_inventory_count,
                          (self.broker.realized_pnl * 100) / self.max_position)
 
         # save rewards to derive cumulative reward
@@ -388,7 +383,7 @@ class BaseEnvironment(Env, ABC):
             print('\n'.join(['{}\t=\t{}'.format(k, v) for k, v in
                              self.broker.get_statistics().items()]))
             print('First step:\t{}'.format(self.local_step_number))
-            print(('-' * 70))
+            print(('=' * 75))
         else:
             print('Resetting environment #{} on episode #{}.'.format(
                 self._seed, self.episode_stats.number_of_episodes))
@@ -416,7 +411,8 @@ class BaseEnvironment(Env, ABC):
             self.tns.step(buys=step_buy_volume, sells=step_sell_volume)
             self.rsi.step(price=self.midpoint)
 
-            step_observation = self._get_step_observation(action=0)
+            # Add current step's observation to the data buffer
+            step_observation = self._get_step_observation(step_action=0)
             self.data_buffer.append(step_observation)
 
             self.local_step_number += 1
@@ -461,6 +457,25 @@ class BaseEnvironment(Env, ABC):
         self._seed = seed
         return [seed]
 
+    def _get_nbbo(self) -> (float, float):
+        """
+        Get best bid and offer.
+
+        :return: (tuple) best bid and offer
+        """
+        best_bid = self._best_bids[self.local_step_number]
+        best_ask = self._best_asks[self.local_step_number]
+        return best_bid, best_ask
+
+    def _get_book_data(self, index: int = 0) -> np.ndarray or float:
+        """
+        Return step 'n' of order book snapshot data.
+
+        :param index: (int) step 'n' to look up in order book snapshot history
+        :return: (np.array) order book snapshot vector
+        """
+        return self._raw_data[self.local_step_number][index]
+
     @staticmethod
     def _process_data(observation: np.ndarray) -> np.ndarray:
         """
@@ -490,45 +505,24 @@ class BaseEnvironment(Env, ABC):
                          *self.rsi.get_value()),
                         dtype=np.float32).reshape(1, -1)
 
-    def _get_nbbo(self) -> (float, float):
-        """
-        Get best bid and offer.
-
-        :return: (tuple) best bid and offer
-        """
-        best_bid = round(
-            self.midpoint * (self._get_book_data(index=self.best_bid_index) + 1.), 2)
-        best_ask = round(
-            self.midpoint * (self._get_book_data(index=self.best_ask_index) + 1.), 2)
-        return best_bid, best_ask
-
-    def _get_book_data(self, index: int = 0) -> float or np.ndarray:
-        """
-        Return step 'n' of order book snapshot data.
-
-        :param index: step 'n' to look up in order book snapshot history
-        :return: order book snapshot vector
-        """
-        return self._raw_data[self.local_step_number][index]
-
-    def _get_step_observation(self, action: int = 0) -> np.ndarray:
+    def _get_step_observation(self, step_action: int = 0) -> np.ndarray:
         """
         Current step observation, NOT including historical data.
 
-        :param action: (int) current step action
+        :param step_action: (int) current step action
         :return: (np.array) Current step observation
         """
         step_position_features = self._create_position_features()
-        step_action_features = self._create_action_features(action=action)
+        step_action_features = self._create_action_features(action=step_action)
         step_indicator_features = self._create_indicator_features()
-        return self._process_data(np.concatenate((
-            self._normalized_data[self.local_step_number],
-            step_indicator_features,
-            step_position_features,
-            step_action_features,
-            self.reward),
-            axis=None)
-        )
+        step_environment_observation = self._normalized_data[self.local_step_number]
+        observation = np.concatenate((step_environment_observation,
+                                      step_indicator_features,
+                                      step_position_features,
+                                      step_action_features,
+                                      self.step_reward),
+                                     axis=None)
+        return self._process_data(observation)
 
     def _get_observation(self) -> np.ndarray:
         """
@@ -554,18 +548,16 @@ class BaseEnvironment(Env, ABC):
         """
         return self.viz.to_df()
 
-    def plot_trade_history(self) -> None:
+    def plot_trade_history(self, save_filename: str or None = None) -> None:
         """
         Plot history from back-test with trade executions, total inventory, and PnL.
 
-        :return:
+        :param save_filename: filename for saving the image
         """
-        self.viz.plot()
+        self.viz.plot(save_filename=save_filename)
 
     def plot_observation_history(self) -> None:
         """
         Plot observation space as an image.
-
-        :return:
         """
         return self.viz.plot_obs()

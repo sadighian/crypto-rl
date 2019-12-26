@@ -37,18 +37,18 @@ class Book(ABC):
             message = 'warming up'
         elif self.side == 'asks':
             ask_price, ask_price_level = self.get_ask()
-            message = '{:>8,.1f} x {:>11,.0f} | {:>11,.0f} | {:>11,.0f}'.format(
+            message = '{:>8,.2f} x {:>9,.0f} | {:>9,.0f}'.format(
                 ask_price,
                 # ask_price_level.quantity,
                 ask_price_level.notional,
-                ask_price_level.limit_notional - ask_price_level.cancel_notional,
-                ask_price_level.market_notional
+                ask_price_level.limit_notional - ask_price_level.cancel_notional +
+                ask_price_level.market_notional,
             )
         else:
             bid_price, bid_price_level = self.get_bid()
-            message = '{:>11,.0f} | {:>11,.0f} | {:>11,.0f} x {:>8,.1f}'.format(
+            message = '{:>9,.0f} | {:>9,.0f} x {:>8,.2f}'.format(
+                bid_price_level.limit_notional - bid_price_level.cancel_notional +
                 bid_price_level.market_notional,
-                bid_price_level.limit_notional - bid_price_level.cancel_notional,
                 # bid_price_level.quantity,
                 bid_price_level.notional,
                 bid_price

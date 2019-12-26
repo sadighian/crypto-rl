@@ -11,7 +11,7 @@ class IndicatorTestCases(unittest.TestCase):
     @print_time
     def test_rsi_up(self):
         indicator = RSI(window=10)
-        prices = np.linspace(1, 5, 5)
+        prices = np.linspace(1, 5, 50)
         indicator.step(price=0)
         for price in prices:
             indicator.step(price=price)
@@ -23,7 +23,7 @@ class IndicatorTestCases(unittest.TestCase):
     @print_time
     def test_rsi_down(self):
         indicator = RSI(window=10)
-        prices = np.linspace(1, 5, 5)[::-1]
+        prices = np.linspace(1, 5, 50)[::-1]
         indicator.step(price=0)
         for price in prices:
             indicator.step(price=price)

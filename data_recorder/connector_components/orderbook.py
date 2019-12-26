@@ -2,36 +2,29 @@ from data_recorder.coinbase_connector.coinbase_book import CoinbaseBook
 from data_recorder.bitfinex_connector.bitfinex_book import BitfinexBook
 from data_recorder.connector_components.trade_tracker import TradeTracker
 from data_recorder.database.database import Database
-from configurations import INCLUDE_ORDERFLOW, LOGGER, MAX_BOOK_ROWS
+from configurations import INCLUDE_ORDERFLOW, LOGGER, MAX_BOOK_ROWS, TIMEZONE
 from abc import ABC, abstractmethod
-from typing import Type, Union
 import numpy as np
+from datetime import datetime as dt
 
 
-def get_orderbook(name: str) -> Type[Union[CoinbaseBook, BitfinexBook]]:
-    """
-    Helper function to get the order book for a given exchange name.
-
-    :param name: name of the exchange
-    :return:
-    """
-    return dict(coinbase=CoinbaseBook, bitfinex=BitfinexBook)[name]
+BOOK_BY_EXCHANGE = dict(coinbase=CoinbaseBook, bitfinex=BitfinexBook)
 
 
 class OrderBook(ABC):
 
-    def __init__(self, ccy: str, exchange: str):
+    def __init__(self, sym: str, exchange: str):
         """
         OrderBook constructor.
 
-        :param ccy: currency symbol
-        :param exchange: 'coinbase' or 'bitfinex'
+        :param sym: instrument name
+        :param exchange: 'coinbase' or 'bitfinex' or 'bitmex'
         """
-        self.sym = ccy
-        self.db = Database(sym=ccy, exchange=exchange)
+        self.sym = sym
+        self.db = Database(sym=sym, exchange=exchange)
         self.db.init_db_connection()
-        self.bids = get_orderbook(name=exchange)(sym=ccy, side='bids')
-        self.asks = get_orderbook(name=exchange)(sym=ccy, side='asks')
+        self.bids = BOOK_BY_EXCHANGE[exchange](sym=sym, side='bids')
+        self.asks = BOOK_BY_EXCHANGE[exchange](sym=sym, side='asks')
         self.exchange = exchange
         self.midpoint = float()
         self.spread = float()
@@ -40,7 +33,8 @@ class OrderBook(ABC):
         self.last_tick_time = None
 
     def __str__(self):
-        return '%s  ||  %s' % (self.bids, self.asks)
+        return '{:>8,.0f} <> {}  ||  {} <> {:>8,.0f}'.format(
+            self.sell_tracker.notional, self.bids, self.asks, self.buy_tracker.notional)
 
     @abstractmethod
     def new_tick(self, msg: dict) -> bool:
@@ -97,9 +91,8 @@ class OrderBook(ABC):
         # reset trackers after each LOB render
         self.clear_trade_trackers()
 
-        return np.hstack((self.midpoint, self.spread,
-                          buy_trades, sell_trades,
-                          *bid_data, *ask_data))
+        return np.hstack((self.midpoint, self.spread, buy_trades, sell_trades,
+                         *bid_data, *ask_data))
 
     @staticmethod
     def render_lob_feature_names(include_orderflow: bool = INCLUDE_ORDERFLOW) -> list:
@@ -120,7 +113,7 @@ class OrderBook(ABC):
         if include_orderflow:
             feature_types += ['cancel_notional', 'limit_notional', 'market_notional']
 
-        for side in ['bid', 'ask']:
+        for side in ['bids', 'asks']:
             for feature in feature_types:
                 for row in range(MAX_BOOK_ROWS):
                     feature_names.append("{}_{}_{}".format(side, feature, row))

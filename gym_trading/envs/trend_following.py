@@ -1,4 +1,4 @@
-from configurations import ENCOURAGEMENT
+from configurations import ENCOURAGEMENT, MARKET_ORDER_FEE
 from gym_trading.envs.base_environment import BaseEnvironment
 from gym_trading.utils.order import MarketOrder
 from gym import spaces
@@ -41,49 +41,58 @@ class TrendFollowing(BaseEnvironment):
         :param action: (int) current step's action
         :return: (float) reward
         """
-        reward = pnl = 0.0
+        action_penalty_reward = pnl = 0.0
 
         if action == 0:  # do nothing
-            reward += ENCOURAGEMENT
+            action_penalty_reward += ENCOURAGEMENT
 
         elif action == 1:  # buy
+            # Deduct transaction costs
+            if self.broker.transaction_fee:
+                pnl -= MARKET_ORDER_FEE
+
             if self.broker.short_inventory_count > 0:
-                order = MarketOrder(ccy=self.symbol, side='short', price=self.midpoint,
+                # Net out existing position
+                order = MarketOrder(ccy=self.symbol, side='short', price=self.best_ask,
                                     step=self.local_step_number)
                 pnl += self.broker.remove(order=order)
 
             elif self.broker.long_inventory_count >= 0:
-                order = MarketOrder(ccy=self.symbol, side='long', price=self.midpoint,
+                order = MarketOrder(ccy=self.symbol, side='long', price=self.best_ask,
                                     step=self.local_step_number)
                 if self.broker.add(order=order) is False:
-                    reward -= ENCOURAGEMENT
+                    action_penalty_reward -= ENCOURAGEMENT
 
             else:
                 raise ValueError(('gym_trading.get_reward() Error for action #{} - '
                                   'unable to place an order with broker').format(action))
 
         elif action == 2:  # sell
+            # Deduct transaction costs
+            if self.broker.transaction_fee:
+                pnl -= MARKET_ORDER_FEE
+
             if self.broker.long_inventory_count > 0:
-                order = MarketOrder(ccy=self.symbol, side='long', price=self.midpoint,
+                # Net out existing position
+                order = MarketOrder(ccy=self.symbol, side='long', price=self.best_bid,
                                     step=self.local_step_number)
                 pnl += self.broker.remove(order=order)
 
             elif self.broker.short_inventory_count >= 0:
-                order = MarketOrder(ccy=self.symbol, side='short', price=self.midpoint,
+                order = MarketOrder(ccy=self.symbol, side='short', price=self.best_bid,
                                     step=self.local_step_number)
                 if self.broker.add(order=order) is False:
-                    reward -= ENCOURAGEMENT
+                    action_penalty_reward -= ENCOURAGEMENT
 
             else:
-                raise ValueError(('gym_trading.get_reward() '
-                                 'Error for action #{} - '
+                raise ValueError(('gym_trading.get_reward() Error for action #{} - '
                                   'unable to place an order with broker').format(action))
 
         else:
             raise ValueError(('Unknown action to take in get_reward(): '
                               'action={} | midpoint={}').format(action, self.midpoint))
 
-        return reward, pnl
+        return action_penalty_reward, pnl
 
     def _create_position_features(self) -> np.ndarray:
         """
@@ -91,9 +100,8 @@ class TrendFollowing(BaseEnvironment):
 
         :return: (np.array) normalized position features
         """
-        return np.array((self.broker.long_inventory.position_count / self.max_position,
-                         self.broker.short_inventory.position_count / self.max_position,
-                         self.broker.realized_pnl * self.broker.reward_scale,
+        return np.array((self.broker.net_inventory_count / self.max_position,
+                         self.broker.realized_pnl * self.broker.pct_scale,
                          self.broker.get_unrealized_pnl(self.best_bid, self.best_ask)
-                        * self.broker.reward_scale),
+                         * self.broker.pct_scale),
                         dtype=np.float32)

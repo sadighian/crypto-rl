@@ -16,42 +16,42 @@ class Indicator(ABC):
         self.window = window
         self.all_history_queue = deque(maxlen=self.window + 1)  # add one so we can pop it off
         self.ema = load_ema(alpha=alpha)
-        self._value = None
+        self._value = 0.
 
     def __str__(self):
-        return 'Indicator.base() [window={}, all_history_queue={}]'.format(
-            self.window, self.all_history_queue)
+        return 'Indicator.base() [window={}, all_history_queue={}, ema={}]'.format(
+            self.window, self.all_history_queue, self.ema)
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         """
         Clear values in indicator cache.
 
         :return: (void)
         """
-        self._value = None
+        self._value = 0.
         self.all_history_queue.clear()
 
     @abstractmethod
-    def step(self, **kwargs):
+    def step(self, **kwargs) -> None:
         """
         Update indicator with steps from the environment.
 
         :param kwargs: data values passed to indicators
         :return: (void)
         """
-        if isinstance(self.ema, ExponentialMovingAverage):
+        if self.ema is None:
+            pass
+        elif isinstance(self.ema, ExponentialMovingAverage):
             self.ema.step(**kwargs)
         elif isinstance(self.ema, list):
             for ema in self.ema:
                 ema.step(**kwargs)
-        elif self.ema is None:
-            pass
         else:
             pass
 
     @abstractmethod
-    def calculate(self, *args, **kwargs):
+    def calculate(self, *args, **kwargs) -> float:
         """
         Calculate indicator value.
 
@@ -66,12 +66,12 @@ class Indicator(ABC):
 
         :return: (scalar float)
         """
-        if isinstance(self.ema, ExponentialMovingAverage):
+        if self.ema is None:
+            return self._value
+        elif isinstance(self.ema, ExponentialMovingAverage):
             return self.ema.value
         elif isinstance(self.ema, list):
             return [ema.value for ema in self.ema]
-        elif self.ema is None:
-            return self._value
         else:
             return 0.
 
@@ -85,7 +85,14 @@ class Indicator(ABC):
         return self._value
 
     @staticmethod
-    def _divide(nom, denom) -> float:
+    def safe_divide(nom: float, denom: float) -> float:
+        """
+        Safely perform divisions without throwing an 'divide by zero' exception.
+
+        :param nom: nominator
+        :param denom: denominator
+        :return: value
+        """
         if denom == 0.:
             return 0.
         elif nom == 0.:
@@ -100,12 +107,13 @@ class IndicatorManager(object):
         """
         Wrapper class to manage multiple indicators at the same time
         (e.g., window size stacking)
+
         # :param smooth_values: if TRUE, values returned are EMA smoothed, otherwise raw
         #     values indicator values
         """
         self.indicators = []
 
-    def add(self, name_and_indicator) -> None:
+    def add(self, name_and_indicator: tuple) -> None:
         """
         Add indicator to the list to be managed.
 

@@ -9,7 +9,7 @@ from configurations import LOGGER
 
 
 class Broker(object):
-    reward_scale = 100.  # use as the denominator to scale PnL
+    pct_scale = 100.  # use as the denominator to scale PnL
 
     def __init__(self,
                  max_position: int = 1,

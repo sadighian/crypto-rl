@@ -3,29 +3,35 @@ from indicators.indicator import Indicator
 
 
 class RSI(Indicator):
+    """
+    Price change momentum indicator. Note: Scaled to [-1, 1] and not [0, 100].
+    """
 
     def __init__(self, **kwargs):
-        """
-        Price change momentum indicator. Note: Scaled to [-1, 1] and not [0, 100].
-
-        :param window: number of lags
-        :param alpha: ema alpha
-        """
         super(RSI, self).__init__(**kwargs)
-        self.last_price = np.nan
+        self.last_price = None
         self.ups = self.downs = 0.
 
     def __str__(self):
-        return "***\nRSI: last_price={} | ups={} | downs={}\n***".format(
+        return "RSI: [last_price={} | ups={} | downs={}]".format(
                    self.last_price, self.ups, self.downs)
 
-    def reset(self):
-        self.last_price = np.nan
+    def reset(self) -> None:
+        """
+
+        :return:
+        """
+        self.last_price = None
         self.ups = self.downs = 0.
         super(RSI, self).reset()
 
-    def step(self, price: float):
-        if np.isnan(self.last_price):
+    def step(self, price: float) -> None:
+        """
+
+        :param price:
+        :return:
+        """
+        if self.last_price is None:
             self.last_price = price
             return
 
@@ -38,7 +44,7 @@ class RSI(Indicator):
         elif self.last_price == 0.:
             price_pct_change = 0.
         else:
-            price_pct_change = round((price - self.last_price) / self.last_price, 6)
+            price_pct_change = round((price / self.last_price) - 1., 6)
 
         if np.isinf(price_pct_change):
             price_pct_change = 0.
@@ -47,25 +53,34 @@ class RSI(Indicator):
 
         if price_pct_change > 0.:
             self.ups += price_pct_change
-        elif price_pct_change < 0.:
+        else:
             self.downs += price_pct_change
 
         self.all_history_queue.append(price_pct_change)
 
-        if len(self.all_history_queue) >= self.window:
-            price_to_remove = self.all_history_queue.popleft()
+        # only pop off items if queue is done warming up
+        if len(self.all_history_queue) <= self.window:
+            return
 
-            if price_to_remove > 0.:
-                self.ups -= price_to_remove
-            elif price_to_remove < 0.:
-                self.downs -= price_to_remove
+        price_to_remove = self.all_history_queue.popleft()
+
+        if price_to_remove > 0.:
+            self.ups -= price_to_remove
+        else:
+            self.downs -= price_to_remove
 
         # Save current time step value for EMA, in case smoothing is enabled
         self._value = self.calculate()
         super(RSI, self).step(value=self._value)
 
     def calculate(self) -> float:
-        abs_downs = abs(self.downs)
-        nom = self.ups - abs_downs
-        denom = self.ups + abs_downs
-        return self._divide(nom=nom, denom=denom)
+        """
+        Calculate price momentum imbalance.
+
+        :return: imbalance in range of [-1, 1]
+        """
+        mean_downs = abs(self.safe_divide(nom=self.downs, denom=self.window))
+        mean_ups = self.safe_divide(nom=self.ups, denom=self.window)
+        gain = mean_ups - mean_downs
+        loss = mean_ups + mean_downs
+        return self.safe_divide(nom=gain, denom=loss)

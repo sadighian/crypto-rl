@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     print('Initializing...%s' % symbols)
     for sym in symbols:
-        p[sym] = CoinbaseClient(sym)
+        p[sym] = CoinbaseClient(sym=sym)
         p[sym].start()
 
     tasks = asyncio.gather(*[(p[sym].subscribe()) for sym in symbols])

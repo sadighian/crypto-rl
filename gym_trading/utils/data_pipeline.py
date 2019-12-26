@@ -90,35 +90,32 @@ class DataPipeline(object):
         :param data: snapshot data imported from `self.import_csv`
         :return: LOB data with OFI
         """
-        # derive column names for filtering OFI data
+        # Derive column names for filtering OFI data
         event_columns = dict()
-        event_types = ['market_notional', 'limit_notional', 'cancel_notional']
+        for event_type in ['market_notional', 'limit_notional', 'cancel_notional']:
+            event_columns[event_type] = [col for col in data.columns.tolist() if event_type in col]
 
-        for event_type in event_types:
-            event_columns[event_type] = [col for col in data.columns.tolist() if
-                                         event_type in col]
-
-        # derive the number of rows that have been rendered in the LOB
+        # Derive the number of rows that have been rendered in the LOB
         number_of_levels = len(event_columns['market_notional']) // 2
 
-        # calculate OFI = LIMIT - MARKET - CANCEL
+        # Calculate OFI = LIMIT - MARKET - CANCEL
         ofi_data = data[event_columns['limit_notional']].values - \
                    data[event_columns['market_notional']].values - \
                    data[event_columns['cancel_notional']].values
 
-        # convert numpy to DataFrame
+        # Convert numpy to DataFrame
         ofi_data = pd.DataFrame(data=ofi_data,
                                 columns=['ofi_bid_{}'.format(i)
-                                         for i in reversed(range(number_of_levels))] +
+                                         for i in range(number_of_levels)] +
                                         ['ofi_ask_{}'.format(i)
                                          for i in range(number_of_levels)],
                                 index=data.index)
 
-        # merge with original data set
+        # Merge with original data set
         data = pd.concat((data, ofi_data), axis=1)
 
-        # drop MARKET, LIMIT, and CANCEL columns from original data set
-        for event_type in event_types:
+        # Drop MARKET, LIMIT, and CANCEL columns from original data set
+        for event_type in {'market_notional', 'limit_notional', 'cancel_notional'}:
             data = data.drop(event_columns[event_type], axis=1)
 
         return data
@@ -146,27 +143,27 @@ class DataPipeline(object):
         :param data: raw/un-normalized LOB snapshot data
         :return: (pd.DataFrame) order imbalances at N-levels, the mean & std imbalance
         """
-        # create the column names for making a data frame (also used for debugging)
+        # Create the column names for making a data frame (also used for debugging)
         bid_notional_columns, ask_notional_columns, imbalance_columns = [], [], []
         for i in range(MAX_BOOK_ROWS):
-            bid_notional_columns.append('bid_notional_{}'.format(i))
-            ask_notional_columns.append('ask_notional_{}'.format(i))
+            bid_notional_columns.append('bids_notional_{}'.format(i))
+            ask_notional_columns.append('asks_notional_{}'.format(i))
             imbalance_columns.append('notional_imbalance_{}'.format(i))
-        # acquire bid and ask notional data
-        # reverse the bids to ascending order, so that they align with the asks
+        # Acquire bid and ask notional data
+        # Reverse the bids to ascending order, so that they align with the asks
         bid_notional = data[bid_notional_columns].to_numpy(dtype=np.float32)  # [::-1]
         ask_notional = data[ask_notional_columns].to_numpy(dtype=np.float32)
 
-        # transform to cumulative imbalances
+        # Transform to cumulative imbalances
         bid_notional = np.cumsum(bid_notional, axis=1)
         ask_notional = np.cumsum(ask_notional, axis=1)
 
-        # calculate the order imbalance and add 1e-5 to prevent division errors
+        # Calculate the order imbalance
         imbalances = ((bid_notional - ask_notional) + 1e-5) / \
                      ((bid_notional + ask_notional) + 1e-5)
         imbalances = pd.DataFrame(imbalances, columns=imbalance_columns,
                                   index=data.index).fillna(0.)
-        # add meta data to features (mean)
+        # Add meta data to features (mean)
         imbalances['notional_imbalance_mean'] = imbalances[imbalance_columns].mean(axis=1)
         return imbalances
 
@@ -185,38 +182,47 @@ class DataPipeline(object):
         :param as_pandas: if TRUE, return data as DataFrame, otherwise np.array
         :return: (pd.DataFrame or np.array) scaled environment data
         """
-        # import data used to fit scaler
+        # Import data used to fit scaler
         fitting_data_filepath = os.path.join(DATA_PATH, fitting_file)
         fitting_data = self.import_csv(filename=fitting_data_filepath)
-        # derive OFI statistics
+
+        # Derive OFI statistics
         fitting_data = self._decompose_order_flow_information(data=fitting_data)
-        # take the log difference of midpoint prices
+        # Take the log difference of midpoint prices
         fitting_data = self._midpoint_diff(data=fitting_data)  # normalize midpoint
-        # if applicable, smooth data set with EMA(s)
+        # If applicable, smooth data set with EMA(s)
         fitting_data = apply_ema_all_data(ema=self.ema, data=fitting_data)
-        # fit the scaler
+        # Fit the scaler
         self.fit_scaler(fitting_data)
-        # delete data from memory
+        # Delete data from memory
         del fitting_data
 
-        # import data to normalize and use in environment
+        # Import data to normalize and use in environment
         data_used_in_environment = os.path.join(DATA_PATH, testing_file)
         data = self.import_csv(filename=data_used_in_environment)
 
-        # derive OFI statistics
-        data = self._decompose_order_flow_information(data=data)
-
+        # Raw midpoint prices for back-testing environment
         midpoint_prices = data['midpoint']
+
+        # Copy of raw LOB snapshots for normalization
         normalized_data = self._midpoint_diff(data.copy(deep=True))
+
+        # Preserve the raw data and drop unnecessary columns
+        data = data.drop([col for col in data.columns.tolist()
+                          if col in ['market', 'limit', 'cancel']], axis=1)
+
+        # Derive OFI statistics
+        normalized_data = self._decompose_order_flow_information(data=normalized_data)
+
         normalized_data = apply_ema_all_data(ema=self.ema, data=normalized_data)
 
-        # get column names for putting the numpy values into a data frame
+        # Get column names for putting the numpy values into a data frame
         column_names = normalized_data.columns.tolist()
-        # scale data with fitting data set
+        # Scale data with fitting data set
         normalized_data = self.scale_data(normalized_data)
-        # remove outliers
+        # Remove outliers
         normalized_data = np.clip(normalized_data, -10., 10.)
-        # put data in a data frame
+        # Put data in a data frame
         normalized_data = pd.DataFrame(normalized_data,
                                        columns=column_names,
                                        index=midpoint_prices.index)
@@ -226,8 +232,8 @@ class DataPipeline(object):
             # Note: since order imbalance data is scaled [-1, 1], we do not apply
             # z-score to the imbalance data
             imbalance_data = self._get_notional_imbalance(data=data)
-            imbalance_data = apply_ema_all_data(ema=reset_ema(self.ema),
-                                                data=imbalance_data)
+            self.ema = reset_ema(self.ema)
+            imbalance_data = apply_ema_all_data(ema=self.ema, data=imbalance_data)
             normalized_data = pd.concat((normalized_data, imbalance_data), axis=1)
 
         if as_pandas is False:

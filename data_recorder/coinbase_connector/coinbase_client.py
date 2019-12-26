@@ -6,16 +6,11 @@ import json
 
 class CoinbaseClient(Client):
 
-    def __init__(self, ccy: str):
+    def __init__(self, **kwargs):
         """
         Constructor for Coinbase Client.
-
-        Parameters
-        ----------
-        ccy : str
-            Name of instrument or cryptocurrency pair.
         """
-        super(CoinbaseClient, self).__init__(ccy=ccy, exchange='coinbase')
+        super(CoinbaseClient, self).__init__(exchange='coinbase', **kwargs)
         self.request = json.dumps(dict(type='subscribe',
                                        product_ids=[self.sym],
                                        channels=['full']))

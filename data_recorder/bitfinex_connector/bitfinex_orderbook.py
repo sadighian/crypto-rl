@@ -6,8 +6,8 @@ from configurations import LOGGER
 
 class BitfinexOrderBook(OrderBook):
 
-    def __init__(self, sym: str):
-        super(BitfinexOrderBook, self).__init__(sym, 'bitfinex')
+    def __init__(self, **kwargs):
+        super(BitfinexOrderBook, self).__init__(exchange='bitfinex', **kwargs)
         self.channel_id = {'book': int(0), 'trades': int(0)}
 
     def new_tick(self, msg: dict):
@@ -93,14 +93,12 @@ class BitfinexOrderBook(OrderBook):
         if msg[1] == 'hb':
             # render_book('heart beat %s' % msg)
             return True
-
         # order book message (initial snapshot)
         elif np.shape(msg[1])[0] > 3:
             LOGGER.info('%s loading book...' % self.sym)
             self.clear_book()
             self._load_book(msg)
             return True
-
         else:
             # else, the incoming message is a order update
             order = {
@@ -112,32 +110,27 @@ class BitfinexOrderBook(OrderBook):
                 "type": 'update'
             }
 
-            self.db.new_tick(order)
-
             # order should be removed from the book
             if order['price'] == 0.:
                 if order['side'] == 'buy':
                     self.bids.remove_order(order)
                 elif order['side'] == 'sell':
                     self.asks.remove_order(order)
-
             # order is a new order or size update for bids
             elif order['side'] == 'buy':
                 if order['order_id'] in self.bids.order_map:
                     self.bids.change(order)
                 else:
                     self.bids.insert_order(order)
-
             # order is a new order or size update for asks
             elif order['side'] == 'sell':
                 if order['order_id'] in self.asks.order_map:
                     self.asks.change(order)
                 else:
                     self.asks.insert_order(order)
-
             # unhandled msg
             else:
-                LOGGER.warn('\nUnhandled list msg %s' % msg)
+                raise ValueError('\nUnhandled list msg %s' % msg)
 
             return True
 
@@ -145,9 +138,9 @@ class BitfinexOrderBook(OrderBook):
         """
         Internal method to process FULL BOOK market data
         :param order: incoming tick
-        :return: False if resubscription in required
+        :return: False if re-subscription in required
         """
-        # clean up the datatypes
+        # clean up the data types
         order['price'] = float(order['price'])
         order['size'] = float(order['size'])
 
@@ -172,7 +165,7 @@ class BitfinexOrderBook(OrderBook):
                     self.asks.insert_order(order)
             # unhandled tick message
             else:
-                LOGGER.warn('_process_book_replay: unhandled message\n%s' % str(order))
+                raise ValueError('_process_book_replay: unhandled message\n%s' % str(order))
 
         elif order['type'] == 'preload':
             if order['side'] == 'buy':
@@ -190,7 +183,7 @@ class BitfinexOrderBook(OrderBook):
                 self.bids.match(order)
 
         else:
-            LOGGER.warn('\n_process_book_replay() Unhandled list msg %s' % order)
+            raise ValueError('_process_book_replay() Unhandled list msg %s' % order)
 
         return True
 
@@ -237,13 +230,13 @@ class BitfinexOrderBook(OrderBook):
     def _process_events(self, msg):
         """
         Internal method for return code processing
-        :param msg: incoming message from websocket
+        :param msg: incoming message from WebSocket
         :return: False if subscription is required
         """
         if msg['event'] == 'subscribed':
             self.channel_id[msg['channel']] = msg['chanId']
-            LOGGER.info('%s Added channel_id: %i for %s' % (
-                self.sym, msg['chanId'], msg['channel']))
+            LOGGER.info('%s Added channel_id: %i for %s' % (self.sym, msg['chanId'],
+                                                            msg['channel']))
             return True
 
         elif msg['event'] == 'info':
@@ -254,9 +247,9 @@ class BitfinexOrderBook(OrderBook):
                 code = None
 
             if code == 20051:
-                LOGGER.info('\nBitfinex - %s: 20051 Stop/Restart Websocket Server '
+                LOGGER.info('\nBitfinex - %s: 20051 Stop/Restart WebSocket Server '
                             '(please reconnect)' % self.sym)
-                return False  # need to re-subscrbe to the data feed
+                return False  # need to re-subscribe to the data feed
             elif code == 20060:
                 LOGGER.info('\nBitfinex - ' + self.sym + ': 20060.'
                                                          ' Entering in Maintenance mode. '
@@ -267,10 +260,9 @@ class BitfinexOrderBook(OrderBook):
                 LOGGER.info('\nBitfinex - ' + self.sym + ': 20061 Maintenance ended. ' +
                             'You can resume normal activity. ' +
                             'It is advised to unsubscribe/subscribe again all channels.')
-                return False  # need to re-subscrbe to the data feed
+                return False  # need to re-subscribe to the data feed
             elif code == 10300:
-                LOGGER.info('\nBitfinex - %s: 10300 Subscription failed (generic)' %
-                            self.sym)
+                LOGGER.info('\nBitfinex - %s: 10300 Subscription failed (generic)' % self.sym)
                 return True
             elif code == 10301:
                 LOGGER.info('\nBitfinex - %s: 10301 Already subscribed' % self.sym)
@@ -279,8 +271,7 @@ class BitfinexOrderBook(OrderBook):
                 LOGGER.info('\nBitfinex - %s: 10302 Unknown channel' % self.sym)
                 return True
             elif code == 10400:
-                LOGGER.info('\nBitfinex - %s: 10400 Subscription failed (generic)' %
-                            self.sym)
+                LOGGER.info('\nBitfinex - %s: 10400 Subscription failed (generic)' % self.sym)
                 return True
             elif code == 10401:
                 LOGGER.info('\nBitfinex - %s: 10401 Not subscribed' % self.sym)

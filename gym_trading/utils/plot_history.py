@@ -62,14 +62,16 @@ class Visualize(object):
         self._data.clear()
         self._historical_observations.clear()
 
-    def plot(self, history: pd.DataFrame or None = None) -> None:
+    def plot(self, history: pd.DataFrame or None = None, save_filename: str or None = None):
         """
         Plot episode performance:
             1.) Midpoint prices
             2.) Position count
             3.) Realized PnL
 
-        :param history: DataFrame produced from `to_df` method
+        :param history: data from past episode
+        :param save_filename: Filename to save image as
+        :return:
         """
         if isinstance(history, pd.DataFrame):
             data = history
@@ -143,7 +145,10 @@ class Visualize(object):
         axs[2].spines['left'].set_color("black")
         axs[2].grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
 
-        plt.show()
+        if save_filename is None:
+            plt.show()
+        else:
+            plt.savefig("{}.png".format(save_filename))
 
     def plot_obs(self) -> None:
         """

@@ -56,9 +56,11 @@ class TrendFollowingTestCases(unittest.TestCase):
                     i, (i // elapsed) * env.action_repeats))
                 print("Max reward: {}\nMin reward: {}".format(max(reward_list),
                                                               min(reward_list)))
+                # Visualize results
+                env.env.plot_trade_history()
+                env.env.plot_observation_history()
                 break
 
-        env.env.plot_observation_history()
         env.reset()
         env.close()
         self.assertEqual(True, done)

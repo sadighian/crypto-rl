@@ -60,6 +60,7 @@ class MarketMakerTestCases(unittest.TestCase):
                                                               min(reward_list)))
                 # Visualize results
                 env.env.plot_trade_history()
+                env.env.plot_observation_history()
                 break
 
         env.reset()
@@ -114,6 +115,9 @@ class MarketMakerTestCases(unittest.TestCase):
                     i, (i // elapsed) * env.action_repeats))
                 print("Max reward: {}\nMin reward: {}".format(max(reward_list),
                                                               min(reward_list)))
+                # Visualize results
+                env.env.plot_trade_history()
+                env.env.plot_observation_history()
                 break
 
         env.reset()

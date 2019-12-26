@@ -13,7 +13,7 @@ if __name__ == "__main__":
     p = dict()
 
     for sym in symbols:
-        p[sym] = BitfinexClient(sym)
+        p[sym] = BitfinexClient(sym=sym)
         p[sym].start()
         print('Started thread for %s' % sym)
 

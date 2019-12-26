@@ -12,7 +12,6 @@ from collections import deque
 
 
 class Position(object):
-    slippage = SLIPPAGE
 
     def __init__(self, side: str,
                  max_position: int = 10,
@@ -192,9 +191,7 @@ class Position(object):
             return False
 
         # Create a hypothetical average execution price incorporating a fixed slippage
-        hypothetical_avg_price = order.price + Position.slippage \
-            if order.side == 'long' else order.price - Position.slippage
-        order.average_execution_price = hypothetical_avg_price
+        order.average_execution_price = order.price
         order.executed = order.DEFAULT_SIZE
 
         # Update position inventory attributes
@@ -367,20 +364,20 @@ class Position(object):
             return -ENCOURAGEMENT
 
         pnl = 0.
+        # Need to reverse the side to reflect the correct direction of
+        # the flatten_order()
+        side = 'long' if self.side == 'short' else 'short'
+
         while self.position_count > 0:
-            # need to reverse the side to reflect the correct direction of
-            # the flatten_order()
-            order = MarketOrder(ccy=None,
-                                side='long' if self.side == 'short' else 'short',
-                                price=price)
+            order = MarketOrder(ccy=None, side=side, price=price)
             pnl += self.remove(netting_order=order)
             self.total_trade_count += 1
 
-            # deduct transaction fee based on order type
+            # Deduct transaction fee based on order type
             if self.transaction_fee:
                 pnl -= MARKET_ORDER_FEE
 
-            # update statistics
+            # Update statistics
             self.statistics.market_orders += 1
 
         return pnl
@@ -395,4 +392,4 @@ class Position(object):
         """
         if self.order is None:
             return 0.
-        return abs((midpoint / self.order.price) - 1.)
+        return midpoint / self.order.price - 1.

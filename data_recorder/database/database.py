@@ -74,14 +74,13 @@ class Database(object):
         :param end_date: YYYYMMDD end date
         :return: (pd.DataFrame) results found in database
         """
+        assert self.collection is not None, \
+            "Arctic.Collection() must not be null."
+
         start_time = dt.now(tz=self.tz)
 
-        if self.collection is None:
-            LOGGER.info('exiting from Simulator... no database to query')
-            return None
-
         try:
-            LOGGER.info('\nGetting {} tick data from Arctic Tick Store...'.format(ccy))
+            LOGGER.info('\nGetting {} data from Arctic Tick Store...'.format(ccy))
             cursor = self.collection.read(symbol=ccy,
                                           date_range=DateRange(start_date, end_date))
 
