@@ -1,8 +1,10 @@
-from data_recorder.connector_components.client import Client
-from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
-from configurations import BITFINEX_ENDPOINT, LOGGER
-import websockets
 import json
+
+import websockets
+
+from configurations import BITFINEX_ENDPOINT, LOGGER
+from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
+from data_recorder.connector_components.client import Client
 
 
 class BitfinexClient(Client):

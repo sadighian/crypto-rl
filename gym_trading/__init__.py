@@ -1,7 +1,7 @@
 from gym.envs.registration import register
-from gym_trading.envs.trend_following import TrendFollowing
-from gym_trading.envs.market_maker import MarketMaker
 
+from gym_trading.envs.market_maker import MarketMaker
+from gym_trading.envs.trend_following import TrendFollowing
 
 register(
     id=TrendFollowing.id,

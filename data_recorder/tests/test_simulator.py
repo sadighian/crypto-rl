@@ -1,6 +1,7 @@
-from data_recorder.database.simulator import Simulator
-from configurations import TIMEZONE
 from datetime import datetime as dt
+
+from configurations import TIMEZONE
+from data_recorder.database.simulator import Simulator
 
 
 def test_get_tick_history() -> None:
@@ -77,4 +78,4 @@ if __name__ == '__main__':
     """
     # test_get_tick_history()
     test_get_orderbook_snapshot_history()
-    #test_extract_features()
+    # test_extract_features()

@@ -3,9 +3,9 @@
 #   Wrapper class implementing position.py to manage inventory and PnL
 #
 #
-from gym_trading.utils.order import MarketOrder, LimitOrder
-from gym_trading.utils.position import Position
 from configurations import LOGGER
+from gym_trading.utils.order import LimitOrder, MarketOrder
+from gym_trading.utils.position import Position
 
 
 class Broker(object):
@@ -291,12 +291,13 @@ class Broker(object):
 
         :return: statistics
         """
-        return dict(short_inventory_market_orders=self.short_inventory.statistics.market_orders,
-                    short_inventory_orders_placed=self.short_inventory.statistics.orders_placed,
-                    short_inventory_orders_updated=self.short_inventory.statistics.orders_updated,
-                    short_inventory_orders_executed=self.short_inventory.statistics.orders_executed,
-                    long_inventory_market_orders=self.long_inventory.statistics.market_orders,
-                    long_inventory_orders_placed=self.long_inventory.statistics.orders_placed,
-                    long_inventory_orders_updated=self.long_inventory.statistics.orders_updated,
-                    long_inventory_orders_executed=self.long_inventory.statistics.orders_executed
-                    )
+        return dict(
+            short_inventory_market_orders=self.short_inventory.statistics.market_orders,
+            short_inventory_orders_placed=self.short_inventory.statistics.orders_placed,
+            short_inventory_orders_updated=self.short_inventory.statistics.orders_updated,
+            short_inventory_orders_executed=self.short_inventory.statistics.orders_executed,
+            long_inventory_market_orders=self.long_inventory.statistics.market_orders,
+            long_inventory_orders_placed=self.long_inventory.statistics.orders_placed,
+            long_inventory_orders_updated=self.long_inventory.statistics.orders_updated,
+            long_inventory_orders_executed=self.long_inventory.statistics.orders_executed
+            )

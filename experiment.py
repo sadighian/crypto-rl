@@ -1,7 +1,7 @@
-from agent.dqn import Agent
 import argparse
-from configurations import LOGGER
 
+from agent.dqn import Agent
+from configurations import LOGGER
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--window_size',
@@ -59,8 +59,8 @@ parser.add_argument('--visualize',
 parser.add_argument('--training',
                     default=True,
                     help="Training or testing mode. " +
-                    "If TRUE, then agent starts learning, " +
-                    "If FALSE, then agent is tested",
+                         "If TRUE, then agent starts learning, " +
+                         "If FALSE, then agent is tested",
                     type=bool)
 parser.add_argument('--reward_type',
                     default='default',
@@ -77,7 +77,8 @@ parser.add_argument('--reward_type',
                     price returns + closed trade PnL
                     3) 'realized_pnl' --> change in realized pnl between time steps
                     4) 'differential_sharpe_ratio' -->
-                    http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.7210&rep=rep1&type=pdf
+                    http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.7210&rep=rep1
+                    &type=pdf
                     5) 'asymmetrical' --> extended version of *default* and enhanced 
                     with  a reward for being filled above or below midpoint, 
                     and returns only negative rewards for Unrealized PnL to discourage 
@@ -101,9 +102,9 @@ args = vars(parser.parse_args())
 
 
 def main(kwargs):
-    LOGGER.info('Experiment creating agent with kwargs: {}'.format(kwargs))
+    LOGGER.info(f'Experiment creating agent with kwargs: {kwargs}')
     agent = Agent(**kwargs)
-    LOGGER.info('Agent created. {}'.format(agent))
+    LOGGER.info(f'Agent created. {agent}')
     agent.start()
 
 

@@ -1,20 +1,20 @@
-from configurations import (
-    INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, EMA_ALPHA, MARKET_ORDER_FEE
-)
-from indicators import IndicatorManager, RSI, TnS
-from gym_trading.utils.render_env import TradingGraph
-from gym_trading.utils.plot_history import Visualize
-from gym_trading.utils.statistics import ExperimentStatistics
-from gym_trading.utils.broker import Broker
-from gym_trading.utils.data_pipeline import DataPipeline
-import gym_trading.utils.reward as reward_types
-
-from gym import Env
 from abc import ABC, abstractmethod
 from collections import deque
-import pandas as pd
-import numpy as np
 
+import numpy as np
+import pandas as pd
+from gym import Env
+
+import gym_trading.utils.reward as reward_types
+from configurations import (
+    EMA_ALPHA, INDICATOR_WINDOW, INDICATOR_WINDOW_MAX, MARKET_ORDER_FEE,
+)
+from gym_trading.utils.broker import Broker
+from gym_trading.utils.data_pipeline import DataPipeline
+from gym_trading.utils.plot_history import Visualize
+from gym_trading.utils.render_env import TradingGraph
+from gym_trading.utils.statistic import ExperimentStatistics
+from indicators import IndicatorManager, RSI, TnS
 
 VALID_REWARD_TYPES = [f for f in dir(reward_types) if '__' not in f]
 

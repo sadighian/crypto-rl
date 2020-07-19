@@ -1,9 +1,11 @@
-from data_recorder.connector_components.orderbook import OrderBook
-from configurations import LOGGER, COINBASE_BOOK_ENDPOINT, TIMEZONE
 from datetime import datetime as dt
 from time import time
-import requests
+
 import numpy as np
+import requests
+
+from configurations import COINBASE_BOOK_ENDPOINT, LOGGER, TIMEZONE
+from data_recorder.connector_components.orderbook import OrderBook
 
 
 class CoinbaseOrderBook(OrderBook):
@@ -48,9 +50,11 @@ class CoinbaseOrderBook(OrderBook):
         now = dt.now(tz=TIMEZONE)
         load_time = str(now)
 
-        self.db.new_tick({'type': 'load_book',
-                          'product_id': self.sym,
-                          'sequence': self.sequence})
+        self.db.new_tick({
+            'type': 'load_book',
+            'product_id': self.sym,
+            'sequence': self.sequence
+        })
 
         for bid in book['bids']:
             msg = {
@@ -80,9 +84,11 @@ class CoinbaseOrderBook(OrderBook):
             self.db.new_tick(msg)
             self.asks.insert_order(msg)
 
-        self.db.new_tick({'type': 'book_loaded',
-                          'product_id': self.sym,
-                          'sequence': self.sequence})
+        self.db.new_tick({
+                             'type': 'book_loaded',
+                             'product_id': self.sym,
+                             'sequence': self.sequence
+                         })
         del book
         self.bids.warming_up = self.asks.warming_up = False
 

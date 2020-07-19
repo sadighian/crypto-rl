@@ -1,4 +1,5 @@
 from datetime import datetime as dt
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -64,8 +65,10 @@ class Database(object):
             self.counter = 0
             self.data.clear()
 
-    def _query_arctic(self, ccy: str, start_date: int, end_date: int) -> pd.DataFrame \
-                                                                         or None:
+    def _query_arctic(self,
+                      ccy: str,
+                      start_date: int,
+                      end_date: int) -> Union[pd.DataFrame, None]:
         """
         Query database and return LOB messages starting from LOB reconstruction.
 
@@ -103,7 +106,7 @@ class Database(object):
 
         return cursor
 
-    def get_tick_history(self, query: dict) -> pd.DataFrame or None:
+    def get_tick_history(self, query: dict) -> Union[pd.DataFrame, None]:
         """
         Function to query the Arctic Tick Store and...
         1.  Return the specified historical data for a given set of securities

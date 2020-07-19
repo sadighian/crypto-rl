@@ -1,5 +1,5 @@
-from functools import wraps
 import time
+from functools import wraps
 
 
 def debugging(func):
@@ -8,6 +8,7 @@ def debugging(func):
     :param func: function
     :return: function
     """
+
     @wraps(func)
     def f(*args, **kwargs):
         if kwargs != {}:
@@ -29,6 +30,7 @@ def print_time(func):
     :param func: function
     :return: wrapped function
     """
+
     @wraps(func)
     def f(*args, **kwargs):
         start_time = time.time()

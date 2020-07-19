@@ -1,9 +1,11 @@
 import unittest
+
 import numpy as np
+
+from gym_trading.utils.decorator import print_time
 from indicators.indicator import IndicatorManager
 from indicators.rsi import RSI
 from indicators.tns import TnS
-from gym_trading.utils.decorator import print_time
 
 
 class IndicatorTestCases(unittest.TestCase):

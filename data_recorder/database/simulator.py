@@ -1,19 +1,16 @@
 import os
 from datetime import datetime as dt
 from datetime import timedelta
+from typing import Type, Union
 
 import numpy as np
 import pandas as pd
-from typing import Type, Union
 from dateutil.parser import parse
 
-from configurations import (
-    LOGGER, SNAPSHOT_RATE_IN_MICROSECONDS, TIMEZONE, DATA_PATH
-)
+from configurations import DATA_PATH, LOGGER, SNAPSHOT_RATE_IN_MICROSECONDS, TIMEZONE
 from data_recorder.bitfinex_connector.bitfinex_orderbook import BitfinexOrderBook
 from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
 from data_recorder.database.database import Database
-
 
 DATA_EXPORTS_PATH = DATA_PATH
 
@@ -301,7 +298,7 @@ class Simulator(object):
             dates = order_book_data['system_time'].dt.date.unique()
             LOGGER.info('dates: {}'.format(dates))
             for date in dates[:]:
-            # for date in dates[1:]:
+                # for date in dates[1:]:
                 tmp = order_book_data.loc[order_book_data['system_time'].dt.date == date]
                 self.export_to_csv(
                     tmp, filename='{}_{}'.format(query['ccy'][0], date), compress=True)

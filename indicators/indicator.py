@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from configurations import INDICATOR_WINDOW
 from collections import deque
-from indicators import load_ema, ExponentialMovingAverage
+
+from configurations import INDICATOR_WINDOW
+from indicators import ExponentialMovingAverage, load_ema
 
 
 class Indicator(ABC):

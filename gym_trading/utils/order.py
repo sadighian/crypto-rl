@@ -4,7 +4,8 @@
 #
 #
 from abc import ABC
-from configurations import MARKET_ORDER_FEE, LIMIT_ORDER_FEE, LOGGER
+
+from configurations import LIMIT_ORDER_FEE, LOGGER, MARKET_ORDER_FEE
 
 
 class OrderMetrics(object):
@@ -55,7 +56,8 @@ class Order(ABC):
 
     def __str__(self):
         return ' {} #{} | {} | {:.3f} | {} | {} | {}'.format(
-            self.ccy, self.id, self.side, self.price, self.step, self.metrics, self.queue_ahead)
+            self.ccy, self.id, self.side, self.price, self.step, self.metrics,
+            self.queue_ahead)
 
     @property
     def is_filled(self) -> bool:

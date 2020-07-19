@@ -1,7 +1,7 @@
+import matplotlib.cm as cm
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-import matplotlib.cm as cm
 
 
 def plot_lob_overlay(data: pd.DataFrame, window=1, levels=range(15)) -> None:

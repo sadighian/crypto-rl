@@ -54,7 +54,8 @@ def differential_sharpe_ratio(R_t: float, A_tm1: float, B_tm1: float,
     Method to calculate Differential Sharpe Ratio online.
 
     Source 1: http://www.cs.cmu.edu/afs/cs/project/link-3/lafferty/www/ml-stat-www/moody.pdf
-    Source 2: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.87.8437&rep=rep1&type=pdf
+    Source 2: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.87.8437&rep=rep1&type
+    =pdf
 
     :param R_t: reward from current time step (midpoint price change a.k.a. 'price returns')
     :param A_tm1: A from previous time step
@@ -68,13 +69,13 @@ def differential_sharpe_ratio(R_t: float, A_tm1: float, B_tm1: float,
     reward = 0.
 
     A_delta = R_t - A_tm1
-    B_delta = R_t**2 - B_tm1
+    B_delta = R_t ** 2 - B_tm1
 
     A_t = A_tm1 + eta * A_delta
     B_t = B_tm1 + eta * B_delta
 
     nominator = B_tm1 * A_delta - (0.5 * A_tm1 * B_delta)
-    denominator = (B_tm1 - A_tm1**2)**1.5
+    denominator = (B_tm1 - A_tm1 ** 2) ** 1.5
 
     if np.isnan(nominator):
         return reward, A_t, B_t

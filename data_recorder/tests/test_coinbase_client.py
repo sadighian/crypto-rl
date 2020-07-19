@@ -1,6 +1,6 @@
 import asyncio
-from data_recorder.coinbase_connector.coinbase_client import CoinbaseClient
 
+from data_recorder.coinbase_connector.coinbase_client import CoinbaseClient
 
 if __name__ == "__main__":
     """

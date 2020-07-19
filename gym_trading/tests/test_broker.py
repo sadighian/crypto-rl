@@ -1,7 +1,8 @@
 import unittest
+
 from gym_trading.utils.broker import Broker
-from gym_trading.utils.order import MarketOrder, LimitOrder
 from gym_trading.utils.decorator import debugging
+from gym_trading.utils.order import LimitOrder, MarketOrder
 
 
 class MarketOrderTestCases(unittest.TestCase):
@@ -202,7 +203,8 @@ class LimitOrderTestCases(unittest.TestCase):
         sell_volume = 500
         queue_ahead = 800
 
-        order_open = LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step, queue_ahead=queue_ahead)
+        order_open = LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step,
+                                queue_ahead=queue_ahead)
         test_position.add(order=order_open)
 
         step += 1

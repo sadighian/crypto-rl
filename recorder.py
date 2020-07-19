@@ -1,11 +1,12 @@
-from data_recorder.bitfinex_connector.bitfinex_client import BitfinexClient
-from data_recorder.coinbase_connector.coinbase_client import CoinbaseClient
-from configurations import SNAPSHOT_RATE, BASKET, LOGGER
-from threading import Timer
+import asyncio
+import time
 from datetime import datetime as dt
 from multiprocessing import Process
-import time
-import asyncio
+from threading import Timer
+
+from configurations import BASKET, LOGGER, SNAPSHOT_RATE
+from data_recorder.bitfinex_connector.bitfinex_client import BitfinexClient
+from data_recorder.coinbase_connector.coinbase_client import CoinbaseClient
 
 
 class Recorder(Process):
@@ -47,27 +48,26 @@ class Recorder(Process):
         tasks = asyncio.gather(*[self.workers[sym].subscribe()
                                  for sym in self.workers.keys()])
         loop = asyncio.get_event_loop()
-        LOGGER.info('Recorder: Gathered %i tasks' % len(self.workers.keys()))
+        LOGGER.info(f'Recorder: Gathered {len(self.workers.keys())} tasks')
 
         try:
             loop.run_until_complete(tasks)
             loop.close()
             [self.workers[sym].join() for sym in self.workers.keys()]
-            LOGGER.info('Recorder: loop closed for %s and %s.' %
-                        (coinbase, bitfinex))
+            LOGGER.info(f'Recorder: loop closed for {coinbase} and {bitfinex}.')
 
         except KeyboardInterrupt as e:
-            LOGGER.info("Recorder: Caught keyboard interrupt. \n%s" % e)
+            LOGGER.info(f"Recorder: Caught keyboard interrupt. \n{e}")
             tasks.cancel()
             loop.close()
             [self.workers[sym].join() for sym in self.workers.keys()]
 
         finally:
             loop.close()
-            LOGGER.info('Recorder: Finally done for %s and %s.' %
-                        (coinbase, bitfinex))
+            LOGGER.info(f'Recorder: Finally done for {coinbase} and {bitfinex}.')
 
-    def timer_worker(self, coinbaseClient: CoinbaseClient,
+    def timer_worker(self,
+                     coinbaseClient: CoinbaseClient,
                      bitfinexClient: BitfinexClient) -> None:
         """
         Thread worker to be invoked every N seconds (e.g., configurations.SNAPSHOT_RATE)
@@ -105,10 +105,10 @@ class Recorder(Process):
 
 
 def main():
-    LOGGER.info('Starting recorder with basket = {}'.format(BASKET))
+    LOGGER.info(f'Starting recorder with basket = {BASKET}')
     for coinbase, bitfinex in BASKET:
         Recorder((coinbase, bitfinex)).start()
-        LOGGER.info('Process started up for %s' % coinbase)
+        LOGGER.info(f'Process started up for {coinbase}')
         time.sleep(9)
 
 

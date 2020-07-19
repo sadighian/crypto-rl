@@ -1,9 +1,8 @@
-
-
 class TradeStatistics(object):
     """
     Class for storing order metrics performed by the agent.
     """
+
     def __init__(self):
         """
         Instantiate the class.

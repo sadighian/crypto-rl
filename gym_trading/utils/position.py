@@ -3,12 +3,11 @@
 #   Inventory and risk management module for environments
 #
 #
-from configurations import (
-    SLIPPAGE, LOGGER, ENCOURAGEMENT, MARKET_ORDER_FEE, LIMIT_ORDER_FEE
-)
-from gym_trading.utils.order import MarketOrder, LimitOrder
-from gym_trading.utils.statistics import TradeStatistics
 from collections import deque
+
+from configurations import (ENCOURAGEMENT, LIMIT_ORDER_FEE, LOGGER, MARKET_ORDER_FEE)
+from gym_trading.utils.order import LimitOrder, MarketOrder
+from gym_trading.utils.statistic import TradeStatistics
 
 
 class Position(object):
@@ -248,7 +247,7 @@ class Position(object):
 
         return True
 
-    def add(self, order:  MarketOrder or LimitOrder) -> bool:
+    def add(self, order: MarketOrder or LimitOrder) -> bool:
         """
         Add / update an order.
 

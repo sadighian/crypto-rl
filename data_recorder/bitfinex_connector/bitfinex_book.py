@@ -1,5 +1,5 @@
-from data_recorder.connector_components.book import Book
 from configurations import RECORD_DATA
+from data_recorder.connector_components.book import Book
 
 
 class BitfinexBook(Book):

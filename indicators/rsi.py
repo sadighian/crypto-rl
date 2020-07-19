@@ -1,4 +1,5 @@
 import numpy as np
+
 from indicators.indicator import Indicator
 
 
@@ -14,7 +15,7 @@ class RSI(Indicator):
 
     def __str__(self):
         return "RSI: [last_price={} | ups={} | downs={}]".format(
-                   self.last_price, self.ups, self.downs)
+            self.last_price, self.ups, self.downs)
 
     def reset(self) -> None:
         """

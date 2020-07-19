@@ -1,10 +1,11 @@
-from datetime import datetime as dt
-from gym_trading.utils.decorator import print_time
-from gym_trading.envs.market_maker import MarketMaker
-import gym
-import gym_trading
 import unittest
+from datetime import datetime as dt
+
+import gym
 import numpy as np
+
+from gym_trading.envs.market_maker import MarketMaker
+from gym_trading.utils.decorator import print_time
 
 
 class MarketMakerTestCases(unittest.TestCase):

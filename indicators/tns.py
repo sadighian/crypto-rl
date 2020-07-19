@@ -5,6 +5,7 @@ class TnS(Indicator):
     """
     Time and sales [trade flow] imbalance indicator
     """
+
     def __init__(self, **kwargs):
         super(TnS, self).__init__(**kwargs)
         self.ups = self.downs = 0.

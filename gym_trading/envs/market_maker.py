@@ -1,8 +1,9 @@
+import numpy as np
+from gym import spaces
+
 from configurations import ENCOURAGEMENT
 from gym_trading.envs.base_environment import BaseEnvironment
 from gym_trading.utils.order import LimitOrder
-from gym import spaces
-import numpy as np
 
 
 class MarketMaker(BaseEnvironment):

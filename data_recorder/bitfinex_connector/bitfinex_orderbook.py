@@ -1,7 +1,9 @@
 from time import time
+
 import numpy as np
-from data_recorder.connector_components.orderbook import OrderBook
+
 from configurations import LOGGER
+from data_recorder.connector_components.orderbook import OrderBook
 
 
 class BitfinexOrderBook(OrderBook):

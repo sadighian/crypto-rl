@@ -1,7 +1,8 @@
-from data_recorder.connector_components.client import Client
-from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
-from configurations import COINBASE_ENDPOINT, LOGGER
 import json
+
+from configurations import COINBASE_ENDPOINT, LOGGER
+from data_recorder.coinbase_connector.coinbase_orderbook import CoinbaseOrderBook
+from data_recorder.connector_components.client import Client
 
 
 class CoinbaseClient(Client):
@@ -34,6 +35,7 @@ class CoinbaseClient(Client):
             msg = self.queue.get()
 
             if self.book.new_tick(msg) is False:
+                # Coinbase requires a REST call to GET the initial LOB snapshot
                 self.book.load_book()
                 self.retry_counter += 1
                 LOGGER.info('\n[%s - %s] ...going to try and reload the order '

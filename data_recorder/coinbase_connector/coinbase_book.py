@@ -1,5 +1,5 @@
+from configurations import LOGGER, RECORD_DATA
 from data_recorder.connector_components.book import Book
-from configurations import RECORD_DATA, LOGGER
 
 
 class CoinbaseBook(Book):
@@ -89,7 +89,7 @@ class CoinbaseBook(Book):
                 self.order_map[old_order['order_id']] = old_order
                 old_order_price = old_order.get('price', None)
                 self.price_dict[old_order_price].remove_quantity(quantity=diff,
-                                                           price=old_order_price)
+                                                                 price=old_order_price)
             elif RECORD_DATA:
                 LOGGER.info('\n%s change: missing order_ID [%s] from order_map\n' %
                             (self.sym, msg))

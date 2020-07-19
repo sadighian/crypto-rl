@@ -1,6 +1,6 @@
 import asyncio
-from data_recorder.bitfinex_connector.bitfinex_client import BitfinexClient
 
+from data_recorder.bitfinex_connector.bitfinex_client import BitfinexClient
 
 if __name__ == "__main__":
     """

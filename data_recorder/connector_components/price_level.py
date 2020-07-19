@@ -1,5 +1,3 @@
-
-
 class PriceLevel(object):
 
     def __init__(self, price: float, quantity: float):
@@ -10,10 +8,10 @@ class PriceLevel(object):
         :param quantity: total quantity available at the price
         """
         # Core price level attributes
-        self._price = price         # adjusted price level in LOB
-        self._quantity = quantity   # total order size
-        self._count = 0             # total number of orders
-        self._notional = 0.         # total notional value of orders at price level
+        self._price = price  # adjusted price level in LOB
+        self._quantity = quantity  # total order size
+        self._count = 0  # total number of orders
+        self._notional = 0.  # total notional value of orders at price level
         # Trackers for order flow
         # Inspired by https://arxiv.org/abs/1907.06230v1
         self._limit_count = 0

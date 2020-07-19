@@ -105,7 +105,6 @@ class Client(Thread, ABC):
         # Used for debugging exchanges individually
         # Timer(4.0, _timer_worker, args=(self.book, self.last_worker_time,)).start()
 
-
 # from data_recorder.connector_components.orderbook import OrderBook
 
 # Used for debugging exchanges individually

@@ -1,12 +1,12 @@
-from data_recorder.coinbase_connector.coinbase_book import CoinbaseBook
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+from configurations import INCLUDE_ORDERFLOW, LOGGER, MAX_BOOK_ROWS
 from data_recorder.bitfinex_connector.bitfinex_book import BitfinexBook
+from data_recorder.coinbase_connector.coinbase_book import CoinbaseBook
 from data_recorder.connector_components.trade_tracker import TradeTracker
 from data_recorder.database.database import Database
-from configurations import INCLUDE_ORDERFLOW, LOGGER, MAX_BOOK_ROWS, TIMEZONE
-from abc import ABC, abstractmethod
-import numpy as np
-from datetime import datetime as dt
-
 
 BOOK_BY_EXCHANGE = dict(coinbase=CoinbaseBook, bitfinex=BitfinexBook)
 
@@ -64,7 +64,7 @@ class OrderBook(ABC):
         self.bids.clear()  # warming_up flag reset in `Position` class
         self.asks.clear()  # warming_up flag reset in `Position` class
         self.last_tick_time = None
-        LOGGER.info("{}'s order book cleared.".format(self.sym))
+        LOGGER.info(f"{self.sym}'s order book cleared.")
 
     def render_book(self) -> np.ndarray:
         """
@@ -92,7 +92,7 @@ class OrderBook(ABC):
         self.clear_trade_trackers()
 
         return np.hstack((self.midpoint, self.spread, buy_trades, sell_trades,
-                         *bid_data, *ask_data))
+                          *bid_data, *ask_data))
 
     @staticmethod
     def render_lob_feature_names(include_orderflow: bool = INCLUDE_ORDERFLOW) -> list:
@@ -116,9 +116,9 @@ class OrderBook(ABC):
         for side in ['bids', 'asks']:
             for feature in feature_types:
                 for row in range(MAX_BOOK_ROWS):
-                    feature_names.append("{}_{}_{}".format(side, feature, row))
+                    feature_names.append(f"{side}_{feature}_{row}")
 
-        LOGGER.info("render_feature_names() has {} features".format(len(feature_names)))
+        LOGGER.info(f"render_feature_names() has {len(feature_names)} features")
 
         return feature_names
 

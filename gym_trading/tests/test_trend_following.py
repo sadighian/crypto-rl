@@ -1,10 +1,11 @@
 import unittest
-import numpy as np
 from datetime import datetime as dt
+
 import gym
-from gym_trading.utils.decorator import print_time
+import numpy as np
+
 from gym_trading.envs.trend_following import TrendFollowing
-import gym_trading
+from gym_trading.utils.decorator import print_time
 
 
 class TrendFollowingTestCases(unittest.TestCase):

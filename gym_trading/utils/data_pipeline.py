@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-from configurations import (DATA_PATH, EMA_ALPHA, LOGGER, MAX_BOOK_ROWS, TIMEZONE)
+from configurations import DATA_PATH, EMA_ALPHA, LOGGER, MAX_BOOK_ROWS, TIMEZONE
 from indicators import apply_ema_all_data, load_ema, reset_ema
 
 
@@ -93,7 +93,8 @@ class DataPipeline(object):
         # Derive column names for filtering OFI data
         event_columns = dict()
         for event_type in ['market_notional', 'limit_notional', 'cancel_notional']:
-            event_columns[event_type] = [col for col in data.columns.tolist() if event_type in col]
+            event_columns[event_type] = [col for col in data.columns.tolist() if
+                                         event_type in col]
 
         # Derive the number of rows that have been rendered in the LOB
         number_of_levels = len(event_columns['market_notional']) // 2

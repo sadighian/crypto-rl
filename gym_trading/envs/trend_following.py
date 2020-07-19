@@ -1,8 +1,9 @@
+import numpy as np
+from gym import spaces
+
 from configurations import ENCOURAGEMENT, MARKET_ORDER_FEE
 from gym_trading.envs.base_environment import BaseEnvironment
 from gym_trading.utils.order import MarketOrder
-from gym import spaces
-import numpy as np
 
 
 class TrendFollowing(BaseEnvironment):
