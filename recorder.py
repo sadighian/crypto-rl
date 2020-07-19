@@ -96,12 +96,21 @@ class Recorder(Process):
                     fix_api.send_order(buy_order)
             
             """
-            LOGGER.info('%s >> %s' % (coinbaseClient.sym, coinbaseClient.book))
+            LOGGER.info(f'{coinbaseClient.sym} >> {coinbaseClient.book}')
+            # The `render_book()` method returns a numpy array of the LOB's current state,
+            # as well as resets the Order Flow Imbalance trackers.
+            # The LOB snapshot is in a tabular format with columns as defined in
+            # `render_lob_feature_names()`
+            _ = coinbaseClient.book.render_book()
+            _ = bitfinexClient.book.render_book()
+        elif coinbaseClient.book.done_warming_up and not bitfinexClient.book.done_warming_up:
+            LOGGER.info(f'Bitfinex - {bitfinexClient.sym} is warming up')
+            _ = coinbaseClient.book.render_book()
+        elif bitfinexClient.book.done_warming_up and not coinbaseClient.book.done_warming_up:
+            LOGGER.info(f'Coinbase - {coinbaseClient.sym} is warming up')
+            _ = bitfinexClient.book.render_book()
         else:
-            if coinbaseClient.book.done_warming_up:
-                LOGGER.info('Coinbase - %s is warming up' % coinbaseClient.sym)
-            if bitfinexClient.book.done_warming_up:
-                LOGGER.info('Bitfinex - %s is warming up' % bitfinexClient.sym)
+            LOGGER.info('Both Coinbase and Bitfinex are still warming up...')
 
 
 def main():

@@ -1,5 +1,6 @@
-from setuptools import setup
 import os
+
+from setuptools import setup
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 file = os.path.join(cwd, 'requirements.txt')
@@ -10,7 +11,7 @@ with open("README.md", 'r') as f:
     long_description = f.read()
 
 setup(name='crypto_rl',
-      version='0.2.0',
+      version='0.2.1',
       description='Cryptocurrency LOB trading environment in gym format.',
       long_description=long_description,
       author='Jonathan Sadighian',
