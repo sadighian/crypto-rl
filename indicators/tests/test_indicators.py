@@ -106,6 +106,29 @@ class IndicatorTestCases(unittest.TestCase):
                                msg='indicator_value is {} and should be {}'.format(
                                    indicator_value, 1.))
 
+    @print_time
+    def test_manager_ema(self):
+        manager = IndicatorManager()
+        alpha = [0.99, 0.999, 0.9999]
+        windows = [5, 15]
+
+        for window in windows:
+            manager.add((f'RSI_{window}', RSI(window=window, alpha=alpha)))
+
+        data_set = np.cumsum(np.random.rand(1000) - 0.45) * 10.
+        for i, data in enumerate(data_set):
+            manager.step(price=data)
+            if i < max(windows) + 1:
+                continue
+            tmp = np.asarray(manager.get_value())
+            print(f"tmp.shape -> {tmp.shape}")
+            self.assertIsNot(tmp.min(), np.nan, msg=f'ERROR: NAN number in tmp: P{tmp}')
+
+        for i, window in enumerate(windows):
+            print(f"window[{window}]\t= {tmp[i]}")
+
+        print("Done.")
+
 
 if __name__ == '__main__':
     unittest.main()

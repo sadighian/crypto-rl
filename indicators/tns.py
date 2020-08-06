@@ -7,20 +7,20 @@ class TnS(Indicator):
     """
 
     def __init__(self, **kwargs):
-        super(TnS, self).__init__(**kwargs)
+        super().__init__(label='tns', **kwargs)
         self.ups = self.downs = 0.
 
     def __str__(self):
-        return "TNS: ups={} | downs={}".format(self.ups, self.downs)
+        return f"TNS: ups={self.ups} | downs={self.downs}"
 
     def reset(self) -> None:
         """
         Reset indicator.
         """
         self.ups = self.downs = 0.
-        super(TnS, self).reset()
+        super().reset()
 
-    def step(self, buys=0., sells=0.) -> None:
+    def step(self, buys: float, sells: float) -> None:
         """
         Update indicator with new transaction data.
 
@@ -41,7 +41,7 @@ class TnS(Indicator):
 
         # Save current time step value for EMA, in case smoothing is enabled
         self._value = self.calculate()
-        super(TnS, self).step(value=self._value)
+        super().step(value=self._value)
 
     def calculate(self) -> float:
         """

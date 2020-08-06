@@ -9,27 +9,29 @@ class RSI(Indicator):
     """
 
     def __init__(self, **kwargs):
-        super(RSI, self).__init__(**kwargs)
+        super().__init__(label='rsi', **kwargs)
         self.last_price = None
         self.ups = self.downs = 0.
 
     def __str__(self):
-        return "RSI: [last_price={} | ups={} | downs={}]".format(
-            self.last_price, self.ups, self.downs)
+        return f"RSI: [ last_price = {self.last_price} | " \
+               f"ups = {self.ups} | downs = {self.downs} ]"
 
     def reset(self) -> None:
         """
+        Reset the indicator.
 
         :return:
         """
         self.last_price = None
         self.ups = self.downs = 0.
-        super(RSI, self).reset()
+        super().reset()
 
     def step(self, price: float) -> None:
         """
+        Update indicator value incrementally.
 
-        :param price:
+        :param price: midpoint price
         :return:
         """
         if self.last_price is None:
@@ -37,7 +39,7 @@ class RSI(Indicator):
             return
 
         if np.isnan(price):
-            print('Error: RSI.step() -> price is {}'.format(price))
+            print(f'Error: RSI.step() -> price is {price}')
             return
 
         if price == 0.:
@@ -72,7 +74,7 @@ class RSI(Indicator):
 
         # Save current time step value for EMA, in case smoothing is enabled
         self._value = self.calculate()
-        super(RSI, self).step(value=self._value)
+        super().step(value=self._value)
 
     def calculate(self) -> float:
         """

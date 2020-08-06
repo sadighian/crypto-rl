@@ -1,3 +1,5 @@
+from typing import List, Union
+
 import numpy as np
 import pandas as pd
 
@@ -5,6 +7,7 @@ from configurations import LOGGER
 
 
 class ExponentialMovingAverage(object):
+    __slots__ = ['alpha', '_value']
 
     def __init__(self, alpha: float):
         """
@@ -16,8 +19,7 @@ class ExponentialMovingAverage(object):
         self._value = None
 
     def __str__(self):
-        return 'ExponentialMovingAverage: [ alpha={} | value={} ]'.format(
-            self.alpha, self._value)
+        return f'ExponentialMovingAverage: [ alpha={self.alpha} | value={self._value} ]'
 
     def step(self, value: float) -> None:
         """
@@ -50,7 +52,8 @@ class ExponentialMovingAverage(object):
         self._value = None
 
 
-def load_ema(alpha=None):
+def load_ema(alpha: Union[List[float], float, None]) -> \
+        Union[List[ExponentialMovingAverage], ExponentialMovingAverage, None]:
     """
     Set exponential moving average smoother.
 
@@ -61,16 +64,18 @@ def load_ema(alpha=None):
         # print("EMA smoothing DISABLED")
         return None
     elif isinstance(alpha, float):
-        LOGGER.info("EMA smoothing ENABLED: {}".format(alpha))
+        LOGGER.info(f"EMA smoothing ENABLED: {alpha}")
         return ExponentialMovingAverage(alpha=alpha)
     elif isinstance(alpha, list):
-        LOGGER.info("EMA smoothing ENABLED: {}".format(alpha))
+        LOGGER.info(f"EMA smoothing ENABLED: {alpha}")
         return [ExponentialMovingAverage(alpha=a) for a in alpha]
     else:
-        raise ValueError("_load_ema() --> unknown alpha type: {}".format(type(alpha)))
+        raise ValueError(f"_load_ema() --> unknown alpha type: {type(alpha)}")
 
 
-def apply_ema_all_data(ema, data: pd.DataFrame) -> pd.DataFrame:
+def apply_ema_all_data(
+        ema: Union[List[ExponentialMovingAverage], ExponentialMovingAverage, None],
+        data: pd.DataFrame) -> pd.DataFrame:
     """
     Apply exponential moving average to entire data set in a single batch.
 
@@ -90,10 +95,10 @@ def apply_ema_all_data(ema, data: pd.DataFrame) -> pd.DataFrame:
             ema.step(value=row)
             smoothed_data.append(ema.value)
         smoothed_data = np.asarray(smoothed_data, dtype=np.float32)
-        return pd.DataFrame(smoothed_data, columns=labels)
+        return pd.DataFrame(smoothed_data, columns=labels, index=data.index)
     elif isinstance(ema, list):
         LOGGER.info("Applying list of EMAs to data...")
-        labels = ['{}_{}'.format(label, e.alpha) for e in ema for label in labels]
+        labels = [f'{label}_{e.alpha}' for e in ema for label in labels]
         for row in data.values:
             tmp_row = []
             for e in ema:
@@ -102,18 +107,18 @@ def apply_ema_all_data(ema, data: pd.DataFrame) -> pd.DataFrame:
             smoothed_data.append(tmp_row)
         smoothed_data = np.asarray(smoothed_data, dtype=np.float32).reshape(
             data.shape[0], -1)
-        return pd.DataFrame(smoothed_data, columns=labels)
+        return pd.DataFrame(smoothed_data, columns=labels, index=data.index)
     else:
-        raise ValueError("_apply_ema() --> unknown ema type: {}".format(type(ema)))
+        raise ValueError(f"_apply_ema() --> unknown ema type: {type(ema)}")
 
 
-def reset_ema(ema: None or ExponentialMovingAverage or list) -> \
-        None or ExponentialMovingAverage or list:
+def reset_ema(ema: Union[List[ExponentialMovingAverage], ExponentialMovingAverage, None]) -> \
+        Union[List[ExponentialMovingAverage], ExponentialMovingAverage, None]:
     """
-    Reset EMA manager.
+    Reset the EMA smoother.
 
-    :param ema: EMA manager to be reset
-    :return: EMA manager that has been reset
+    :param ema:
+    :return:
     """
     if ema is None:
         pass

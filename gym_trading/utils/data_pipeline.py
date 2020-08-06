@@ -106,10 +106,8 @@ class DataPipeline(object):
 
         # Convert numpy to DataFrame
         ofi_data = pd.DataFrame(data=ofi_data,
-                                columns=['ofi_bid_{}'.format(i)
-                                         for i in range(number_of_levels)] +
-                                        ['ofi_ask_{}'.format(i)
-                                         for i in range(number_of_levels)],
+                                columns=[f'ofi_bid_{i}' for i in range(number_of_levels)] +
+                                        [f'ofi_ask_{i}' for i in range(number_of_levels)],
                                 index=data.index)
 
         # Merge with original data set
@@ -126,8 +124,7 @@ class DataPipeline(object):
         """
         Get a list of column labels for notional order imbalances.
         """
-        imbalance_labels = ['notional_imbalance_{}'.format(row)
-                            for row in range(MAX_BOOK_ROWS)]
+        imbalance_labels = [f'notional_imbalance_{row}' for row in range(MAX_BOOK_ROWS)]
         imbalance_labels += ['notional_imbalance_mean']
         return imbalance_labels
 
@@ -147,9 +144,9 @@ class DataPipeline(object):
         # Create the column names for making a data frame (also used for debugging)
         bid_notional_columns, ask_notional_columns, imbalance_columns = [], [], []
         for i in range(MAX_BOOK_ROWS):
-            bid_notional_columns.append('bids_notional_{}'.format(i))
-            ask_notional_columns.append('asks_notional_{}'.format(i))
-            imbalance_columns.append('notional_imbalance_{}'.format(i))
+            bid_notional_columns.append(f'bids_notional_{i}')
+            ask_notional_columns.append(f'asks_notional_{i}')
+            imbalance_columns.append(f'notional_imbalance_{i}')
         # Acquire bid and ask notional data
         # Reverse the bids to ascending order, so that they align with the asks
         bid_notional = data[bid_notional_columns].to_numpy(dtype=np.float32)  # [::-1]

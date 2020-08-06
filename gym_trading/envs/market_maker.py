@@ -1,5 +1,6 @@
 import numpy as np
 from gym import spaces
+from typing import Tuple
 
 from configurations import ENCOURAGEMENT
 from gym_trading.envs.base_environment import BaseEnvironment
@@ -16,16 +17,22 @@ class MarketMaker(BaseEnvironment):
 
         :param kwargs: refer to BaseEnvironment.py
         """
-        super(MarketMaker, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
-        # environment attributes to override in sub-class
+        # Environment attributes to override in sub-class
         self.actions = np.eye(17, dtype=np.float32)
 
         self.action_space = spaces.Discrete(len(self.actions))
-        self.observation = self.reset()  # reset to load observation.shape
+        self.observation = self.reset()  # Reset to load observation.shape
         self.observation_space = spaces.Box(low=-10., high=10.,
                                             shape=self.observation.shape,
                                             dtype=np.float32)
+
+        # Add the remaining labels for the observation space
+        self.viz.observation_labels += ['Long Dist', 'Short Dist',
+                                        'Bid Completion Ratio', 'Ask Completion Ratio']
+        self.viz.observation_labels += [f'Action #{a}' for a in range(len(self.actions))]
+        self.viz.observation_labels += ['Reward']
 
         print('{} {} #{} instantiated\nobservation_space: {}'.format(
             MarketMaker.id, self.symbol, self._seed, self.observation_space.shape),
@@ -35,7 +42,7 @@ class MarketMaker(BaseEnvironment):
     def __str__(self):
         return '{} | {}-{}'.format(MarketMaker.id, self.symbol, self._seed)
 
-    def map_action_to_broker(self, action: int) -> (float, float):
+    def map_action_to_broker(self, action: int) -> Tuple[float, float]:
         """
         Create or adjust orders per a specified action and adjust for penalties.
 

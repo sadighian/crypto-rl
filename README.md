@@ -1,6 +1,5 @@
 # Deep Reinforcement Learning Toolkit for Cryptocurrencies
 
-*NOTE: Project refactored as of December 2019. See changelog at the bottom.*
 
 **Table of contents:**
 

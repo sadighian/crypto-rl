@@ -1,27 +1,34 @@
 from abc import ABC, abstractmethod
 from collections import deque
+from typing import List, Tuple, Union
 
 from configurations import INDICATOR_WINDOW
-from indicators import ExponentialMovingAverage, load_ema
+from indicators.ema import ExponentialMovingAverage, load_ema
 
 
 class Indicator(ABC):
 
-    def __init__(self, window=INDICATOR_WINDOW, alpha=None):
+    def __init__(self, label: str,
+                 window: Union[int, None] = INDICATOR_WINDOW[0],
+                 alpha: Union[List[float], float, None] = None):
         """
         Indicator constructor.
 
         :param window: (int) rolling window used for indicators
         :param alpha: (float) decay rate for EMA; if NONE, raw values returned
         """
+        self._label = f"{label}_{window}"
         self.window = window
-        self.all_history_queue = deque(maxlen=self.window + 1)  # add one so we can pop it off
+        if self.window is not None:
+            self.all_history_queue = deque(maxlen=self.window + 1)
+        else:
+            self.all_history_queue = deque(maxlen=2)
         self.ema = load_ema(alpha=alpha)
         self._value = 0.
 
     def __str__(self):
-        return 'Indicator.base() [window={}, all_history_queue={}, ema={}]'.format(
-            self.window, self.all_history_queue, self.ema)
+        return f'Indicator.base() [ window={self.window}, ' \
+               f'all_history_queue={self.all_history_queue}, ema={self.ema} ]'
 
     @abstractmethod
     def reset(self) -> None:
@@ -61,7 +68,7 @@ class Indicator(ABC):
         pass
 
     @property
-    def value(self) -> float or list:
+    def value(self) -> Union[List[float], float]:
         """
         Get indicator value for the current time step.
 
@@ -75,6 +82,22 @@ class Indicator(ABC):
             return [ema.value for ema in self.ema]
         else:
             return 0.
+
+    @property
+    def label(self) -> Union[List[str], str]:
+        """
+        Get indicator value for the current time step.
+
+        :return: (scalar float)
+        """
+        if self.ema is None:
+            return self._label
+        elif isinstance(self.ema, ExponentialMovingAverage):
+            return f"{self._label}_{self.ema.alpha}"
+        elif isinstance(self.ema, list):
+            return [f"{self._label}_{ema.alpha}" for ema in self.ema]
+        else:
+            raise ValueError(f"Error: EMA provided not valid --> {self.ema}")
 
     @property
     def raw_value(self) -> float:
@@ -103,6 +126,7 @@ class Indicator(ABC):
 
 
 class IndicatorManager(object):
+    __slots__ = ['indicators']
 
     def __init__(self):
         """
@@ -112,9 +136,26 @@ class IndicatorManager(object):
         # :param smooth_values: if TRUE, values returned are EMA smoothed, otherwise raw
         #     values indicator values
         """
-        self.indicators = []
+        self.indicators = list()
 
-    def add(self, name_and_indicator: tuple) -> None:
+    def get_labels(self) -> list:
+        """
+        Get labels for each indicator being managed.
+
+        :return: List of label names
+        """
+        # return [label[0] for label in self.indicators]
+        labels = []
+        for label, indicator in self.indicators:
+            indicator_label = indicator.label
+            if isinstance(indicator_label, list):
+                labels.extend(indicator_label)
+            else:
+                labels.append(indicator_label)
+        return labels
+
+    def add(self, name_and_indicator: Tuple[str, Union[Indicator, ExponentialMovingAverage]]) \
+            -> None:
         """
         Add indicator to the list to be managed.
 
@@ -123,7 +164,7 @@ class IndicatorManager(object):
         """
         self.indicators.append(name_and_indicator)
 
-    def delete(self, index) -> None:
+    def delete(self, index: Union[int, None]) -> None:
         """
         Delete an indicator from the manager.
 
@@ -135,15 +176,15 @@ class IndicatorManager(object):
         else:
             self.indicators.remove(index)
 
-    def pop(self, index=None):
+    def pop(self, index: Union[int, None]) -> Union[float, None]:
         """
         Pop indicator from manager.
 
         :param index: (int) index of indicator to pop
         :return: (name, indicator)
         """
-        if index:
-            return self.indicators.pop(index=index)
+        if index is not None:
+            return self.indicators.pop(index)
         else:
             return self.indicators.pop()
 
@@ -166,10 +207,17 @@ class IndicatorManager(object):
         for (name, indicator) in self.indicators:
             indicator.reset()
 
-    def get_value(self) -> list:
+    def get_value(self) -> List[float]:
         """
         Get all indicator values in the manager's inventory.
 
         :return: (list of floats) Indicator values for current time step
         """
-        return [indicator.value for (name, indicator) in self.indicators]
+        values = []
+        for name, indicator in self.indicators:
+            indicator_value = indicator.value
+            if isinstance(indicator_value, list):
+                values.extend(indicator_value)
+            else:
+                values.append(indicator_value)
+        return values

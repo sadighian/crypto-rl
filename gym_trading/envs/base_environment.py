@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import deque
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -145,6 +146,10 @@ class BaseEnvironment(Env, ABC):
         self.notional_ask_index = features.index('asks_notional_0')
         self.buy_trade_index = features.index('buys')
         self.sell_trade_index = features.index('sells')
+
+        self.viz.observation_labels = self._normalized_data.columns.tolist()
+        self.viz.observation_labels += self.tns.get_labels() + self.rsi.get_labels()
+        self.viz.observation_labels += ['Inventory Count', 'Realized PNL', 'Unrealized PNL']
 
         # typecast all data sets to numpy
         self._raw_data = self._raw_data.to_numpy(dtype=np.float32)
@@ -512,10 +517,10 @@ class BaseEnvironment(Env, ABC):
         :param step_action: (int) current step action
         :return: (np.array) Current step observation
         """
+        step_environment_observation = self._normalized_data[self.local_step_number]
+        step_indicator_features = self._create_indicator_features()
         step_position_features = self._create_position_features()
         step_action_features = self._create_action_features(action=step_action)
-        step_indicator_features = self._create_indicator_features()
-        step_environment_observation = self._normalized_data[self.local_step_number]
         observation = np.concatenate((step_environment_observation,
                                       step_indicator_features,
                                       step_position_features,
@@ -548,16 +553,18 @@ class BaseEnvironment(Env, ABC):
         """
         return self.viz.to_df()
 
-    def plot_trade_history(self, save_filename: str or None = None) -> None:
+    def plot_trade_history(self, save_filename: Union[str, None] = None) -> None:
         """
         Plot history from back-test with trade executions, total inventory, and PnL.
 
         :param save_filename: filename for saving the image
         """
-        self.viz.plot(save_filename=save_filename)
+        self.viz.plot_episode_history(save_filename=save_filename)
 
-    def plot_observation_history(self) -> None:
+    def plot_observation_history(self, save_filename: Union[str, None] = None) -> None:
         """
         Plot observation space as an image.
+
+        :param save_filename: filename for saving the image
         """
-        return self.viz.plot_obs()
+        return self.viz.plot_obs(save_filename=save_filename)
