@@ -18,16 +18,14 @@ The purpose of this application is to provide a toolkit to:
  exchanges (**Coinbase Pro** and **Bitfinex**) into an [Arctic](https://github.com/manahl/arctic) 
  Tickstore database (i.e., MongoDB), 
  - **Replay** recorded historical data to derive feature sets for training
- - **Train** a Dueling Deep Q-Network (DDQN) agent to trade cryptocurrencies.
+ - **Train** an agent to trade cryptocurrencies using the DQN algorithm (note: this agent
+  implementation is intended to be an example for users to reference)
 
 ![High_Level_Overview](./design_patterns/design-pattern-high-level.PNG)
 
 
 ## 2. Scope
-Application is intended to be used to record and simulate limit order book data 
-for reinforcement learning. 
-
-Currently, there is no functionality developed to place an order or automate trading.
+Research only; there is no capability for live-trading at exchanges.
 
 
 ## 3. Dependencies
@@ -36,7 +34,8 @@ See `requirements.txt`
 *Note*: to run and train the DQN Agent (`./agent/dqn.py`) tensorflow and Keras-RL
 need to be installed manually and are not listed in the `requirements.txt` 
 in order to keep this project compatible with other open 
-sourced reinforcement learning platforms (e.g., OpenAI's Baselines).
+sourced reinforcement learning platforms 
+(e.g., [OpenAI Baselines](https://github.com/openai/baselines)).
 
 Pip install the following:
 
@@ -78,7 +77,7 @@ crypto-rl/
 
 
 ## 5. Design Patterns
-Refer to each individual's module for design pattern specifications:
+Refer to each individual module for design pattern specifications:
 
 - [Limit Order Book, Data Recorder, and Database](./data_recorder/README.md)
 - [Stationary LOB Features](https://arxiv.org/abs/1810.09965v1)
@@ -120,10 +119,9 @@ pip3 install -e .
 Go to the `configurations.py` and define the crypto currencies which
 you would like to subscribe and record. 
 
-Note: the first column of CCYs are Coinbase-Pro currency names, and the 
-second column of CCYs are Bitfinex's.
+Note: basket list format is as follows `[(Coinbase_Instrument_Name, Bitfinex_Instrument_Name), ...]`
 ```
-SNAPSHOT_RATE = 15.  # I.e., 0.25 = 4x second
+SNAPSHOT_RATE = 5  # I.e., every 5 seconds
 BASKET = [('BTC-USD', 'tBTCUSD'),
          ('ETH-USD', 'tETHUSD'),
          ('LTC-USD', 'tLTCUSD'),
