@@ -167,7 +167,7 @@ python3 data_recorder/tests/test_extract_features.py
 Ensure you have data in the `data_recorder/database/data_exports/` folder.
 This is where the agent loads data from. If you do not have data exported
 into that folder, see refer to the section above 
-**5.2 Replay recorded data to export stationary feature set**.
+**6.2 Replay recorded data to export stationary feature set**.
 
 **Step 2:**
 Open a CLI/terminal and start learning/training the agent. 
