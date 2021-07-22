@@ -144,7 +144,7 @@ Ensure that you have data in your database.
 
 Check with MongoDB shell or [Compass](https://www.mongodb.com/products/compass). 
 If you do not have data, see refer to the section above 
-**5.1 Record limit order book data from exchanges**.
+**6.1 Record limit order book data from exchanges**.
 
 **Step 2:**
 Run a historial data simulation to take snapshots of the
