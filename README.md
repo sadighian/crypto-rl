@@ -40,6 +40,8 @@ sourced reinforcement learning platforms
 Pip install the following:
 
 ```
+git+https://github.com/manahl/arctic.git
+
 Keras==2.2.4
 Keras-Applications==1.0.7
 Keras-Preprocessing==1.0.9
@@ -56,17 +58,17 @@ The key elements in this project and brief descriptions.
 ```
 crypto-rl/
 	agent/
-		...reinforcement learning algorithm implementations
+				...reinforcement learning algorithm implementations
 	data_recorder/
-		...tools to connect, download, and retrieve limit order book data
+				...tools to connect, download, and retrieve limit order book data
 	gym_trading/
-		...extended openai.gym environment to observe limit order book data
+				...extended openai.gym environment to observe limit order book data
 	indicators/
-		...technical indicators implemented to be O(1) time complexity
+				...technical indicators implemented to be O(1) time complexity
 	design-patterns/
-		...visual diagrams module architecture
+				...visual diagrams module architecture
 	venv/
-		...virtual environment for local deployments
+				...virtual environment for local deployments
 	experiment.py          # Entry point for running reinforcement learning experiments
 	recorder.py            # Entry point to start recording limit order book data
 	configurations.py      # Constants used throughout this project
@@ -95,21 +97,24 @@ Sample snapshot of Order Arrival flow metrics:
 
 Install the project on your machine:
 ```
-# clone the project from github
+# Clone the project from github
 git clone https://github.com/sadighian/crypto-rl.git
 cd crypto-rl
 
-# install a virtual environment for the project's dependencies
+# Install a virtual environment for the project's dependencies
 python3 -m venv ./venv
 
-# turn on the virtual environment
+# Turn on the virtual environment
 source venv/bin/activate
 
-# install keras-rl dependencies
+# Install keras-rl dependencies
 pip3 install Keras==2.2.4 Keras-Applications==1.0.7 Keras-Preprocessing==1.0.9 keras-rl==0.4.2
  tensorboard==1.13.1 tensorflow-estimator==1.13.0 tensorflow-gpu==1.13.1
+ 
+# Install database
+pip3 install git+https://github.com/manahl/arctic.git
 
-# install the project
+# Install the project
 pip3 install -e .
 ```
 
@@ -223,6 +228,8 @@ for persisting data:
 - You are running an ubuntu 18+ os
 
 ### 8.3 Change Log
+- 2021-09-25: Updated `requirements.txt`: going forward the database requires a manual 
+  installation via `pip install git+https://github.com/manahl/arctic.git`
 - 2019-12-12: Added docstrings and refactored many classes to improve code readability
 - 2019-09-18: Refactored `env`s and `broker`s for simplification and
   added different `reward` approaches.

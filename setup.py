@@ -11,7 +11,7 @@ with open("README.md", 'r') as f:
     long_description = f.read()
 
 setup(name='crypto_rl',
-      version='0.2.2',
+      version='0.2.3',
       description='Cryptocurrency LOB trading environment in gym format.',
       long_description=long_description,
       author='Jonathan Sadighian',
