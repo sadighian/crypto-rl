@@ -25,7 +25,8 @@ The purpose of this application is to provide a toolkit to:
 
 
 ## 2. Scope
-Research only; there is no capability for live-trading at exchanges.
+- **Research only:** there is no capability for live-trading at exchanges.
+- **Reproducing RL paper results:** the dataset used for [this](https://arxiv.org/abs/2004.06985) article is available on [Kaggle Datasets](https://www.kaggle.com/jsadighian/cryptorl).
 
 
 ## 3. Dependencies
